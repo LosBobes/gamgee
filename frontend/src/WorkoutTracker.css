@@ -202,6 +202,51 @@ html, body { background: var(--bg); }
 .btn-rm { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 15px; padding: 0 2px; transition: color 0.15s, transform 0.15s; }
 .btn-rm:hover { color: var(--red); transform: scale(1.2); }
 
+/* ── BUILD LAYOUT (2-column: map left, browser right) ── */
+.build-layout {
+  display: grid;
+  grid-template-columns: 206px 1fr;
+  gap: 0 16px;
+  align-items: start;
+}
+.build-left {
+  position: sticky;
+  top: 8px;
+}
+.build-right { min-width: 0; }
+.build-planned { margin-top: 4px; }
+
+/* ── EXERCISE SEARCH ── */
+.search-wrap {
+  position: relative;
+  margin-bottom: 10px;
+}
+.search-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 9px 32px 9px 12px;
+  color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  outline: none; transition: border-color 0.15s;
+}
+.search-input:focus { border-color: var(--accent); }
+.search-input::placeholder { color: var(--muted); }
+.search-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--muted); font-size: 11px;
+  cursor: pointer; padding: 2px 5px; border-radius: 3px; transition: color 0.15s;
+}
+.search-clear:hover { color: var(--text); }
+.search-empty {
+  font-family: 'IBM Plex Mono', monospace; font-size: 12px;
+  color: var(--muted); padding: 14px 0; margin: 0;
+}
+
+/* stack on narrow screens */
+@media (max-width: 560px) {
+  .build-layout { grid-template-columns: 1fr; }
+  .build-left { position: static; }
+}
+
 /* ── REVIEW ── */
 .review-card { background: var(--s1); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 8px; animation: fadeUp 0.2s ease both; }
 .review-num { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: var(--accent); margin-bottom: 4px; }
