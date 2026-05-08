@@ -1,14 +1,90 @@
-# gamgee
-User companion app for workouts
+# Gamgee — Iron Log
+
+A self-hosted workout tracking app. Log sessions, track personal records, visualise muscle coverage, and get progression coaching — all behind a per-user JWT auth wall.
 
 ## Stack
 
-| Layer    | Technology                          |
-|----------|-------------------------------------|
-| Frontend | Vite + React + TypeScript           |
-| Backend  | FastAPI (Python 3.12)               |
-| Database | PostgreSQL 16                       |
-| Infra    | Docker Compose                      |
+| Layer    | Technology                        |
+|----------|-----------------------------------|
+| Frontend | Vite + React 18 + TypeScript      |
+| Backend  | FastAPI (Python 3.12)             |
+| Database | PostgreSQL 16                     |
+| Infra    | Docker Compose                    |
+
+---
+
+## Features
+
+**Workout logging**
+- Wizard-guided session builder: pick a focus (push / pull / legs / upper / lower / full body / core), browse suggested exercises, review muscle coverage on an SVG body map, then start.
+- Live session timer, per-set weight + rep entry, PR badge when a new personal record is hit.
+- Add exercises mid-session; mark individual sets done.
+
+**Personal records**
+- Automatically detected and persisted after each finished workout.
+- Estimated 1RM shown per exercise (Epley formula).
+- Cardio exercises tracked separately (time/distance).
+
+**History**
+- List view: expandable session cards with full exercise/set breakdown.
+- Calendar view: month grid with workout days highlighted; click a day to expand the session.
+
+**Coach tab**
+- Per-exercise progression analysis across all logged sessions.
+- Statuses: `NEW` → `PROGRESSING` → `BUILDING REPS` → `READY TO JUMP` → `STALLED` → `PLATEAU` → `DELOAD`.
+- Recommends a concrete next-session target weight × reps with a plain-English reason.
+- Sorted by exercises that need the most attention first.
+
+**Profile tab**
+- Aggregate stats: total workouts, volume lifted, time logged, sets done.
+- 16-week activity heatmap.
+- Top 5 most-logged exercises and muscle group frequency bars.
+
+**Muscle visualisation**
+- Front and back SVG body maps — single clean silhouette path, muscles highlight with a soft glow only when active. Used in the wizard and exercise suggestion cards.
+
+---
+
+## Getting started
+
+### Docker Compose (recommended)
+
+```bash
+cp .env.example .env      # default creds: gamgee / gamgee / gamgee
+docker compose up --build
+```
+
+| Service       | URL                        |
+|---------------|----------------------------|
+| App           | http://localhost:5173      |
+| API           | http://localhost:8000      |
+| Swagger docs  | http://localhost:8000/docs |
+
+### Local development
+
+**Backend**
+```bash
+cd backend
+python -m venv .venv
+source .venv/Scripts/activate     # Windows; use bin/activate on Linux/Mac
+pip install -r requirements.txt
+DATABASE_URL=postgresql://gamgee:gamgee@localhost:5432/gamgee uvicorn app.main:app --reload
+```
+
+Seed the exercise catalogue (required on first run):
+```bash
+python -m app.init_db
+```
+
+**Frontend**
+```bash
+cd frontend
+pnpm install
+pnpm run dev        # dev server on :5173, proxies /api → :8000
+pnpm run build      # TypeScript check + production bundle
+```
+
+---
 
 ## Project structure
 
@@ -16,65 +92,102 @@ User companion app for workouts
 gamgee/
 ├── docker-compose.yml
 ├── .env.example
+│
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── app/
-│       ├── main.py        # FastAPI app entry point
-│       ├── database.py    # SQLAlchemy engine / session
-│       ├── models.py      # ORM models
-│       ├── schemas.py     # Pydantic schemas
+│       ├── main.py          # FastAPI app, routers, CORS
+│       ├── database.py      # SQLAlchemy engine + SessionLocal
+│       ├── models.py        # ORM: User, WorkoutSession, PersonalRecord, Exercise
+│       ├── schemas.py       # Pydantic request/response schemas
+│       ├── auth.py          # JWT creation/verification, bcrypt, get_current_user
+│       ├── init_db.py       # DB init + exercise seeding
 │       └── routers/
-│           └── items.py   # CRUD routes for /api/items
+│           ├── auth.py      # /api/auth — register, login, me
+│           ├── workouts.py  # /api/workouts — list, create
+│           └── prs.py       # /api/prs — list, upsert
+│
 └── frontend/
-    ├── Dockerfile         # multi-stage: dev / builder / production (nginx)
-    ├── nginx.conf         # production reverse-proxy config
-    ├── index.html
-    ├── vite.config.ts
+    ├── Dockerfile           # multi-stage: dev / builder / nginx
+    ├── nginx.conf           # production reverse-proxy
+    ├── vite.config.ts       # /api proxy → backend
     └── src/
-        ├── main.tsx
-        └── App.tsx
+        ├── WorkoutTracker.tsx        # root state + all shared handlers
+        ├── WorkoutTracker.css        # global styles + CSS custom properties
+        ├── types.ts                  # all TypeScript interfaces
+        ├── utils.ts                  # fmtClock, fmtDate, fmtDur, orm1
+        ├── analysis.ts               # per-exercise progression analysis engine
+        ├── data/
+        │   ├── exercises.ts          # 100+ exercises, categories, muscle maps
+        │   ├── muscles.ts            # 32 muscle IDs → name + group
+        │   ├── focuses.ts            # 7 workout focus templates
+        │   ├── bodymap.ts            # SVG body path + front/back muscle coords
+        │   └── tips.ts               # coaching tip cards
+        └── components/
+            ├── AuthScreen.tsx
+            ├── AppHeader.tsx
+            ├── StatsBar.tsx
+            ├── BodyMap.tsx
+            ├── ExercisePicker.tsx
+            ├── SuggCard.tsx
+            ├── workout/
+            │   ├── WorkoutTab.tsx
+            │   ├── WizardStart.tsx
+            │   ├── WizardFocus.tsx
+            │   ├── WizardBuild.tsx
+            │   ├── WizardReview.tsx
+            │   ├── ActiveWorkout.tsx
+            │   └── ExerciseCard.tsx
+            └── tabs/
+                ├── HistoryTab.tsx
+                ├── PRsTab.tsx
+                ├── CoachTab.tsx
+                └── ProfileTab.tsx
 ```
 
-## Getting started
+---
 
-### With Docker Compose (recommended)
+## API reference
 
-```bash
-cp .env.example .env          # adjust credentials if needed
-docker compose up --build
-```
+All routes except `/api/auth/register`, `/api/auth/login`, and `/health` require `Authorization: Bearer <token>`.
 
-| Service  | URL                        |
-|----------|----------------------------|
-| Frontend | http://localhost:5173      |
-| Backend  | http://localhost:8000      |
-| API docs | http://localhost:8000/docs |
+### Auth — `/api/auth`
 
-### Local development (without Docker)
+| Method | Path        | Body                          | Description              |
+|--------|-------------|-------------------------------|--------------------------|
+| POST   | `/register` | `{ username, password }`      | Create account           |
+| POST   | `/login`    | OAuth2 form `username`+`password` | Returns JWT          |
+| GET    | `/me`       | —                             | Current user info        |
 
-**Backend**
-```bash
-cd backend
-python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-DATABASE_URL=postgresql://gamgee:gamgee@localhost:5432/gamgee uvicorn app.main:app --reload
-```
+### Workouts — `/api/workouts`
 
-**Frontend**
-```bash
-cd frontend
-pnpm install
-pnpm run dev
-```
+| Method | Path | Body                    | Description                            |
+|--------|------|-------------------------|----------------------------------------|
+| GET    | `/`  | —                       | All sessions for the current user, newest first |
+| POST   | `/`  | `WorkoutSession` object | Save a completed session (idempotent by `id`) |
 
-## API endpoints
+`WorkoutSession.exercises` is stored as a JSONB column — no separate join table.
 
-| Method | Path              | Description        |
-|--------|-------------------|--------------------|
-| GET    | /api/items/       | List all items     |
-| GET    | /api/items/{id}   | Get single item    |
-| POST   | /api/items/       | Create item        |
-| PUT    | /api/items/{id}   | Update item        |
-| DELETE | /api/items/{id}   | Delete item        |
-| GET    | /health           | Health check       |
+### Personal Records — `/api/prs`
+
+| Method | Path              | Body                  | Description                       |
+|--------|-------------------|-----------------------|-----------------------------------|
+| GET    | `/`               | —                     | All PRs for the current user      |
+| PUT    | `/{exercise_id}`  | `PersonalRecord` body | Upsert (create or overwrite) a PR |
+
+PRs have a unique constraint on `(user_id, exercise_id)`.
+
+---
+
+## Configuration
+
+Copy `.env.example` to `.env`. Key variables:
+
+| Variable       | Default                        | Description                        |
+|----------------|--------------------------------|------------------------------------|
+| `POSTGRES_USER` | `gamgee`                      | DB username                        |
+| `POSTGRES_PASSWORD` | `gamgee`                  | DB password                        |
+| `POSTGRES_DB`  | `gamgee`                       | DB name                            |
+| `JWT_SECRET`   | `change-me-in-production-please` | HS256 signing secret — change this |
+| `BACKEND_URL`  | `http://backend:8000`          | Vite proxy target (Docker internal)|
