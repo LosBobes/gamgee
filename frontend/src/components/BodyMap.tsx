@@ -1,84 +1,115 @@
 import { useState } from "react";
-import type { MuscleDef, BodyMapProps } from "../types";
+import type { MuscleShape, BodyMapProps } from "../types";
 import { MI } from "../data/muscles";
 import { BODY_PATH, FM, BM } from "../data/bodymap";
 
 export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: BodyMapProps) {
   const [hovMid, setHovMid] = useState<string | null>(null);
 
-  const fill = (mid: string): string => {
-    if (preview[mid])                    return "rgba(76,168,124,0.88)";
-    if (active[mid] === "primary")       return "rgba(200,136,28,0.92)";
-    if (active[mid] === "secondary")     return "rgba(200,136,28,0.40)";
+  const mFill = (mid: string): string => {
+    if (preview[mid])                return "rgba(76,168,124,0.82)";
+    if (active[mid] === "primary")   return "rgba(200,136,28,0.86)";
+    if (active[mid] === "secondary") return "rgba(200,136,28,0.36)";
+    if (hovMid === mid)              return "rgba(255,255,255,0.06)";
     return "none";
   };
 
-  const renderView = (muscles: MuscleDef[], label: string, id: string) => (
-    <div className="body-view">
-      <svg viewBox="0 0 100 180" width={90} height={162} style={{ display: "block", overflow: "visible" }}>
-        <defs>
-          {/* Soft glow applied to active muscle highlights */}
-          <filter id={`glow-${id}`} x="-80%" y="-80%" width="260%" height="260%">
-            <feGaussianBlur stdDeviation="3.5" result="blur"/>
-            <feMerge>
-              <feMergeNode in="blur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          {/* Clip all muscle elements to the body silhouette */}
-          <clipPath id={`clip-${id}`}>
-            <circle cx="50" cy="13" r="13"/>
-            <path d={BODY_PATH}/>
-          </clipPath>
-        </defs>
+  const mStroke = (mid: string): string => {
+    if (preview[mid])                return "rgba(76,168,124,0.95)";
+    if (active[mid] === "primary")   return "rgba(200,136,28,1)";
+    if (active[mid] === "secondary") return "rgba(200,136,28,0.60)";
+    if (hovMid === mid)              return "rgba(255,255,255,0.38)";
+    return "rgba(255,255,255,0.15)";
+  };
 
-        {/* ── Body silhouette ── */}
-        <circle
-          cx="50" cy="13" r="12"
-          fill="rgba(255,255,255,0.055)"
-          stroke="rgba(255,255,255,0.14)"
-          strokeWidth={0.75}
-        />
-        <path
-          d={BODY_PATH}
-          fill="rgba(255,255,255,0.055)"
-          stroke="rgba(255,255,255,0.14)"
-          strokeWidth={0.75}
-        />
+  const mStrokeW = (mid: string): number => {
+    if (active[mid] === "primary" || preview[mid]) return 1.1;
+    if (active[mid] === "secondary")               return 0.8;
+    if (hovMid === mid)                            return 0.7;
+    return 0.45;
+  };
 
-        {/* ── Muscle highlights (clipped, with glow) ── */}
-        <g clipPath={`url(#clip-${id})`}>
-          {muscles.map((s, i) => {
-            const f = fill(s.mid);
-            if (f === "none") return null;
-            return (
-              <ellipse
-                key={i}
-                cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
-                fill={f}
-                filter={`url(#glow-${id})`}
-              />
-            );
-          })}
-        </g>
+  const isActive = (mid: string) => !!(active[mid] || preview[mid]);
 
-        {/* ── Invisible hit targets so tooltip works across all muscles ── */}
-        <g clipPath={`url(#clip-${id})`}>
-          {muscles.map((s, i) => (
-            <ellipse
-              key={i}
-              cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
-              fill="transparent"
-              style={{ cursor: "default" }}
-              onMouseEnter={() => { setHovMid(s.mid); onHoverMuscle?.(s.mid); }}
-              onMouseLeave={() => { setHovMid(null);  onHoverMuscle?.(null);  }}
-            />
-          ))}
-        </g>
-      </svg>
-      <div className="body-lbl">{label}</div>
-    </div>
-  );
+  const renderView = (muscles: MuscleShape[], label: string, id: string) => {
+    // Render inactive first so active muscles always appear on top of the glow
+    const sorted = [...muscles].sort((a, b) => {
+      const rank = (s: MuscleShape) => {
+        if (preview[s.mid]) return 3;
+        if (active[s.mid] === "primary") return 2;
+        if (active[s.mid] === "secondary") return 1;
+        return 0;
+      };
+      return rank(a) - rank(b);
+    });
+
+    return (
+      <div className="body-view">
+        <svg viewBox="0 0 100 180" width={90} height={162} style={{ display: "block", overflow: "visible" }}>
+          <defs>
+            <filter id={`glow-${id}`} x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge>
+                <feMergeNode in="blur"/>
+                <feMergeNode in="SourceGraphic"/>
+              </feMerge>
+            </filter>
+            <clipPath id={`clip-${id}`}>
+              <circle cx="50" cy="13" r="13"/>
+              <path d={BODY_PATH}/>
+            </clipPath>
+          </defs>
+
+          {/* ── Body silhouette ── */}
+          <circle
+            cx="50" cy="13" r="12"
+            fill="rgba(255,255,255,0.05)"
+            stroke="rgba(255,255,255,0.13)"
+            strokeWidth={0.7}
+          />
+          <path
+            d={BODY_PATH}
+            fill="rgba(255,255,255,0.05)"
+            stroke="rgba(255,255,255,0.13)"
+            strokeWidth={0.7}
+          />
+
+          {/* ── Muscle shapes — always visible as outlines, lit when active ── */}
+          <g clipPath={`url(#clip-${id})`}>
+            {sorted.map((s, i) => {
+              const act = isActive(s.mid);
+              const sharedProps = {
+                fill:        mFill(s.mid),
+                stroke:      mStroke(s.mid),
+                strokeWidth: mStrokeW(s.mid),
+                filter:      act ? `url(#glow-${id})` : undefined,
+                style:       { cursor: "default" } as React.CSSProperties,
+                onMouseEnter: () => { setHovMid(s.mid); onHoverMuscle?.(s.mid); },
+                onMouseLeave: () => { setHovMid(null);  onHoverMuscle?.(null);  },
+              };
+
+              if ("d" in s) {
+                return <path key={i} d={s.d} {...sharedProps} />;
+              }
+
+              const transform = s.rotate
+                ? `rotate(${s.rotate},${s.cx},${s.cy})`
+                : undefined;
+              return (
+                <ellipse
+                  key={i}
+                  cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
+                  transform={transform}
+                  {...sharedProps}
+                />
+              );
+            })}
+          </g>
+        </svg>
+        <div className="body-lbl">{label}</div>
+      </div>
+    );
+  };
 
   return (
     <div>

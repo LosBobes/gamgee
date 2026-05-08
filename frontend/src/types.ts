@@ -13,7 +13,9 @@ export interface PersonalRecord { name: string; weight: number; reps: number; da
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
 export type PRDict = Record<string, PersonalRecord>;
 export interface StatusDef { label: string; color: string; bg: string; }
-export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; }
+export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; rotate?: number; }
+export interface MusclePathDef { mid: string; d: string; }
+export type MuscleShape = MuscleDef | MusclePathDef;
 export interface CoachingTip { icon: string; title: string; body: string; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 // activeMuscles removed — SuggCard uses pre-computed newP/ovP/newS from SuggExercise
