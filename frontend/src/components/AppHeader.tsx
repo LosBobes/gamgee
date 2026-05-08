@@ -20,6 +20,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "history", label: `📋 HISTORY (${historyCount})` },
     { key: "prs",     label: `🏆 PRs (${prCount})` },
     { key: "coach",   label: `🧠 COACH (${coachCount})` },
+    { key: "profile", label: "👤 PROFILE" },
   ];
 
   return (

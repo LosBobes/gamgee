@@ -7,11 +7,15 @@ interface Props {
 
 export default function PRsTab({ prs }: Props) {
   if (Object.keys(prs).length === 0) {
-    return <div className="empty"><div className="empty-icon">🏆</div><div className="empty-label">No PRs yet</div></div>;
+    return (
+      <div className="tab-anim">
+        <div className="empty"><div className="empty-icon">🏆</div><div className="empty-label">No PRs yet</div></div>
+      </div>
+    );
   }
 
   return (
-    <>
+    <div className="tab-anim">
       <p className="pr-header">{Object.keys(prs).length} Personal Records</p>
       <div className="pr-grid">
         {Object.entries(prs)
@@ -32,6 +36,6 @@ export default function PRsTab({ prs }: Props) {
             </div>
           ))}
       </div>
-    </>
+    </div>
   );
 }

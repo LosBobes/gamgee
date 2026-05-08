@@ -8,6 +8,7 @@ import WorkoutTab from "./components/workout/WorkoutTab";
 import HistoryTab from "./components/tabs/HistoryTab";
 import PRsTab from "./components/tabs/PRsTab";
 import CoachTab from "./components/tabs/CoachTab";
+import ProfileTab from "./components/tabs/ProfileTab";
 import { ALL_EX } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 
@@ -27,6 +28,7 @@ export default function WorkoutTracker() {
   const [prs,       setPrs]       = useState<PRDict>({});
   // auth
   const [token,     setToken]     = useState<string | null>(() => localStorage.getItem("iron_log_token"));
+  const [username,  setUsername]  = useState<string | null>(null);
 
   const authFetch = (url: string, opts: RequestInit = {}) =>
     fetch(url, {
@@ -40,17 +42,15 @@ export default function WorkoutTracker() {
   useEffect(() => {
     if (!token) return;
     authFetch("/api/workouts")
-      .then(r => r.json())
-      .then((data: WorkoutSession[]) => setHistory(data))
-      .catch(() => {});
+      .then(r => r.json()).then((data: WorkoutSession[]) => setHistory(data)).catch(() => {});
     authFetch("/api/prs")
-      .then(r => r.json())
-      .then((data: PersonalRecordAPI[]) => {
+      .then(r => r.json()).then((data: PersonalRecordAPI[]) => {
         const dict: PRDict = {};
         data.forEach(pr => { dict[pr.exercise_id] = pr; });
         setPrs(dict);
-      })
-      .catch(() => {});
+      }).catch(() => {});
+    authFetch("/api/auth/me")
+      .then(r => r.json()).then((d: { username: string }) => setUsername(d.username)).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -63,13 +63,9 @@ export default function WorkoutTracker() {
   // ── Workout handlers ──
 
   const startFromWizard = () => {
-    setWStep(0);
-    setActive(true);
-    setStartTs(Date.now());
-    setElapsed(0);
+    setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
     setExercises(planned.map(ex => ({
-      ...ex,
-      uid: `${ex.id}_${Date.now()}_${Math.random()}`,
+      ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`,
       sets: [{ weight: "", reps: "", done: false }],
     })));
     setPlanned([]);
@@ -141,7 +137,7 @@ export default function WorkoutTracker() {
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
   const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history) !== null).length;
 
-  const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); };
+  const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
 
   if (!token) return <AuthScreen onLogin={setToken} />;
 
@@ -169,6 +165,7 @@ export default function WorkoutTracker() {
         {tab === "history" && <HistoryTab history={history} prs={prs} />}
         {tab === "prs"     && <PRsTab prs={prs} />}
         {tab === "coach"   && <CoachTab history={history} />}
+        {tab === "profile" && <ProfileTab username={username} history={history} />}
       </div>
     </div>
   );

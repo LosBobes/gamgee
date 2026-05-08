@@ -19,7 +19,7 @@ export default function CoachTab({ history }: Props) {
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
 
   return (
-    <>
+    <div className="tab-anim">
       {coachData.length > 0 ? (
         <>
           <div className="coach-intro">
@@ -107,6 +107,6 @@ export default function CoachTab({ history }: Props) {
           </div>
         ))}
       </div>
-    </>
+    </div>
   );
 }
