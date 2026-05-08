@@ -1,25 +1,16 @@
-import type { BodyShapeDef, MuscleDef } from "../types";
+import type { MuscleDef } from "../types";
 
-export const BODY_SHAPES: BodyShapeDef[] = [
-  { t: "ellipse", cx: 50, cy: 14,  rx: 12, ry: 14 },
-  { t: "rect",    x: 30,  y: 27,   w: 40,  h: 45  },
-  { t: "ellipse", cx: 18, cy: 38,  rx: 10, ry: 22 },
-  { t: "ellipse", cx: 82, cy: 38,  rx: 10, ry: 22 },
-  { t: "ellipse", cx: 12, cy: 68,  rx: 8,  ry: 18 },
-  { t: "ellipse", cx: 88, cy: 68,  rx: 8,  ry: 18 },
-  { t: "ellipse", cx: 37, cy: 78,  rx: 13, ry: 22 },
-  { t: "ellipse", cx: 63, cy: 78,  rx: 13, ry: 22 },
-  { t: "ellipse", cx: 36, cy: 104, rx: 10, ry: 20 },
-  { t: "ellipse", cx: 64, cy: 104, rx: 10, ry: 20 },
-  { t: "ellipse", cx: 35, cy: 128, rx: 9,  ry: 16 },
-  { t: "ellipse", cx: 65, cy: 128, rx: 9,  ry: 16 },
-  { t: "ellipse", cx: 31, cy: 148, rx: 8,  ry: 14 },
-  { t: "ellipse", cx: 69, cy: 148, rx: 8,  ry: 14 },
-  { t: "ellipse", cx: 33, cy: 165, rx: 7,  ry: 10 },
-  { t: "ellipse", cx: 67, cy: 165, rx: 7,  ry: 10 },
-  { t: "ellipse", cx: 6,  cy: 88,  rx: 5,  ry: 8  },
-  { t: "ellipse", cx: 94, cy: 88,  rx: 5,  ry: 8  },
-];
+// Shared silhouette for front and back — only the muscle layer differs.
+// viewBox 0 0 100 180. Head is a separate <circle cx="50" cy="13" r="12"/>.
+export const BODY_PATH =
+  "M 44,22 C 38,25 22,32 14,40 L 10,44 C 8,50 7,60 7,74 L 7,90 L 13,90 " +
+  "L 14,74 C 15,64 17,56 22,50 C 25,58 28,68 29,76 L 28,84 L 28,108 " +
+  "L 27,130 L 27,152 L 26,163 L 25,172 C 29,175 33,176 38,175 " +
+  "L 40,171 L 41,163 L 41,152 L 42,130 L 43,108 L 44,84 L 46,80 L 54,80 " +
+  "L 56,84 L 57,108 L 58,130 L 59,152 L 59,163 L 60,171 L 62,175 " +
+  "C 67,176 71,175 75,172 L 74,163 L 73,152 L 72,130 L 72,108 L 72,84 " +
+  "L 71,76 C 72,68 75,58 78,50 C 83,56 85,64 86,74 L 87,90 L 93,90 " +
+  "L 93,74 C 93,60 92,50 90,44 L 86,40 C 78,32 62,25 56,22 Z";
 
 export const FM: MuscleDef[] = [
   { mid: "front_delt",  cx: 22,  cy: 35,  rx: 7,  ry: 7  },

@@ -13,7 +13,6 @@ export interface PersonalRecord { name: string; weight: number; reps: number; da
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
 export type PRDict = Record<string, PersonalRecord>;
 export interface StatusDef { label: string; color: string; bg: string; }
-export interface BodyShapeDef { t: "circle" | "ellipse" | "rect"; cx?: number; cy?: number; r?: number; rx?: number; ry?: number; x?: number; y?: number; w?: number; h?: number; }
 export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; }
 export interface CoachingTip { icon: string; title: string; body: string; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
