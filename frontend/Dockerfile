@@ -5,8 +5,8 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --ignore-scripts && pnpm rebuild esbuild
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 
@@ -20,8 +20,8 @@ WORKDIR /app
 
 RUN corepack enable && corepack prepare pnpm@11.0.8 --activate
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --ignore-scripts && pnpm rebuild esbuild
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run build

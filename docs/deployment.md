@@ -1,21 +1,67 @@
-# Deploying to Hetzner
+# Deploying Gamgee to Hetzner
 
-Production stack: Docker Compose (frontend nginx + FastAPI + PostgreSQL) behind Caddy as a TLS-terminating reverse proxy.
+**Version: 0.1.0**
+
+This document walks through deploying Gamgee on a Hetzner VPS. It also explains *why* each component exists so you understand the moving parts, not just the commands.
+
+---
+
+## Architecture overview
 
 ```
-Browser → Caddy (443, TLS) → frontend nginx (127.0.0.1:3000)
-                                  ├── /api/* → backend:8000 (Docker-internal)
-                                  └── /*     → built React files
-                                                    backend:8000 → db:5432
+Browser
+  │  HTTPS (443)
+  ▼
+Caddy                          ← reverse proxy, handles TLS
+  │  HTTP (localhost:3000)
+  ▼
+nginx container                ← serves the compiled React app
+  │  GET /api/* → HTTP (backend:8000, internal)
+  │  GET /*     → static files from dist/
+  ▼
+FastAPI container              ← REST API (Python)
+  │  SQL (db:5432, internal)
+  ▼
+PostgreSQL container           ← database
 ```
 
-PostgreSQL and the backend are not reachable from the internet — only within Docker's internal network.
+**Why this layering?**
+
+- **Caddy** faces the internet. It terminates TLS (handles Let's Encrypt certificates automatically) and forwards plain HTTP to nginx. Running TLS directly inside Docker is more complex, so Caddy handles it on the host.
+- **nginx** is not exposed to the internet — only to Caddy on `localhost:3000`. It serves the pre-built React static files (HTML/JS/CSS) and proxies any request starting with `/api/` to the FastAPI container. This means the browser only ever talks to one origin.
+- **FastAPI** and **PostgreSQL** are on Docker's internal network only. There is no port published to the host for them — you can't reach them from the internet at all, only from other containers in the same Compose project.
+
+---
+
+## Components explained
+
+### Docker Compose
+Compose starts all three services (nginx, backend, db) as containers on a shared private network called `gamgee_net`. Containers on this network reach each other by service name (`backend`, `db`) — those names resolve inside Docker's DNS. The only thing exposed to the host is port `3000` on `127.0.0.1` (loopback only, not `0.0.0.0`), so Caddy can reach nginx but nothing else can.
+
+### nginx (frontend container)
+The React app is compiled at build time (`pnpm run build` → `dist/`) and baked into the nginx Docker image. nginx serves those static files. Its `nginx.conf` contains one proxy rule: requests to `/api/` are forwarded to `http://backend:8000`. This is how the browser's API calls reach FastAPI without knowing the backend's address.
+
+### FastAPI (backend container)
+A Python REST API. It connects to PostgreSQL on startup and runs database migrations automatically. JWT tokens (HS256, 7-day expiry) are used for auth — the secret comes from the `JWT_SECRET` environment variable. In production the container runs without `--reload`, so code is not hot-reloaded.
+
+### PostgreSQL (db container)
+Standard Postgres 16. Data is stored in a named Docker volume (`pgdata`) so it survives container restarts and re-deploys. The volume is NOT deleted when you run `docker compose down` — you need `docker compose down -v` to destroy it.
+
+### Caddy
+Caddy runs on the host (not in Docker). It listens on ports 80 and 443. When a browser hits your domain on port 443, Caddy presents a TLS certificate it obtained automatically from Let's Encrypt. It then proxies the request to nginx at `localhost:3000` over plain HTTP. Caddy renews certificates before they expire — you don't manage certificates manually.
+
+---
+
+## Prerequisites
+
+- A domain name (see step 1)
+- A Hetzner account
 
 ---
 
 ## 1. Get a domain
 
-**Cloudflare Registrar** is recommended — at-cost pricing, no markup, and the DNS dashboard you'll use most. Create an account at cloudflare.com, then go to **Domain Registration → Register**. Expect ~$10–15/year for a `.com`.
+**Cloudflare Registrar** is recommended — at-cost pricing, no markup, and the DNS dashboard you'll use for step 3. Go to cloudflare.com → Domain Registration → Register. Expect ~$10–15/year for a `.com`.
 
 Alternatives: Porkbun, Namecheap.
 
@@ -52,13 +98,13 @@ SSH in:
 ssh root@YOUR_SERVER_IP
 ```
 
-Install Docker:
+Install Docker (the official install script sets up the apt repo and installs the latest stable release):
 ```bash
 apt update && apt upgrade -y
 curl -fsSL https://get.docker.com | sh
 ```
 
-Install Caddy:
+Install Caddy from the official apt repo (the package on Ubuntu's default repo is outdated):
 ```bash
 apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
 curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
@@ -68,7 +114,7 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
 apt update && apt install caddy
 ```
 
-Configure the firewall:
+Configure the firewall. UFW (Uncomplicated Firewall) is the Ubuntu frontend for iptables. You need SSH so you don't lock yourself out, port 80 for Let's Encrypt's HTTP challenge, and port 443 for HTTPS:
 ```bash
 ufw allow ssh && ufw allow 80 && ufw allow 443 && ufw enable
 ```
@@ -93,7 +139,7 @@ POSTGRES_DB=gamgee
 JWT_SECRET=generate_a_long_random_string_here
 ```
 
-Generate a secure JWT secret:
+Generate a secure JWT secret — `openssl rand` produces cryptographically random bytes; `-hex 32` gives 64 hex characters (256 bits of entropy):
 ```bash
 openssl rand -hex 32
 ```
@@ -107,13 +153,15 @@ cp /opt/gamgee/Caddyfile /etc/caddy/Caddyfile
 nano /etc/caddy/Caddyfile   # replace yourdomain.com with your actual domain
 ```
 
-The Caddyfile is a single directive — Caddy automatically obtains and renews a Let's Encrypt TLS certificate:
+The Caddyfile is a single directive:
 
 ```
 yourdomain.com {
     reverse_proxy localhost:3000
 }
 ```
+
+Caddy reads this, sees a hostname with no explicit TLS config, and automatically obtains a Let's Encrypt certificate for it. The `reverse_proxy` directive forwards all traffic to nginx at `localhost:3000`.
 
 ---
 
@@ -125,7 +173,23 @@ docker compose -f docker-compose.prod.yml up -d --build
 systemctl reload caddy
 ```
 
-The site will be live at `https://yourdomain.com`. Caddy provisions the TLS certificate on the first request.
+- `--build` rebuilds the Docker images from source (required on first deploy and after any code change).
+- `-d` runs containers in the background (detached).
+- `systemctl reload caddy` applies the new Caddyfile without downtime.
+
+The site will be live at `https://yourdomain.com`. Caddy provisions the TLS certificate on the first request (within a few seconds).
+
+---
+
+## Updating after code changes
+
+```bash
+cd /opt/gamgee
+git pull
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Docker rebuilds only the layers that changed (thanks to layer caching), so subsequent deploys are fast. The database is untouched — the named volume (`pgdata`) persists across rebuilds.
 
 ---
 
@@ -146,29 +210,20 @@ Returns `204 No Content` on success. Fails with `400` if the current password is
 
 ### Admin reset (user locked out)
 
-There is no email-based reset flow. Reset via `psql` on the server:
+There is no email-based reset flow. Reset directly in the database:
 
 ```bash
 # 1. Shell into the running DB container
 docker exec -it gamgee-db-1 psql -U gamgee -d gamgee
 
-# 2. Generate a bcrypt hash for the new password (run this locally or on the server)
-python3 -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('newpassword'))"
+# 2. Generate a bcrypt hash for the new password (run on the server — passlib is installed with the backend)
+docker exec gamgee-backend-1 python3 -c \
+  "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('newpassword'))"
 
-# 3. Update the user (paste the hash from step 2)
+# 3. Update the user in psql (paste the hash from step 2)
 UPDATE users
 SET hashed_password = '$2b$12$...'
 WHERE username = 'the_username';
-```
-
----
-
-## Updating after code changes
-
-```bash
-cd /opt/gamgee
-git pull
-docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 ---
@@ -177,7 +232,27 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 | | `docker-compose.yml` (dev) | `docker-compose.prod.yml` |
 |---|---|---|
-| Frontend | Vite dev server, volume-mounted | nginx serving production build |
-| Backend | `--reload`, volume-mounted | no `--reload`, code baked into image |
-| Ports | 5173, 8000, 5432 all public | only `127.0.0.1:3000` exposed |
-| JWT_SECRET | default placeholder | required from `.env` |
+| Frontend | Vite dev server, source volume-mounted | nginx serving production build, code baked into image |
+| Backend | `--reload` enabled, source volume-mounted | no `--reload`, code baked into image |
+| Ports | 5173, 8000, 5432 all published to host | only `127.0.0.1:3000` published |
+| JWT_SECRET | default placeholder | required from `.env`, app refuses to start without it |
+
+The dev compose exposes all ports so you can hit the API directly in a browser or tool like Postman. In production, only nginx is reachable from the host, and only via loopback (so only Caddy, which runs on the same machine, can reach it).
+
+---
+
+## Logs and debugging
+
+```bash
+# Tail all container logs
+docker compose -f docker-compose.prod.yml logs -f
+
+# Tail one service
+docker compose -f docker-compose.prod.yml logs -f backend
+
+# Check Caddy logs
+journalctl -u caddy -f
+
+# Connect directly to the database
+docker exec -it gamgee-db-1 psql -U gamgee -d gamgee
+```
