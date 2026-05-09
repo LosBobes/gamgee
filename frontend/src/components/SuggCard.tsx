@@ -1,7 +1,7 @@
+import { Check, Plus, Star } from "lucide-react";
 import type { SuggCardProps } from "../types";
 import { MI } from "../data/muscles";
 
-// newP, ovP, newS are pre-computed by getSuggestions() and live on ex — no need to re-derive them here.
 export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeave }: SuggCardProps) {
   const newP = ex.newP ?? [];
   const ovP  = ex.ovP  ?? [];
@@ -16,7 +16,7 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
       <div className="sugg-left">
         <div className="sugg-name">
           {ex.name}
-          {ex.isFocus && <span className="sugg-focus-star"> ★ FOCUS</span>}
+          {ex.isFocus && <span className="sugg-focus-star"><Star size={9} /> FOCUS</span>}
         </div>
         <div className="sugg-muscles">
           {newP.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
@@ -28,7 +28,7 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
         className={`sugg-btn ${isAdded ? "added" : "add"}`}
         onClick={isAdded ? onRemove : onAdd}
       >
-        {isAdded ? "✓" : "+"}
+        {isAdded ? <Check size={14} /> : <Plus size={14} />}
       </button>
     </div>
   );

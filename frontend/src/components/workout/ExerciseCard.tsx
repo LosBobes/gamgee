@@ -1,3 +1,4 @@
+import { X, Check, Circle } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { MI } from "../../data/muscles";
@@ -43,7 +44,7 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             {m.s.slice(0, 2).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
           </div>
         </div>
-        <button className="btn-icon" onClick={onRemove}>✕</button>
+        <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
       </div>
 
       <div className="set-table">
@@ -51,7 +52,7 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
           <div className="col-lbl">#</div>
           <div className="col-lbl">{wL}</div>
           <div className="col-lbl">{rL}</div>
-          <div className="col-lbl">✓</div>
+          <div className="col-lbl"><Check size={11} /></div>
           <div className="col-lbl" />
         </div>
         {ex.sets.map((set, idx) => {
@@ -76,11 +77,8 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
                 value={set.reps}
                 onChange={e => updateSet(idx, "reps", e.target.value)}
               />
-              <button
-                className={`check-btn ${set.done ? "done" : ""}`}
-                onClick={() => toggleSet(idx)}
-              >
-                {set.done ? "✓" : "○"}
+              <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
+                {set.done ? <Check size={13} /> : <Circle size={13} />}
               </button>
               <button
                 className="rm-set-btn"
@@ -88,7 +86,7 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
                 disabled={ex.sets.length <= 1}
                 style={{ opacity: ex.sets.length <= 1 ? 0.2 : 1 }}
               >
-                ×
+                <X size={12} />
               </button>
             </div>
           );

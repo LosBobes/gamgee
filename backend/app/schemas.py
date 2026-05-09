@@ -45,6 +45,11 @@ class TokenData(BaseModel):
     username: str | None = None
 
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
 # ── Workout sessions ──────────────────────────────────────────────────────────
 
 class WorkoutSessionCreate(BaseModel):

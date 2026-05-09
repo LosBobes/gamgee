@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Check, Dumbbell } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
@@ -31,12 +32,12 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
     <>
       <div className="wx-actions">
         <button className="btn-add-ex" onClick={() => setShowPick(true)}>+ ADD EXERCISE</button>
-        <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}>✓ FINISH</button>
+        <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
       </div>
 
       {exercises.length === 0 && (
         <div className="empty">
-          <div className="empty-icon">🏋️</div>
+          <div className="empty-icon"><Dumbbell size={40} /></div>
           <div className="empty-label">No exercises yet</div>
         </div>
       )}

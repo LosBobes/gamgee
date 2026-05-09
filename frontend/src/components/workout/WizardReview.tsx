@@ -1,3 +1,4 @@
+import { ArrowLeft, X, Zap } from "lucide-react";
 import type { ExerciseDef, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -20,7 +21,7 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
   return (
     <>
       <div className="wz-hdr">
-        <button className="wz-back" onClick={onBack}>← EDIT</button>
+        <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> EDIT</button>
         <span className="wz-focus-label">REVIEW WORKOUT</span>
         <div style={{ width: 72 }} />
       </div>
@@ -32,7 +33,7 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           <span className="coverage-title">Final Coverage</span>
           <span className="coverage-count">
             {finalGroups.size}
-            <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "'IBM Plex Mono',monospace", fontWeight: 400 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400 }}>
               &nbsp;/ {GROUPS.length} groups
             </span>
           </span>
@@ -40,9 +41,9 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
         <div className="coverage-groups">
           {GROUPS.map(g => (
             <span key={g} className="group-chip" style={{
-              color:       finalGroups.has(g) ? "#E8981E" : "var(--muted)",
+              color:       finalGroups.has(g) ? "var(--accent)" : "var(--muted)",
               background:  finalGroups.has(g) ? "var(--ad)" : "transparent",
-              borderColor: finalGroups.has(g) ? "rgba(232,152,30,0.3)" : "var(--border)",
+              borderColor: finalGroups.has(g) ? "var(--ad2)" : "var(--border)",
             }}>
               {g}
             </span>
@@ -62,7 +63,7 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
                   <div>
                     <div className="review-ex-name">{ex.name}</div>
                     {anlz && (
-                      <div style={{ fontSize: 10, color: anlz.status.color, fontFamily: "'Barlow Condensed',sans-serif", fontWeight: 700, letterSpacing: 1 }}>
+                      <div style={{ fontSize: 10, color: anlz.status.color, fontFamily: "'Nunito',sans-serif", fontWeight: 700, letterSpacing: 1 }}>
                         TARGET: {anlz.nextWeight}kg × {anlz.nextReps} reps
                       </div>
                     )}
@@ -73,14 +74,14 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
                   {m.s.slice(0, 3).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
                 </div>
               </div>
-              <button className="btn-rm" style={{ marginTop: 4 }} onClick={() => setPlanned(p => p.filter(e => e.id !== ex.id))}>✕</button>
+              <button className="btn-rm" style={{ marginTop: 4 }} onClick={() => setPlanned(p => p.filter(e => e.id !== ex.id))}><X size={14} /></button>
             </div>
           </div>
         );
       })}
 
       <button className="btn-start" onClick={onStart} disabled={planned.length === 0} style={{ marginTop: 8 }}>
-        ⚡ START WORKOUT ({planned.length} exercises)
+        <Zap size={18} /> START WORKOUT ({planned.length} exercises)
       </button>
     </>
   );

@@ -7,19 +7,35 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
   const [hovMid, setHovMid] = useState<string | null>(null);
 
   const mFill = (mid: string): string => {
-    if (preview[mid])                return "rgba(76,168,124,0.82)";
-    if (active[mid] === "primary")   return "rgba(200,136,28,0.86)";
-    if (active[mid] === "secondary") return "rgba(200,136,28,0.36)";
-    if (hovMid === mid)              return "rgba(255,255,255,0.06)";
+    if (preview[mid])                return "var(--green)";
+    if (active[mid] === "primary")   return "var(--accent)";
+    if (active[mid] === "secondary") return "var(--accent)";
+    if (hovMid === mid)              return "rgba(255,255,255,1)";
     return "none";
   };
 
+  const mFillOpacity = (mid: string): number => {
+    if (preview[mid])                return 0.82;
+    if (active[mid] === "primary")   return 0.86;
+    if (active[mid] === "secondary") return 0.36;
+    if (hovMid === mid)              return 0.06;
+    return 1;
+  };
+
   const mStroke = (mid: string): string => {
-    if (preview[mid])                return "rgba(76,168,124,0.95)";
-    if (active[mid] === "primary")   return "rgba(200,136,28,1)";
-    if (active[mid] === "secondary") return "rgba(200,136,28,0.60)";
-    if (hovMid === mid)              return "rgba(255,255,255,0.38)";
-    return "rgba(255,255,255,0.15)";
+    if (preview[mid])                return "var(--green)";
+    if (active[mid] === "primary")   return "var(--accent)";
+    if (active[mid] === "secondary") return "var(--accent)";
+    if (hovMid === mid)              return "rgba(255,255,255,1)";
+    return "rgba(255,255,255,1)";
+  };
+
+  const mStrokeOpacity = (mid: string): number => {
+    if (preview[mid])                return 0.95;
+    if (active[mid] === "primary")   return 1;
+    if (active[mid] === "secondary") return 0.60;
+    if (hovMid === mid)              return 0.38;
+    return 0.15;
   };
 
   const mStrokeW = (mid: string): number => {
@@ -79,9 +95,11 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
             {sorted.map((s, i) => {
               const act = isActive(s.mid);
               const sharedProps = {
-                fill:        mFill(s.mid),
-                stroke:      mStroke(s.mid),
-                strokeWidth: mStrokeW(s.mid),
+                fill:         mFill(s.mid),
+                fillOpacity:  mFillOpacity(s.mid),
+                stroke:       mStroke(s.mid),
+                strokeOpacity: mStrokeOpacity(s.mid),
+                strokeWidth:  mStrokeW(s.mid),
                 filter:      act ? `url(#glow-${id})` : undefined,
                 style:       { cursor: "default" } as React.CSSProperties,
                 onMouseEnter: () => { setHovMid(s.mid); onHoverMuscle?.(s.mid); },

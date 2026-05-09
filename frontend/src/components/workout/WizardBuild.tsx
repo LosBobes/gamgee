@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus } from "lucide-react";
 import type { ExerciseDef, SuggExercise } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -27,7 +28,6 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
   const addPlanned    = (ex: ExerciseDef) => setPlanned(p => [...p, ex]);
   const removePlanned = (id: string)      => setPlanned(p => p.filter(e => e.id !== id));
 
-  // Enrich all non-cardio exercises with suggestion metadata
   const allSuggs: SuggExercise[] = ALL_EX
     .filter(ex => ex.type !== "cardio")
     .map(ex => {
@@ -41,8 +41,6 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
   const q = search.trim().toLowerCase();
 
-  // Search: filter by name, sort alphabetically
-  // Default: score-sorted, split into focus / others
   const searchResults = q
     ? allSuggs
         .filter(ex => ex.name.toLowerCase().includes(q))
@@ -52,6 +50,8 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
   const sorted     = allSuggs.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
   const focusSuggs = sorted.filter(s => s.isFocus);
   const otherSuggs = sorted.filter(s => !s.isFocus);
+
+  const FocusIcon = FOCUS[focus]?.icon;
 
   const renderCard = (ex: SuggExercise) => (
     <SuggCard key={ex.id} ex={ex}
@@ -66,9 +66,11 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
   return (
     <>
       <div className="wz-hdr">
-        <button className="wz-back" onClick={onBack}>← BACK</button>
-        <span className="wz-focus-label">{FOCUS[focus]?.icon} {FOCUS[focus]?.name.toUpperCase()}</span>
-        <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW →</button>
+        <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
+        <span className="wz-focus-label">
+          {FocusIcon && <FocusIcon size={13} />} {FOCUS[focus]?.name.toUpperCase()}
+        </span>
+        <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW <ChevronRight size={13} /></button>
       </div>
 
       <div className="build-layout">
@@ -82,7 +84,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               <span className="coverage-title">Coverage</span>
               <span className="coverage-count">
                 {coveredGroups.size}
-                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'IBM Plex Mono',monospace", fontWeight: 400 }}>
+                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400 }}>
                   &nbsp;/ {GROUPS.length}
                 </span>
               </span>
@@ -93,9 +95,9 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                 const prev = hovEx && muscleGroups(previewMuscles).has(g) && !hit;
                 return (
                   <span key={g} className="group-chip" style={{
-                    color:       prev ? "#52B788" : hit ? "#E8981E" : "var(--muted)",
+                    color:       prev ? "var(--green)" : hit ? "var(--accent)" : "var(--muted)",
                     background:  prev ? "rgba(82,183,136,0.1)" : hit ? "var(--ad)" : "transparent",
-                    borderColor: prev ? "rgba(82,183,136,0.3)" : hit ? "rgba(232,152,30,0.3)" : "var(--border)",
+                    borderColor: prev ? "rgba(82,183,136,0.3)" : hit ? "var(--ad2)" : "var(--border)",
                   }}>{g}</span>
                 );
               })}
@@ -104,19 +106,21 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
           {planned.length > 0 && (
             <div className="build-planned">
-              <div className="section-title" style={{ marginBottom: 6 }}>✓ ADDED ({planned.length})</div>
+              <div className="section-title" style={{ marginBottom: 6 }}>
+                <Check size={12} /> ADDED ({planned.length})
+              </div>
               {planned.map((ex, i) => {
                 const m = EM[ex.id] || { p: [], s: [] };
                 return (
                   <div key={ex.id} className="planned-card">
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 11, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>{i + 1}</span>
+                        <span style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>{i + 1}</span>
                         <div className="planned-name">{ex.name}</div>
                       </div>
                       <div className="planned-muscles">{m.p.map(mid => MI[mid]?.n).join(" · ")}</div>
                     </div>
-                    <button className="btn-rm" onClick={() => removePlanned(ex.id)}>✕</button>
+                    <button className="btn-rm" onClick={() => removePlanned(ex.id)}><X size={14} /></button>
                   </div>
                 );
               })}
@@ -125,7 +129,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                 style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}
                 onClick={onNext}
               >
-                REVIEW WORKOUT →
+                REVIEW WORKOUT <ChevronRight size={13} />
               </button>
             </div>
           )}
@@ -136,19 +140,19 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           <div className="search-wrap">
             <input
               className="search-input"
-              placeholder="🔍  Search exercises…"
+              placeholder="Search exercises…"
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
               spellCheck={false}
             />
-            {search && (
-              <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search">✕</button>
-            )}
+            {search
+              ? <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={11} /></button>
+              : <Search size={13} className="search-icon-hint" />
+            }
           </div>
 
           {searchResults ? (
-            /* ── Search results ── */
             searchResults.length > 0 ? (
               <>
                 <div className="section-title" style={{ marginBottom: 6 }}>
@@ -160,13 +164,12 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               <p className="search-empty">No exercises match "{search}"</p>
             )
           ) : (
-            /* ── Default: focus suggestions + all others ── */
             <>
               {focusSuggs.length > 0 && (
                 <>
                   <div className="section-title">
-                    ⭐ {FOCUS[focus]?.name.toUpperCase()}
-                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'IBM Plex Mono',monospace", fontWeight: 400, letterSpacing: 0 }}>
+                    <Star size={12} /> {FOCUS[focus]?.name.toUpperCase()}
+                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400, letterSpacing: 0 }}>
                       hover to preview
                     </span>
                   </div>
@@ -176,7 +179,9 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
               {otherSuggs.length > 0 && (
                 <>
-                  <div className="section-title" style={{ marginTop: 14 }}>➕ ALL EXERCISES</div>
+                  <div className="section-title" style={{ marginTop: 14 }}>
+                    <Plus size={12} /> ALL EXERCISES
+                  </div>
                   {otherSuggs.map(renderCard)}
                 </>
               )}

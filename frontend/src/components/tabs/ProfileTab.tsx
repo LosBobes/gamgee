@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { User } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
@@ -6,13 +8,98 @@ import { EM } from "../../data/exercises";
 interface Props {
   username: string | null;
   history:  WorkoutSession[];
+  token:    string | null;
 }
 
-export default function ProfileTab({ username, history }: Props) {
+function ChangePasswordCard({ token }: { token: string | null }) {
+  const [open,    setOpen]    = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next,    setNext]    = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [err,     setErr]     = useState("");
+  const [ok,      setOk]      = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const reset = () => { setCurrent(""); setNext(""); setConfirm(""); setErr(""); setOk(false); };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(""); setOk(false);
+    if (next !== confirm) { setErr("New passwords do not match"); return; }
+    if (next.length < 8)  { setErr("New password must be at least 8 characters"); return; }
+    setLoading(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({ current_password: current, new_password: next }),
+      });
+      if (!res.ok) { setErr((await res.json()).detail ?? "Failed"); return; }
+      setOk(true);
+      reset();
+      setOpen(false);
+    } catch {
+      setErr("Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="profile-card" style={{ marginTop: 12 }}>
+      {ok && <p style={{ color: "var(--green)", fontSize: 12, marginBottom: 8 }}>Password changed successfully.</p>}
+      {!open ? (
+        <button className="auth-toggle" style={{ width: "100%", textAlign: "left" }} onClick={() => { setOpen(true); setOk(false); }}>
+          Change Password
+        </button>
+      ) : (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <input
+            type="password"
+            placeholder="Current password"
+            value={current}
+            onChange={e => setCurrent(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+          <input
+            type="password"
+            placeholder="New password (min 8 chars)"
+            value={next}
+            onChange={e => setNext(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+          <input
+            type="password"
+            placeholder="Confirm new password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            autoComplete="new-password"
+            required
+          />
+          {err && <p className="auth-err">{err}</p>}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="submit" className="auth-submit" disabled={loading} style={{ flex: 1 }}>
+              {loading ? "Saving…" : "Save"}
+            </button>
+            <button type="button" className="auth-toggle" onClick={() => { setOpen(false); reset(); }}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
+  );
+}
+
+export default function ProfileTab({ username, history, token }: Props) {
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon">👤</div><div className="empty-label">Log your first workout to build your profile</div></div>
+        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">Log your first workout to build your profile</div></div>
+        <div className="profile-section">Account</div>
+        <ChangePasswordCard token={token} />
       </div>
     );
   }
@@ -103,7 +190,7 @@ export default function ProfileTab({ username, history }: Props) {
             );
           })}
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 9, color: "var(--muted)", fontFamily: "'IBM Plex Mono',monospace" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 9, color: "var(--muted)", fontFamily: "'Nunito',sans-serif" }}>
           <span>16 weeks ago</span><span>this week</span>
         </div>
       </div>
@@ -138,6 +225,9 @@ export default function ProfileTab({ username, history }: Props) {
           </div>
         </>
       )}
+
+      <div className="profile-section">Account</div>
+      <ChangePasswordCard token={token} />
     </div>
   );
 }

@@ -35,8 +35,7 @@ export default function AuthScreen({ onLogin }: Props) {
   return (
     <div className="wt-auth-screen">
       <div className="auth-card">
-        <h1>🏋️ IRON LOG</h1>
-        <h2>{view === "login" ? "Sign In" : "Create Account"}</h2>
+        <img src="/logo.png" alt="Gamgee" className="auth-logo" />
         <form onSubmit={handleSubmit}>
           <input
             placeholder="Username"

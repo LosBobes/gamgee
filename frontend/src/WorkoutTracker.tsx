@@ -165,7 +165,7 @@ export default function WorkoutTracker() {
         {tab === "history" && <HistoryTab history={history} prs={prs} />}
         {tab === "prs"     && <PRsTab prs={prs} />}
         {tab === "coach"   && <CoachTab history={history} />}
-        {tab === "profile" && <ProfileTab username={username} history={history} />}
+        {tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
       </div>
     </div>
   );

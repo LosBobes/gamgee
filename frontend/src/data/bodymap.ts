@@ -3,14 +3,39 @@ import type { MuscleShape } from "../types";
 // Shared silhouette for front and back — only the muscle layer differs.
 // viewBox 0 0 100 180. Head is a separate <circle cx="50" cy="13" r="12"/>.
 export const BODY_PATH =
-  "M 44,22 C 38,25 22,32 14,40 L 10,44 C 8,50 7,60 7,74 L 7,90 L 13,90 " +
-  "L 14,74 C 15,64 17,56 22,50 C 25,58 28,68 29,76 L 28,84 L 28,108 " +
-  "L 27,130 L 27,152 L 26,163 L 25,172 C 29,175 33,176 38,175 " +
-  "L 40,171 L 41,163 L 41,152 L 42,130 L 43,108 L 44,84 L 46,80 L 54,80 " +
-  "L 56,84 L 57,108 L 58,130 L 59,152 L 59,163 L 60,171 L 62,175 " +
-  "C 67,176 71,175 75,172 L 74,163 L 73,152 L 72,130 L 72,108 L 72,84 " +
-  "L 71,76 C 72,68 75,58 78,50 C 83,56 85,64 86,74 L 87,90 L 93,90 " +
-  "L 93,74 C 93,60 92,50 90,44 L 86,40 C 78,32 62,25 56,22 Z";
+  // Left neck → shoulder cap → outer arm (bicep bulge, forearm taper, wrist)
+  "M 44,22 C 38,25 20,32 13,38 " +
+  "C 10,40 8,44 8,50 C 7,56 7,62 9,68 " +
+  "C 10,74 11,80 12,87 L 14,91 L 18,91 " +
+  // Inner arm back up to armpit
+  "C 18,84 18,76 19,70 C 20,64 22,58 24,52 " +
+  // Left torso: chest → waist narrows → hip flares
+  "C 24,57 27,64 32,72 C 32,76 29,79 26,83 " +
+  // Left outer leg: thigh → knee → calf bulge → ankle → foot
+  "C 25,86 25,90 25,96 C 25,102 26,108 27,112 " +
+  "C 25,118 23,126 24,132 C 25,138 27,148 28,156 " +
+  "L 27,162 L 26,170 C 29,174 33,175 38,174 " +
+  // Left inner leg: foot → ankle → calf → knee → thigh → crotch
+  "L 40,170 L 40,162 " +
+  "C 39,154 39,146 40,136 C 41,128 42,120 43,114 " +
+  "C 43,110 43,104 43,96 C 43,92 42,88 41,84 " +
+  // Crotch
+  "L 59,84 " +
+  // Right inner leg: crotch → thigh → knee → calf → ankle → foot
+  "C 58,88 57,92 57,96 C 57,104 57,110 57,114 " +
+  "C 58,120 59,128 60,136 C 61,146 61,154 60,162 " +
+  "L 60,170 C 67,175 71,174 72,170 L 73,162 L 72,156 " +
+  // Right outer leg: ankle → calf bulge → knee → thigh → hip
+  "C 73,148 75,138 76,132 C 77,126 75,118 75,112 " +
+  "C 74,108 75,102 75,96 C 75,90 75,86 74,83 " +
+  // Right torso: hip → waist → chest
+  "C 71,79 68,76 68,72 C 73,64 76,57 76,52 " +
+  // Right inner arm down to wrist, then outer arm back up
+  "C 78,58 80,64 81,70 C 82,76 82,84 82,91 " +
+  "L 86,91 C 88,84 90,76 91,70 " +
+  // Outer arm up: forearm → bicep → shoulder cap → neck
+  "C 92,62 93,56 92,50 C 90,44 87,40 87,38 " +
+  "C 80,32 62,25 56,22 Z";
 
 // ─── Front view ─────────────────────────────────────────────────────────────
 

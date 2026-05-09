@@ -48,28 +48,57 @@ cd backend && python -m app.init_db
 ## Architecture
 
 ### Backend (`backend/app/`)
-- `main.py` — FastAPI app entry; registers all routers, sets up CORS (allows `localhost:5173`)
+- `main.py` — FastAPI app; registers all routers, sets up CORS (allows `localhost:5173`), auto-creates tables on startup
 - `database.py` — SQLAlchemy engine, `SessionLocal`, `get_db()` dependency
 - `models.py` — ORM models: `User`, `WorkoutSession`, `PersonalRecord`, `Exercise`, `Item`
 - `schemas.py` — Pydantic request/response schemas
-- `auth.py` — JWT creation/verification, bcrypt password hashing, `get_current_user` dependency
-- `init_db.py` / `seed.py` — DB setup and exercise seeding
-- `routers/` — `auth.py` (`/api/auth`), `workouts.py` (`/api/workouts`), `prs.py` (`/api/prs`), `items.py` (`/api/items`)
+- `auth.py` — JWT (HS256, 7-day expiry), bcrypt hashing, `get_current_user` dependency; secret from `JWT_SECRET` env var
+- `init_db.py` / `seed.py` — DB setup and exercise seeding (~93 exercises)
+- `routers/auth.py` (`/api/auth`) — register, login (OAuth2 password flow), `/api/auth/me`
+- `routers/workouts.py` (`/api/workouts`) — list (GET) and create (POST); client generates UUID for session `id`
+- `routers/prs.py` (`/api/prs`) — list (GET) and upsert (PUT `/api/prs/{exercise_id}`)
+- `routers/items.py` (`/api/items`) — generic CRUD (scaffold, mostly unused)
 
 **Key data model notes:**
-- `WorkoutSession.exercises` is a JSONB array column (no separate exercise-session join table)
-- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — use upsert via `PUT /api/prs/{exercise_id}`
-- JWT secret comes from `JWT_SECRET` env var; default is `"change-me-in-production-please"`
+- `WorkoutSession.id` is a client-generated UUID string (not DB autoincrement); POST returns 409 on duplicate
+- `WorkoutSession.exercises` is a JSONB array column — no join table; full exercise+sets data embedded
+- `WorkoutSession.duration` is stored in **milliseconds**
+- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — always upsert via `PUT /api/prs/{exercise_id}`
+- `Exercise.id` is a short human-readable key (e.g. `"bench"`, `"ohp"`) matching the frontend's `EM` map
 
 ### Frontend (`frontend/src/`)
-- `App.tsx` — Root; renders `WorkoutTracker`
-- `WorkoutTracker.tsx` — Monolithic component containing all application state, UI, and two large lookup tables:
-  - `MI` — muscle info map (30+ muscle groups with display names and groupings)
-  - `EM` — exercise-to-muscle map (100+ exercises mapped to primary/secondary muscles)
 
-**API calls** are proxied through Vite (`/api` → `http://localhost:8000`) configured in `vite.config.ts`. The `BACKEND_URL` env var overrides the proxy target.
+**State and orchestration** — `WorkoutTracker.tsx` is the single stateful root. It owns all app state (auth token, history, PRs, wizard steps, active workout), performs all `authFetch` calls, and passes data/callbacks down. `App.tsx` just renders `<WorkoutTracker />`.
+
+**Wizard flow** (`components/workout/`) — workout creation is a 4-step wizard:
+1. `WizardStart` — show last session summary, prompt to start
+2. `WizardFocus` — pick a muscle-group focus (from `data/focuses.ts`)
+3. `WizardBuild` — search/add exercises; `BodyMap` previews muscle coverage
+4. `WizardReview` — final review before starting
+5. `ActiveWorkout` — live set logging with PR detection
+
+`WorkoutTab.tsx` routes between wizard steps and `ActiveWorkout` based on `active` + `wStep` props.
+
+**Tabs** (`components/tabs/`) — `HistoryTab`, `PRsTab`, `CoachTab`, `ProfileTab` are pure display components; all data is passed from `WorkoutTracker`.
+
+**Data layer** (`src/data/`) — static lookup tables bundled with the frontend:
+- `exercises.ts` — `EM`: exercise-id → `{ p: string[], s: string[] }` (primary/secondary muscle ids); `ALL_EX`: full `ExerciseDef[]` list
+- `muscles.ts` — `MI`: muscle-id → `{ n: string, g: string }` (display name + group)
+- `focuses.ts` — focus definitions (`FocusDef[]`) with associated exercise ids
+- `bodymap.ts` — SVG path/ellipse data for the anatomical body map
+- `tips.ts` — coaching tip content
+
+**Logic** (`src/`):
+- `analysis.ts` — `analyzeEx(exId, history)` computes progression status (`NEW`, `GAINING`, `READY`, `STALLED`, etc.), estimated 1RM, and next recommended weight/reps
+- `constants.ts` — `UPPER_IDS` set, `GROUPS` list, `getActive()` (builds `ActiveMuscles` from exercise list), `muscleGroups()`, `STATUS` map
+- `utils.ts` — `fmtClock`, `fmtDate`, `fmtDur`, `orm1` (Epley 1RM estimate: `w * (1 + r/30)`)
+- `types.ts` — all shared TypeScript interfaces
+
+**API calls** are proxied through Vite (`/api` → `http://localhost:8000`) configured in `vite.config.ts`. The `BACKEND_URL` env var overrides the proxy target. Auth token stored in `localStorage` as `"iron_log_token"`; 401 response auto-clears it.
 
 ### Configuration
 - `.env.example` — default credentials (`gamgee`/`gamgee`/`gamgee` for DB user/password/db)
-- `docker-compose.yml` — injects env vars into all three services; backend waits for DB health check before starting
-- `frontend/nginx.conf` — production reverse proxy config (used in the multi-stage Docker build)
+- `docker-compose.yml` — dev compose; injects env vars, backend waits for DB healthcheck, frontend volume-mounted for HMR
+- `docker-compose.prod.yml` — production compose; no volume mounts, no `--reload`, restricted port exposure, requires real `JWT_SECRET`
+- `frontend/nginx.conf` — production reverse proxy (used in multi-stage Docker build for frontend)
+- `Caddyfile` + `docs/deployment.md` — Hetzner + Caddy production deployment guide

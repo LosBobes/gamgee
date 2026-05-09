@@ -1,3 +1,4 @@
+import { Brain, ChevronRight } from "lucide-react";
 import type { ExerciseDef, WorkoutSession } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { TIPS } from "../../data/tips";
@@ -80,7 +81,7 @@ export default function CoachTab({ history }: Props) {
                     )}
                   </div>
                   <div className="rec-box">
-                    <div className="rec-box-label">▶ Next Session Target</div>
+                    <div className="rec-box-label"><ChevronRight size={11} /> Next Session Target</div>
                     <div className="rec-target">
                       {nextWeight}kg<span className="rec-target-unit"> × {nextReps} reps</span>
                     </div>
@@ -93,7 +94,7 @@ export default function CoachTab({ history }: Props) {
         </>
       ) : (
         <div className="empty" style={{ paddingBottom: 16 }}>
-          <div className="empty-icon">🧠</div>
+          <div className="empty-icon"><Brain size={40} /></div>
           <div className="empty-label">Log sessions to unlock coaching</div>
         </div>
       )}
@@ -101,7 +102,7 @@ export default function CoachTab({ history }: Props) {
       <div className="tips-grid">
         {TIPS.map(t => (
           <div key={t.title} className="tip-card">
-            <div className="tip-icon">{t.icon}</div>
+            <div className="tip-icon"><t.icon size={20} /></div>
             <div className="tip-title">{t.title}</div>
             <div className="tip-body">{t.body}</div>
           </div>

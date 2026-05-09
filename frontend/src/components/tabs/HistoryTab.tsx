@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { ClipboardList, Timer, Dumbbell, Layers, Activity, Trophy, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { WorkoutSession, PRDict } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 
@@ -44,10 +45,55 @@ export default function HistoryTab({ history, prs }: Props) {
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon">📋</div><div className="empty-label">No sessions yet</div></div>
+        <div className="empty"><div className="empty-icon"><ClipboardList size={40} /></div><div className="empty-label">No sessions yet</div></div>
       </div>
     );
   }
+
+  const renderSession = (w: WorkoutSession, expandable = true) => {
+    const isOpen = expanded.has(w.id);
+    const sets   = w.exercises.reduce((a, e) => a + e.sets.length, 0);
+    const vol    = w.exercises.reduce((a, e) => e.type !== "strength" ? a :
+      a + e.sets.reduce((b, s) => b + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
+    return (
+      <div key={w.id} className="hist-card">
+        <div className="hist-hdr" onClick={() => expandable && toggleExpand(w.id)}>
+          <div>
+            <div className="hist-date">{fmtDate(w.date)}</div>
+            <div className="hist-meta">
+              <span><Timer size={11} /> {fmtDur(w.duration)}</span>
+              <span><Dumbbell size={11} /> {w.exercises.length} ex</span>
+              <span><Layers size={11} /> {sets} sets</span>
+              {vol > 0 && <span><Activity size={11} /> {Math.round(vol)}kg</span>}
+            </div>
+          </div>
+          <span style={{ color: "var(--muted)" }}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+        </div>
+        {isOpen && (
+          <div className="hist-body">
+            {w.exercises.map(ex => (
+              <div key={ex.uid} className="hist-ex">
+                <div className="hist-ex-name">{ex.name}</div>
+                <div className="hist-chips">
+                  {ex.sets.map((s, i) => {
+                    const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === parseFloat(s.weight);
+                    return (
+                      <span key={i} className={`chip ${isPr ? "pr-chip" : ""}`}>
+                        {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`
+                          : ex.type === "timed" ? `${s.weight}s`
+                          : `${s.weight}kg × ${s.reps}`}
+                        {isPr && <Trophy size={10} style={{ verticalAlign: "middle", marginLeft: 3 }} />}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="tab-anim">
@@ -56,57 +102,14 @@ export default function HistoryTab({ history, prs }: Props) {
         <button className={`hist-view-btn ${view === "calendar" ? "active" : ""}`} onClick={() => setView("calendar")}>CALENDAR</button>
       </div>
 
-      {view === "list" && history.map(w => {
-        const isOpen = expanded.has(w.id);
-        const sets   = w.exercises.reduce((a, e) => a + e.sets.length, 0);
-        const vol    = w.exercises.reduce((a, e) => e.type !== "strength" ? a :
-          a + e.sets.reduce((b, s) => b + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
-        return (
-          <div key={w.id} className="hist-card">
-            <div className="hist-hdr" onClick={() => toggleExpand(w.id)}>
-              <div>
-                <div className="hist-date">{fmtDate(w.date)}</div>
-                <div className="hist-meta">
-                  <span>⏱ {fmtDur(w.duration)}</span>
-                  <span>🏋️ {w.exercises.length} ex</span>
-                  <span>📊 {sets} sets</span>
-                  {vol > 0 && <span>💪 {Math.round(vol)}kg</span>}
-                </div>
-              </div>
-              <span style={{ color: "var(--muted)", fontSize: 14 }}>{isOpen ? "▲" : "▼"}</span>
-            </div>
-            {isOpen && (
-              <div className="hist-body">
-                {w.exercises.map(ex => (
-                  <div key={ex.uid} className="hist-ex">
-                    <div className="hist-ex-name">{ex.name}</div>
-                    <div className="hist-chips">
-                      {ex.sets.map((s, i) => {
-                        const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === parseFloat(s.weight);
-                        return (
-                          <span key={i} className={`chip ${isPr ? "pr-chip" : ""}`}>
-                            {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`
-                              : ex.type === "timed" ? `${s.weight}s`
-                              : `${s.weight}kg × ${s.reps}`}
-                            {isPr ? " 🏆" : ""}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+      {view === "list" && history.map(w => renderSession(w))}
 
       {view === "calendar" && (
         <div className="cal-wrap">
           <div className="cal-nav">
-            <button className="cal-nav-btn" onClick={prevMonth}>← PREV</button>
+            <button className="cal-nav-btn" onClick={prevMonth}><ChevronLeft size={14} /> PREV</button>
             <span className="cal-month-label">{monthLabel}</span>
-            <button className="cal-nav-btn" onClick={nextMonth}>NEXT →</button>
+            <button className="cal-nav-btn" onClick={nextMonth}>NEXT <ChevronRight size={14} /></button>
           </div>
           <div className="cal-dow">
             {DAYS.map((d, i) => <div key={i} className="cal-dow-lbl">{d}</div>)}
@@ -137,49 +140,7 @@ export default function HistoryTab({ history, prs }: Props) {
 
           {selectedSessions.length > 0 && (
             <div className="cal-session">
-              {selectedSessions.map(w => {
-                const sets = w.exercises.reduce((a, e) => a + e.sets.length, 0);
-                const vol  = w.exercises.reduce((a, e) => e.type !== "strength" ? a :
-                  a + e.sets.reduce((b, s) => b + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
-                return (
-                  <div key={w.id} className="hist-card">
-                    <div className="hist-hdr" onClick={() => toggleExpand(w.id)}>
-                      <div>
-                        <div className="hist-date">{fmtDate(w.date)}</div>
-                        <div className="hist-meta">
-                          <span>⏱ {fmtDur(w.duration)}</span>
-                          <span>🏋️ {w.exercises.length} ex</span>
-                          <span>📊 {sets} sets</span>
-                          {vol > 0 && <span>💪 {Math.round(vol)}kg</span>}
-                        </div>
-                      </div>
-                      <span style={{ color: "var(--muted)", fontSize: 14 }}>{expanded.has(w.id) ? "▲" : "▼"}</span>
-                    </div>
-                    {expanded.has(w.id) && (
-                      <div className="hist-body">
-                        {w.exercises.map(ex => (
-                          <div key={ex.uid} className="hist-ex">
-                            <div className="hist-ex-name">{ex.name}</div>
-                            <div className="hist-chips">
-                              {ex.sets.map((s, i) => {
-                                const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === parseFloat(s.weight);
-                                return (
-                                  <span key={i} className={`chip ${isPr ? "pr-chip" : ""}`}>
-                                    {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`
-                                      : ex.type === "timed" ? `${s.weight}s`
-                                      : `${s.weight}kg × ${s.reps}`}
-                                    {isPr ? " 🏆" : ""}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {selectedSessions.map(w => renderSession(w))}
             </div>
           )}
         </div>

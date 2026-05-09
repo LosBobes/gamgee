@@ -1,3 +1,4 @@
+import { Trophy } from "lucide-react";
 import type { PRDict } from "../../types";
 import { fmtDate, orm1 } from "../../utils";
 
@@ -9,7 +10,7 @@ export default function PRsTab({ prs }: Props) {
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon">🏆</div><div className="empty-label">No PRs yet</div></div>
+        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">No PRs yet</div></div>
       </div>
     );
   }

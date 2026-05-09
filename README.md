@@ -191,3 +191,37 @@ Copy `.env.example` to `.env`. Key variables:
 | `POSTGRES_DB`  | `gamgee`                       | DB name                            |
 | `JWT_SECRET`   | `change-me-in-production-please` | HS256 signing secret — change this |
 | `BACKEND_URL`  | `http://backend:8000`          | Vite proxy target (Docker internal)|
+
+---
+
+## Password reset
+
+### Self-service (user knows current password)
+
+`POST /api/auth/change-password` — authenticated, no admin required:
+
+```bash
+curl -X POST https://yourdomain.com/api/auth/change-password \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"current_password": "old", "new_password": "new-min-8-chars"}'
+```
+
+Returns `204 No Content` on success. Fails with `400` if the current password is wrong or the new one is under 8 characters.
+
+### Admin reset (user locked out)
+
+There is no email-based reset flow. Reset via `psql` on the server:
+
+```bash
+# 1. Shell into the running DB container
+docker exec -it gamgee-db-1 psql -U gamgee -d gamgee
+
+# 2. Generate a bcrypt hash for the new password (run this locally or on the server)
+python3 -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('newpassword'))"
+
+# 3. Update the user (paste the hash from step 2)
+UPDATE users
+SET hashed_password = '$2b$12$...'
+WHERE username = 'the_username';
+```
