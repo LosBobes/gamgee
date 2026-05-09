@@ -1,4 +1,4 @@
-import { Zap, ClipboardList, Trophy, Brain, User } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Brain, User, LogOut } from "lucide-react";
 import { fmtClock } from "../utils";
 
 interface Props {
@@ -14,30 +14,38 @@ interface Props {
 }
 
 export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout }: Props) {
-  const workoutStatus = active ? "ACTIVE" : wStep > 0 ? "BUILDING" : "WORKOUT";
+  const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
   const tabs = [
-    { key: "workout", Icon: Zap,           label: workoutStatus },
-    { key: "history", Icon: ClipboardList, label: `HISTORY (${historyCount})` },
-    { key: "prs",     Icon: Trophy,        label: `PRs (${prCount})` },
-    { key: "coach",   Icon: Brain,         label: `COACH (${coachCount})` },
-    { key: "profile", Icon: User,          label: "PROFILE" },
+    { key: "workout", Icon: Zap,           label: workoutLabel,  badge: null },
+    { key: "history", Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
+    { key: "prs",     Icon: Trophy,        label: "PRs",         badge: prCount || null },
+    { key: "coach",   Icon: Brain,         label: "COACH",       badge: coachCount || null },
+    { key: "profile", Icon: User,          label: "PROFILE",     badge: null },
   ];
 
   return (
     <div className="hdr">
       <div className="hdr-top">
-        <div>
+        <div className="hdr-brand">
           <img src="/logo.png" alt="Gamgee" className="logo-img" />
-          <div className="logo-sub">Workout Tracker</div>
+          <div className="hdr-brand-text">
+            <div className="logo-name">GAMGEE</div>
+            <div className="logo-sub">Workout Tracker</div>
+          </div>
         </div>
         {active && <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>}
-        <button className="logout-btn" onClick={onLogout}>Logout</button>
+        <button className="logout-btn" onClick={onLogout} title="Logout">
+          <LogOut size={15} />
+          <span className="logout-label">Logout</span>
+        </button>
       </div>
       <div className="tabs">
-        {tabs.map(({ key, Icon, label }) => (
+        {tabs.map(({ key, Icon, label, badge }) => (
           <button key={key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
-            <Icon size={11} />{label}
+            <Icon size={12} />
+            <span className="tab-label">{label}</span>
+            {badge !== null && <span className="tab-badge">{badge}</span>}
           </button>
         ))}
       </div>

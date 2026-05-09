@@ -133,6 +133,22 @@ export default function WorkoutTracker() {
     setTab("history");
   };
 
+  // ── History management ──
+
+  const deleteWorkout = (id: string) => {
+    authFetch(`/api/workouts/${id}`, { method: "DELETE" }).catch(() => {});
+    setHistory(h => h.filter(w => w.id !== id));
+  };
+
+  const updateWorkout = (session: WorkoutSession) => {
+    authFetch(`/api/workouts/${session.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    }).catch(() => {});
+    setHistory(h => h.map(w => w.id === session.id ? session : w));
+  };
+
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
   const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history) !== null).length;
@@ -162,7 +178,7 @@ export default function WorkoutTracker() {
             isNewPr={isNewPr} finishWorkout={finishWorkout}
           />
         )}
-        {tab === "history" && <HistoryTab history={history} prs={prs} />}
+        {tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
         {tab === "prs"     && <PRsTab prs={prs} />}
         {tab === "coach"   && <CoachTab history={history} />}
         {tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
