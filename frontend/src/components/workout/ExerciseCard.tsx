@@ -84,9 +84,8 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
                 className="rm-set-btn"
                 onClick={() => removeSet(idx)}
                 disabled={ex.sets.length <= 1}
-                style={{ opacity: ex.sets.length <= 1 ? 0.2 : 1 }}
               >
-                <X size={12} />
+                <X size={13} />
               </button>
             </div>
           );

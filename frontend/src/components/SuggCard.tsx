@@ -7,9 +7,12 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
   const ovP  = ex.ovP  ?? [];
   const newS = (ex.newS ?? []).slice(0, 3);
 
+  const toggle = isAdded ? onRemove : onAdd;
+
   return (
     <div
       className={`sugg-card ${isAdded ? "added" : ""} ${ex.isFocus ? "focus-pick" : ""}`}
+      onClick={toggle}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
@@ -24,12 +27,9 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
           {newS.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
         </div>
       </div>
-      <button
-        className={`sugg-btn ${isAdded ? "added" : "add"}`}
-        onClick={isAdded ? onRemove : onAdd}
-      >
-        {isAdded ? <Check size={14} /> : <Plus size={14} />}
-      </button>
+      <div className={`sugg-btn ${isAdded ? "added" : "add"}`} aria-hidden="true">
+        {isAdded ? <Check size={15} /> : <Plus size={15} />}
+      </div>
     </div>
   );
 }
