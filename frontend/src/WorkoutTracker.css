@@ -5,6 +5,10 @@
 /* ── PRIMARY BRAND COLOR ── change this one value to retheme the whole app ── */
 :root { --primary: #28D1FF; }
 
+/* ── HEADER HEIGHT (used for sticky offsets) ── */
+:root { --hdr-h: 99px; }
+@media (max-width: 480px) { :root { --hdr-h: 65px; } }
+
 :root {
   --bg:     #0E0C0A;
   --s1:     #171412;
@@ -122,7 +126,7 @@ html, body { background: var(--bg); }
 .hamburger-btn {
   display: none;
   align-items: center; justify-content: center;
-  width: 36px; height: 36px; flex-shrink: 0;
+  width: 44px; height: 44px; flex-shrink: 0;
   background: none; border: 1px solid var(--border); border-radius: 6px;
   color: var(--muted); cursor: pointer;
   transition: all 0.15s;
@@ -142,12 +146,10 @@ html, body { background: var(--bg); }
   .hdr { padding: max(10px, env(safe-area-inset-top)) 12px 0; }
   .hdr-top { margin-bottom: 10px; }
   .logo-img { height: 30px; width: 30px; }
-  .logo-name { font-size: 12px; letter-spacing: 1.5px; }
-  .logo-sub { display: none; }
+  .hdr-brand-text { display: none; }
   .timer-pill { font-size: 14px; padding: 3px 8px; letter-spacing: 1px; flex: 1; justify-content: center; }
   .tab { padding: 5px 8px; }
-  /* Replace tabs + logout with hamburger */
-  .logout-btn { display: none; }
+  /* Replace tabs with hamburger */
   .tabs { display: none; }
   .hamburger-btn { display: flex; }
   .hdr-current-tab { display: block; }
@@ -231,6 +233,7 @@ html, body { background: var(--bg); }
   color: var(--muted); border: 1px solid var(--border); border-radius: 5px;
   padding: 10px 14px; min-height: 44px; cursor: pointer; transition: all 0.15s;
   display: inline-flex; align-items: center; gap: 5px;
+  outline: none; -webkit-tap-highlight-color: transparent;
 }
 .wz-back:hover { color: var(--text); border-color: var(--muted); }
 .wz-next {
@@ -239,6 +242,7 @@ html, body { background: var(--bg); }
   border: none; border-radius: 5px; padding: 10px 16px; min-height: 44px; cursor: pointer;
   transition: opacity 0.15s, transform 0.12s;
   display: inline-flex; align-items: center; gap: 5px;
+  outline: none; -webkit-tap-highlight-color: transparent;
 }
 .wz-next:not(:disabled):hover { opacity: 0.88; transform: translateY(-1px); }
 .wz-next:not(:disabled):active { transform: translateY(0); }
@@ -413,6 +417,24 @@ html, body { background: var(--bg); }
 @media (max-width: 560px) {
   .build-layout { grid-template-columns: 1fr; }
   .build-left { position: static; }
+  /* sticky wizard header so REVIEW is always reachable */
+  .wz-hdr {
+    position: sticky;
+    top: var(--hdr-h);
+    z-index: 50;
+    background: var(--bg);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  /* sticky search bar below sticky wz-hdr (hdr-h + ~54px for wz-hdr) */
+  .search-wrap {
+    position: sticky;
+    top: calc(var(--hdr-h) + 54px);
+    z-index: 49;
+    background: var(--bg);
+    padding: 6px 0 2px;
+  }
 }
 
 /* ── REVIEW ── */
@@ -426,8 +448,9 @@ html, body { background: var(--bg); }
   font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900;
   letter-spacing: 3px; text-transform: uppercase; padding: 14px 44px;
   background: var(--accent); color: #0a0804; border: none; border-radius: 6px;
-  cursor: pointer; width: 100%;
+  cursor: pointer; width: 100%; outline: none;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.18s;
+  -webkit-tap-highlight-color: transparent;
 }
 .btn-start:not(:disabled):hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 25%, transparent); }
 .btn-start:not(:disabled):active { transform: translateY(0); }
@@ -819,7 +842,7 @@ html, body { background: var(--bg); }
 }
 .logout-btn:hover { border-color: var(--muted); color: var(--text); }
 .logout-label { font-size: 0.78rem; }
-/* logout-btn fully hidden on mobile (see hamburger block above) */
+@media (max-width: 480px) { .logout-btn { display: none; } }
 
 /* ── WORKOUT COMPLETE / STRETCH ── */
 .complete-screen {

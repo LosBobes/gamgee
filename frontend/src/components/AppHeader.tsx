@@ -57,7 +57,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             onClick={() => setMenuOpen(o => !o)}
             aria-label={menuOpen ? "Close menu" : "Open menu"}
           >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            {menuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
         <div className="tabs">
