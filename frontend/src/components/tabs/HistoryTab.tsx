@@ -1,20 +1,24 @@
 import { useState } from "react";
-import { ClipboardList, Timer, Dumbbell, Layers, Activity, Trophy, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ClipboardList, Timer, Dumbbell, Layers, Activity, Trophy, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import type { WorkoutSession, PRDict } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
+import EditWorkoutModal from "./EditWorkoutModal";
 
 interface Props {
   history: WorkoutSession[];
   prs:     PRDict;
+  onDelete: (id: string) => void;
+  onUpdate: (session: WorkoutSession) => void;
 }
 
 const DAYS = ["S","M","T","W","T","F","S"];
 
-export default function HistoryTab({ history, prs }: Props) {
-  const [view,         setView]         = useState<"list" | "calendar">("list");
-  const [expanded,     setExpanded]     = useState<Set<string>>(new Set());
-  const [calMonth,     setCalMonth]     = useState(() => new Date());
-  const [selectedDay,  setSelectedDay]  = useState<string | null>(null);
+export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) {
+  const [view,           setView]           = useState<"list" | "calendar">("list");
+  const [expanded,       setExpanded]       = useState<Set<string>>(new Set());
+  const [calMonth,       setCalMonth]       = useState(() => new Date());
+  const [selectedDay,    setSelectedDay]    = useState<string | null>(null);
+  const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
 
   const toggleExpand = (id: string) =>
     setExpanded(p => { const s = new Set(p); s.has(id) ? s.delete(id) : s.add(id); return s; });
@@ -42,6 +46,16 @@ export default function HistoryTab({ history, prs }: Props) {
 
   const selectedSessions = selectedDay ? (workoutByDay[selectedDay] ?? []) : [];
 
+  const handleSave = (updated: WorkoutSession) => {
+    onUpdate(updated);
+    setEditingSession(null);
+  };
+
+  const handleDelete = (id: string) => {
+    onDelete(id);
+    setEditingSession(null);
+  };
+
   if (history.length === 0) {
     return (
       <div className="tab-anim">
@@ -67,7 +81,16 @@ export default function HistoryTab({ history, prs }: Props) {
               {vol > 0 && <span><Activity size={11} /> {Math.round(vol)}kg</span>}
             </div>
           </div>
-          <span style={{ color: "var(--muted)" }}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              className="hist-edit-btn"
+              onClick={e => { e.stopPropagation(); setEditingSession(w); }}
+              title="Edit session"
+            >
+              <Pencil size={13} />
+            </button>
+            <span style={{ color: "var(--muted)" }}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+          </div>
         </div>
         {isOpen && (
           <div className="hist-body">
@@ -144,6 +167,15 @@ export default function HistoryTab({ history, prs }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {editingSession && (
+        <EditWorkoutModal
+          session={editingSession}
+          onSave={handleSave}
+          onDelete={handleDelete}
+          onClose={() => setEditingSession(null)}
+        />
       )}
     </div>
   );

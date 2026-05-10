@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus } from "lucide-react";
-import type { ExerciseDef, SuggExercise } from "../../types";
+import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
@@ -14,16 +14,34 @@ interface Props {
   setPlanned: (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
   onBack:     () => void;
   onNext:     () => void;
+  history:    WorkoutSession[];
 }
 
-export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext }: Props) {
+export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
   const [hovEx,  setHovEx]  = useState<ExerciseDef | null>(null);
   const [search, setSearch] = useState("");
 
   const activeMuscles  = getActive(planned);
   const previewMuscles = hovEx ? getActive([hovEx]) : {};
-  const coveredGroups  = muscleGroups(activeMuscles);
   const plannedIds     = new Set(planned.map(e => e.id));
+
+  // Muscles the focus type expects to train
+  const focusMuscles = getActive(FOCUS[focus].exIds.flatMap(id => {
+    const ex = ALL_EX.find(e => e.id === id);
+    return ex ? [ex] : [];
+  }));
+
+  const focusGroups        = muscleGroups(focusMuscles);
+  const coveredGroups      = muscleGroups(activeMuscles);
+  const missingFocusGroups = GROUPS.filter(g => focusGroups.has(g) && !coveredGroups.has(g));
+  const missingMids        = new Set(Object.keys(focusMuscles).filter(mid => !activeMuscles[mid]));
+
+  // User favourites: how often each exercise appears in sessions with the same focus
+  const favFreq: Record<string, number> = {};
+  history.filter(s => s.focus === focus).forEach(s =>
+    s.exercises.forEach(ex => { favFreq[ex.id] = (favFreq[ex.id] || 0) + 1; })
+  );
+  const maxFav = Math.max(1, ...Object.values(favFreq));
 
   const addPlanned    = (ex: ExerciseDef) => setPlanned(p => [...p, ex]);
   const removePlanned = (id: string)      => setPlanned(p => p.filter(e => e.id !== id));
@@ -36,7 +54,9 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
       const ovP     = m.p.filter(mid => activeMuscles[mid] === "primary");
       const newS    = m.s.filter(mid => !activeMuscles[mid]);
       const isFocus = FOCUS[focus].exIds.includes(ex.id);
-      return { ...ex, score: (isFocus ? 100 : 0) + newP.length * 10 + newS.length * 2, newP, ovP, newS, isFocus };
+      const gap     = m.p.filter(mid => missingMids.has(mid)).length;
+      const fav     = (favFreq[ex.id] || 0) / maxFav;
+      return { ...ex, score: gap * 30 + fav * 20 + (isFocus ? 10 : 0) + newS.length * 2, newP, ovP, newS, isFocus };
     });
 
   const q = search.trim().toLowerCase();
@@ -77,7 +97,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
         {/* ── LEFT COLUMN: body map + coverage + added exercises ── */}
         <div className="build-left">
-          <BodyMap active={activeMuscles} preview={previewMuscles} />
+          <BodyMap active={activeMuscles} preview={previewMuscles} focusMuscles={focusMuscles} />
 
           <div className="coverage-bar-wrap">
             <div className="coverage-top">
@@ -91,17 +111,25 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
             </div>
             <div className="coverage-groups">
               {GROUPS.map(g => {
-                const hit  = coveredGroups.has(g);
-                const prev = hovEx && muscleGroups(previewMuscles).has(g) && !hit;
+                const covered = coveredGroups.has(g);
+                const inFocus = focusGroups.has(g);
+                const prev    = !covered && !!hovEx && muscleGroups(previewMuscles).has(g);
                 return (
                   <span key={g} className="group-chip" style={{
-                    color:       prev ? "var(--green)" : hit ? "var(--accent)" : "var(--muted)",
-                    background:  prev ? "rgba(82,183,136,0.1)" : hit ? "var(--ad)" : "transparent",
-                    borderColor: prev ? "rgba(82,183,136,0.3)" : hit ? "var(--ad2)" : "var(--border)",
+                    color:       prev ? "var(--green)" : covered ? "var(--accent)" : inFocus ? "#E8981E" : "var(--muted)",
+                    background:  prev ? "rgba(82,183,136,0.1)" : covered ? "var(--ad)" : inFocus ? "rgba(232,152,30,0.08)" : "transparent",
+                    borderColor: prev ? "rgba(82,183,136,0.3)" : covered ? "var(--ad2)" : inFocus ? "rgba(232,152,30,0.25)" : "transparent",
+                    opacity:     inFocus || covered || prev ? 1 : 0.35,
                   }}>{g}</span>
                 );
               })}
             </div>
+            {missingFocusGroups.length > 0 && (
+              <div className="gap-hint">
+                <span className="gap-hint-label">MISSING</span>
+                {missingFocusGroups.map(g => <span key={g} className="gap-chip">{g}</span>)}
+              </div>
+            )}
           </div>
 
           {planned.length > 0 && (

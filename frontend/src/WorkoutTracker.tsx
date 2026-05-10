@@ -5,6 +5,7 @@ import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
 import WorkoutTab from "./components/workout/WorkoutTab";
+import WorkoutComplete from "./components/workout/WorkoutComplete";
 import HistoryTab from "./components/tabs/HistoryTab";
 import PRsTab from "./components/tabs/PRsTab";
 import CoachTab from "./components/tabs/CoachTab";
@@ -26,6 +27,8 @@ export default function WorkoutTracker() {
   // data
   const [history,   setHistory]   = useState<WorkoutSession[]>([]);
   const [prs,       setPrs]       = useState<PRDict>({});
+  // post-workout cool-down
+  const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
   const [token,     setToken]     = useState<string | null>(() => localStorage.getItem("iron_log_token"));
   const [username,  setUsername]  = useState<string | null>(null);
@@ -130,7 +133,28 @@ export default function WorkoutTracker() {
     setPrs(newPrs);
     setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
     setWStep(0); setPlanned([]); setFocus(null);
+    setCompleted(session);
+  };
+
+  const dismissCompleted = () => {
+    setCompleted(null);
     setTab("history");
+  };
+
+  // ── History management ──
+
+  const deleteWorkout = (id: string) => {
+    authFetch(`/api/workouts/${id}`, { method: "DELETE" }).catch(() => {});
+    setHistory(h => h.filter(w => w.id !== id));
+  };
+
+  const updateWorkout = (session: WorkoutSession) => {
+    authFetch(`/api/workouts/${session.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(session),
+    }).catch(() => {});
+    setHistory(h => h.map(w => w.id === session.id ? session : w));
   };
 
   // ── Derived ──
@@ -150,7 +174,10 @@ export default function WorkoutTracker() {
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
       <div className="content">
-        {tab === "workout" && (
+        {completed && (
+          <WorkoutComplete session={completed} onDone={dismissCompleted} />
+        )}
+        {!completed && tab === "workout" && (
           <WorkoutTab
             active={active} wStep={wStep} setWStep={setWStep}
             focus={focus} setFocus={setFocus}
@@ -162,10 +189,10 @@ export default function WorkoutTracker() {
             isNewPr={isNewPr} finishWorkout={finishWorkout}
           />
         )}
-        {tab === "history" && <HistoryTab history={history} prs={prs} />}
-        {tab === "prs"     && <PRsTab prs={prs} />}
-        {tab === "coach"   && <CoachTab history={history} />}
-        {tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
+        {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
+        {!completed && tab === "prs"     && <PRsTab prs={prs} />}
+        {!completed && tab === "coach"   && <CoachTab history={history} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-# Gamgee — Iron Log
+# Gamgee Workout Buddy
 
 A self-hosted workout tracking app. Log sessions, track personal records, visualise muscle coverage, and get progression coaching — all behind a per-user JWT auth wall.
 

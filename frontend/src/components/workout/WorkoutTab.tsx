@@ -49,15 +49,17 @@ export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, p
           setPlanned={setPlanned}
           onBack={() => setWStep(1)}
           onNext={() => setWStep(3)}
+          history={history}
         />
       )}
-      {!active && wStep === 3 && (
+      {!active && wStep === 3 && focus && (
         <WizardReview
           planned={planned}
           setPlanned={setPlanned}
           history={history}
           onBack={() => setWStep(2)}
           onStart={startFromWizard}
+          focus={focus}
         />
       )}
       {active && (

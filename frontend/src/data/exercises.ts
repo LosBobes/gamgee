@@ -1,6 +1,6 @@
 import type { ExerciseDef, ExerciseType } from "../types";
 import type { LucideIcon } from "lucide-react";
-import { Dumbbell, ArrowDown, Crosshair, PersonStanding, Flame, Heart } from "lucide-react";
+import { Dumbbell, ArrowDown, Crosshair, PersonStanding, Flame, Heart, Hand, User } from "lucide-react";
 
 export const EM: Record<string, { p: string[]; s: string[] }> = {
   bench:        { p: ["lower_pec", "upper_pec"],                              s: ["front_delt", "tricep_lat", "tricep_med"] },
@@ -80,6 +80,19 @@ export const EM: Record<string, { p: string[]; s: string[] }> = {
   sled_push:    { p: ["quad_rf", "glute_max"],                               s: ["ham_bf", "gastroc", "erector"] },
   battle_rope:  { p: ["front_delt", "side_delt"],                             s: ["upper_abs", "lower_abs", "oblique"] },
   hiit:         { p: ["quad_rf", "gastroc"],                                  s: ["ham_bf", "glute_max", "upper_abs"] },
+  // Grip
+  farmers:      { p: ["grip", "forearm"],                                     s: ["upper_trap", "erector"] },
+  dead_hang:    { p: ["grip", "forearm"],                                     s: ["upper_lat", "lower_lat"] },
+  plate_pinch:  { p: ["grip", "forearm"],                                     s: [] },
+  wrist_curl:   { p: ["forearm", "grip"],                                     s: [] },
+  rev_curl:     { p: ["forearm", "brachialis"],                               s: ["grip"] },
+  fat_grip:     { p: ["grip", "forearm"],                                     s: ["bicep_long"] },
+  // Neck
+  neck_curl:    { p: ["neck"],                                                s: [] },
+  neck_ext:     { p: ["neck"],                                                s: ["upper_trap"] },
+  neck_harness: { p: ["neck"],                                                s: ["upper_trap"] },
+  neck_lat:     { p: ["neck"],                                                s: [] },
+  neck_bridge:  { p: ["neck", "erector"],                                     s: ["upper_trap"] },
 };
 
 export const EX: Record<string, ExerciseDef[]> = {
@@ -160,6 +173,21 @@ export const EX: Record<string, ExerciseDef[]> = {
     { id: "plank",        name: "Plank",                  type: "timed"    },
     { id: "side_plank",   name: "Side Plank",             type: "timed"    },
   ],
+  Grip: [
+    { id: "farmers",     name: "Farmer's Carry",          type: "strength" },
+    { id: "dead_hang",   name: "Dead Hang",               type: "timed"    },
+    { id: "plate_pinch", name: "Plate Pinch",             type: "timed"    },
+    { id: "wrist_curl",  name: "Wrist Curl",              type: "strength" },
+    { id: "rev_curl",    name: "Reverse Curl",            type: "strength" },
+    { id: "fat_grip",    name: "Fat-Grip Hold",           type: "timed"    },
+  ],
+  Neck: [
+    { id: "neck_curl",    name: "Plate Neck Curl",        type: "strength" },
+    { id: "neck_ext",     name: "Plate Neck Extension",   type: "strength" },
+    { id: "neck_harness", name: "Neck Harness",           type: "strength" },
+    { id: "neck_lat",     name: "Lateral Neck Flex",      type: "strength" },
+    { id: "neck_bridge",  name: "Neck Bridge",            type: "timed"    },
+  ],
   Cardio: [
     { id: "run",         name: "Running",                 type: "cardio" },
     { id: "cycle",       name: "Cycling",                 type: "cardio" },
@@ -190,5 +218,7 @@ export const CAT_ICON: Record<string, LucideIcon> = {
   Shoulders: Crosshair,
   Legs:      PersonStanding,
   Core:      Flame,
+  Grip:      Hand,
+  Neck:      User,
   Cardio:    Heart,
 };

@@ -1,35 +1,62 @@
-import { Check, Plus, Star } from "lucide-react";
+import { useState } from "react";
+import { Eye } from "lucide-react";
 import type { SuggCardProps } from "../types";
 import { MI } from "../data/muscles";
+import { EXERCISE_INFO } from "../data/exerciseInfo";
 
 export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeave }: SuggCardProps) {
   const newP = ex.newP ?? [];
   const ovP  = ex.ovP  ?? [];
   const newS = (ex.newS ?? []).slice(0, 3);
+  const info = EXERCISE_INFO[ex.id];
+
+  const [open, setOpen] = useState(false);
+
+  const toggle = isAdded ? onRemove : onAdd;
 
   return (
     <div
       className={`sugg-card ${isAdded ? "added" : ""} ${ex.isFocus ? "focus-pick" : ""}`}
+      onClick={toggle}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
-      <div className="sugg-left">
-        <div className="sugg-name">
-          {ex.name}
-          {ex.isFocus && <span className="sugg-focus-star"><Star size={9} /> FOCUS</span>}
+      {ex.isFocus && <span className="sugg-focus-banner">FOCUS</span>}
+
+      <div className="sugg-row">
+        <div className="sugg-left">
+          <div className="sugg-name">{ex.name}</div>
+          <div className="sugg-muscles">
+            {newP.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
+            {ovP.map(mid  => <span key={mid} className="mtag overlap">{MI[mid]?.n}</span>)}
+            {newS.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
+          </div>
         </div>
-        <div className="sugg-muscles">
-          {newP.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
-          {ovP.map(mid  => <span key={mid} className="mtag overlap">{MI[mid]?.n}</span>)}
-          {newS.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
-        </div>
+
+        {info && (
+          <button
+            type="button"
+            className={`sugg-info-btn ${open ? "open" : ""}`}
+            aria-label={open ? "Hide how-to" : "Show how-to"}
+            aria-expanded={open}
+            onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
+          >
+            <Eye size={15} />
+          </button>
+        )}
       </div>
-      <button
-        className={`sugg-btn ${isAdded ? "added" : "add"}`}
-        onClick={isAdded ? onRemove : onAdd}
-      >
-        {isAdded ? <Check size={14} /> : <Plus size={14} />}
-      </button>
+
+      {info && (
+        <div className={`sugg-info-wrap ${open ? "open" : ""}`} aria-hidden={!open}>
+          <div className="sugg-info">
+            <div className="sugg-info-inner" onClick={e => e.stopPropagation()}>
+              <div className="sugg-info-row"><span className="label">Setup</span><span>{info.setup}</span></div>
+              <div className="sugg-info-row"><span className="label">Execute</span><span>{info.execute}</span></div>
+              <div className="sugg-info-row"><span className="label">Cue</span><span>{info.cue}</span></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { X, Check, Circle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Check, Circle, Play, Square } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { MI } from "../../data/muscles";
@@ -18,8 +19,76 @@ interface Props {
 
 const colLabels = (ex: WorkoutExercise): [string, string] =>
   ex.type === "cardio" ? ["DURATION (min)", "DIST (km)"]
-  : ex.type === "timed" ? ["DURATION (s)", "NOTES"]
+  : ex.type === "timed" ? ["RECORDED (s)", "NOTES"]
   : ["WEIGHT (kg)", "REPS"];
+
+interface TimedSetRowProps {
+  set: WorkoutSet;
+  idx: number;
+  setCount: number;
+  updateSet: (idx: number, field: keyof WorkoutSet, value: string) => void;
+  toggleSet: (idx: number) => void;
+  removeSet: (idx: number) => void;
+}
+
+function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: TimedSetRowProps) {
+  const [running, setRunning] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setElapsed(Date.now() - startRef.current), 100);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const handleStart = () => {
+    startRef.current = Date.now();
+    setElapsed(0);
+    setRunning(true);
+  };
+
+  const handleStop = () => {
+    setRunning(false);
+    const secs = Math.round(elapsed / 1000);
+    updateSet(idx, "weight", String(secs));
+    if (!set.done) toggleSet(idx);
+  };
+
+  const fmtElapsed = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  };
+
+  return (
+    <div className={`set-row${running ? " timed-set-active" : ""}`}>
+      <div className={`set-num${set.done ? " done" : ""}`}>{idx + 1}</div>
+      {running ? (
+        <div className="timed-elapsed">{fmtElapsed(elapsed)}</div>
+      ) : (
+        <>
+          <div className="timed-duration-cell">{set.weight ? `${set.weight}s` : "—"}</div>
+          <input
+            className={`set-inp${set.done ? " done" : ""}`}
+            type="text" placeholder="—"
+            value={set.reps}
+            onChange={e => updateSet(idx, "reps", e.target.value)}
+          />
+        </>
+      )}
+      {running ? (
+        <button className="timed-stop-btn" onClick={handleStop}><Square size={13} /></button>
+      ) : set.done ? (
+        <button className="check-btn done" onClick={() => toggleSet(idx)}><Check size={13} /></button>
+      ) : (
+        <button className="timed-start-btn" onClick={handleStart}><Play size={13} /></button>
+      )}
+      <button className="rm-set-btn" onClick={() => removeSet(idx)} disabled={setCount <= 1}>
+        <X size={13} />
+      </button>
+    </div>
+  );
+}
 
 export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
@@ -55,42 +124,55 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
           <div className="col-lbl"><Check size={11} /></div>
           <div className="col-lbl" />
         </div>
-        {ex.sets.map((set, idx) => {
-          const showPrTag = ex.type === "strength" && isNewPr(set.weight) && !!set.weight;
-          return (
-            <div key={idx} className="set-row">
-              <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
-              <div className="inp-wrap">
+        {ex.type === "timed" ? (
+          ex.sets.map((set, idx) => (
+            <TimedSetRow
+              key={idx}
+              set={set}
+              idx={idx}
+              setCount={ex.sets.length}
+              updateSet={updateSet}
+              toggleSet={toggleSet}
+              removeSet={removeSet}
+            />
+          ))
+        ) : (
+          ex.sets.map((set, idx) => {
+            const showPrTag = ex.type === "strength" && isNewPr(set.weight) && !!set.weight;
+            return (
+              <div key={idx} className="set-row">
+                <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
+                <div className="inp-wrap">
+                  <input
+                    className={`set-inp ${set.done ? "done" : ""}`}
+                    type="number" min="0" step="0.5"
+                    placeholder={ex.type === "cardio" ? "30" : "0"}
+                    value={set.weight}
+                    onChange={e => updateSet(idx, "weight", e.target.value)}
+                  />
+                  {showPrTag && <span className="new-pr-tag">NEW PR!</span>}
+                </div>
                 <input
                   className={`set-inp ${set.done ? "done" : ""}`}
-                  type="number" min="0" step="0.5"
-                  placeholder={ex.type === "cardio" ? "30" : ex.type === "timed" ? "60" : "0"}
-                  value={set.weight}
-                  onChange={e => updateSet(idx, "weight", e.target.value)}
+                  type="number" min="0" step="1"
+                  placeholder={ex.type === "cardio" ? "5.0" : "0"}
+                  value={set.reps}
+                  onChange={e => updateSet(idx, "reps", e.target.value)}
                 />
-                {showPrTag && <span className="new-pr-tag">NEW PR!</span>}
+                <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
+                  {set.done ? <Check size={13} /> : <Circle size={13} />}
+                </button>
+                <button
+                  className="rm-set-btn"
+                  onClick={() => removeSet(idx)}
+                  disabled={ex.sets.length <= 1}
+                >
+                  <X size={13} />
+                </button>
               </div>
-              <input
-                className={`set-inp ${set.done ? "done" : ""}`}
-                type={ex.type === "timed" ? "text" : "number"} min="0" step="1"
-                placeholder={ex.type === "cardio" ? "5.0" : ex.type === "timed" ? "—" : "0"}
-                value={set.reps}
-                onChange={e => updateSet(idx, "reps", e.target.value)}
-              />
-              <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
-                {set.done ? <Check size={13} /> : <Circle size={13} />}
-              </button>
-              <button
-                className="rm-set-btn"
-                onClick={() => removeSet(idx)}
-                disabled={ex.sets.length <= 1}
-                style={{ opacity: ex.sets.length <= 1 ? 0.2 : 1 }}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
         <button className="btn-add-set" onClick={addSet}>+ add set</button>
       </div>
     </div>
