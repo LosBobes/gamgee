@@ -118,16 +118,71 @@ html, body { background: var(--bg); }
   border-radius: 10px; padding: 1px 5px; min-width: 16px; text-align: center; line-height: 1.4;
 }
 
-/* Mobile header overrides */
+/* Mobile header overrides — hamburger mode */
 @media (max-width: 480px) {
   .hdr { padding: 10px 12px 0; }
-  .hdr-top { margin-bottom: 8px; }
+  .hdr-top { margin-bottom: 10px; }
   .logo-img { height: 30px; width: 30px; }
   .logo-name { font-size: 12px; letter-spacing: 1.5px; }
   .logo-sub { display: none; }
-  .timer-pill { font-size: 14px; padding: 3px 8px; letter-spacing: 1px; }
+  .timer-pill { font-size: 14px; padding: 3px 8px; letter-spacing: 1px; flex: 1; justify-content: center; }
   .tab { padding: 5px 8px; }
+  /* Replace tabs + logout with hamburger */
+  .logout-btn { display: none; }
+  .tabs { display: none; }
+  .hamburger-btn { display: flex; }
+  .hdr-current-tab { display: block; }
 }
+
+/* ── HAMBURGER & MOBILE NAV ── */
+.hamburger-btn {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: none; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--muted); cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.hamburger-btn:hover, .hamburger-btn.open { border-color: var(--muted); color: var(--text); }
+
+.hdr-current-tab {
+  display: none;
+  flex: 1; text-align: center;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--text);
+}
+
+.mobile-nav {
+  margin: 0 -12px;
+  border-top: 1px solid var(--border);
+  animation: fadeIn 0.15s ease;
+}
+@media (min-width: 481px) { .mobile-nav { display: none; } }
+
+.mobile-nav-item {
+  display: flex; align-items: center; gap: 14px; width: 100%;
+  padding: 15px 20px;
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  color: var(--muted); font-family: 'Nunito', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+  cursor: pointer; text-align: left;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-nav-item:last-child { border-bottom: none; }
+.mobile-nav-item:hover { background: var(--s2); color: var(--text); }
+.mobile-nav-item.active { color: var(--accent); background: var(--ad); }
+.mobile-nav-logout { color: var(--red); }
+.mobile-nav-logout:hover { color: var(--red); background: rgba(200,68,68,0.08); }
+.mobile-nav-divider { height: 1px; background: var(--border); }
+
+.mobile-nav-backdrop {
+  position: fixed; inset: 0; z-index: 99;
+  background: rgba(0,0,0,0.35);
+  animation: fadeIn 0.15s ease;
+}
+@media (min-width: 481px) { .mobile-nav-backdrop { display: none; } }
 
 /* ── STATS BAR ── */
 .stats-bar { display: flex; background: var(--s2); border-bottom: 1px solid var(--border); }
@@ -764,7 +819,7 @@ html, body { background: var(--bg); }
 }
 .logout-btn:hover { border-color: var(--muted); color: var(--text); }
 .logout-label { font-size: 0.78rem; }
-@media (max-width: 480px) { .logout-label { display: none; } }
+/* logout-btn fully hidden on mobile (see hamburger block above) */
 
 /* ── WORKOUT COMPLETE / STRETCH ── */
 .complete-screen {
