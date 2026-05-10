@@ -1,6 +1,8 @@
 import type { MuscleInfo } from "../types";
 
 export const MI: Record<string, MuscleInfo> = {
+  neck:        { n: "Neck",             g: "Neck"       },
+  grip:        { n: "Hand / Grip",      g: "Grip"       },
   upper_pec:   { n: "Upper Chest",      g: "Chest"      },
   lower_pec:   { n: "Lower Chest",      g: "Chest"      },
   front_delt:  { n: "Front Delt",       g: "Shoulders"  },

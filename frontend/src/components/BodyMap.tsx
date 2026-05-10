@@ -1,16 +1,20 @@
 import { useState } from "react";
 import type { MuscleShape, BodyMapProps } from "../types";
 import { MI } from "../data/muscles";
-import { BODY_PATH, FM, BM } from "../data/bodymap";
+import { BODY_PATH, FM, BM, FRONT_LINES, BACK_LINES } from "../data/bodymap";
 
-export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: BodyMapProps) {
+export default function BodyMap({ active = {}, preview = {}, focusMuscles, onHoverMuscle }: BodyMapProps) {
   const [hovMid, setHovMid] = useState<string | null>(null);
+
+  const bodyPath = BODY_PATH;
 
   const mFill = (mid: string): string => {
     if (preview[mid])                return "var(--green)";
     if (active[mid] === "primary")   return "var(--accent)";
     if (active[mid] === "secondary") return "var(--accent)";
     if (hovMid === mid)              return "rgba(255,255,255,1)";
+    if (focusMuscles?.[mid])         return "#E8981E";
+    if (focusMuscles)                return "rgba(255,255,255,1)";
     return "none";
   };
 
@@ -19,6 +23,8 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
     if (active[mid] === "primary")   return 0.86;
     if (active[mid] === "secondary") return 0.36;
     if (hovMid === mid)              return 0.06;
+    if (focusMuscles?.[mid])         return 0.22;
+    if (focusMuscles)                return 0.04;
     return 1;
   };
 
@@ -27,6 +33,7 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
     if (active[mid] === "primary")   return "var(--accent)";
     if (active[mid] === "secondary") return "var(--accent)";
     if (hovMid === mid)              return "rgba(255,255,255,1)";
+    if (focusMuscles?.[mid])         return "#E8981E";
     return "rgba(255,255,255,1)";
   };
 
@@ -35,6 +42,8 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
     if (active[mid] === "primary")   return 1;
     if (active[mid] === "secondary") return 0.60;
     if (hovMid === mid)              return 0.38;
+    if (focusMuscles?.[mid])         return 0.45;
+    if (focusMuscles)                return 0.10;
     return 0.15;
   };
 
@@ -42,13 +51,13 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
     if (active[mid] === "primary" || preview[mid]) return 1.1;
     if (active[mid] === "secondary")               return 0.8;
     if (hovMid === mid)                            return 0.7;
+    if (focusMuscles?.[mid])                       return 0.55;
     return 0.45;
   };
 
   const isActive = (mid: string) => !!(active[mid] || preview[mid]);
 
-  const renderView = (muscles: MuscleShape[], label: string, id: string) => {
-    // Render inactive first so active muscles always appear on top of the glow
+  const renderView = (muscles: MuscleShape[], detailLines: string[], label: string, id: string) => {
     const sorted = [...muscles].sort((a, b) => {
       const rank = (s: MuscleShape) => {
         if (preview[s.mid]) return 3;
@@ -70,58 +79,64 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
                 <feMergeNode in="SourceGraphic"/>
               </feMerge>
             </filter>
+            <radialGradient id={`bg-${id}`} gradientUnits="userSpaceOnUse" cx="50" cy="60" r="58">
+              <stop offset="0%"   stopColor="rgba(255,255,255,0.09)" />
+              <stop offset="65%"  stopColor="rgba(255,255,255,0.04)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0.02)" />
+            </radialGradient>
             <clipPath id={`clip-${id}`}>
               <circle cx="50" cy="13" r="13"/>
-              <path d={BODY_PATH}/>
+              <path d={bodyPath}/>
             </clipPath>
           </defs>
 
           {/* ── Body silhouette ── */}
           <circle
             cx="50" cy="13" r="12"
-            fill="rgba(255,255,255,0.05)"
-            stroke="rgba(255,255,255,0.13)"
-            strokeWidth={0.7}
+            fill={`url(#bg-${id})`}
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth={0.8}
           />
           <path
-            d={BODY_PATH}
-            fill="rgba(255,255,255,0.05)"
-            stroke="rgba(255,255,255,0.13)"
-            strokeWidth={0.7}
+            d={bodyPath}
+            fill={`url(#bg-${id})`}
+            stroke="rgba(255,255,255,0.18)"
+            strokeWidth={0.8}
           />
 
-          {/* ── Muscle shapes — always visible as outlines, lit when active ── */}
+          {/* ── Muscle shapes ── */}
           <g clipPath={`url(#clip-${id})`}>
             {sorted.map((s, i) => {
               const act = isActive(s.mid);
               const sharedProps = {
-                fill:         mFill(s.mid),
-                fillOpacity:  mFillOpacity(s.mid),
-                stroke:       mStroke(s.mid),
+                fill:          mFill(s.mid),
+                fillOpacity:   mFillOpacity(s.mid),
+                stroke:        mStroke(s.mid),
                 strokeOpacity: mStrokeOpacity(s.mid),
-                strokeWidth:  mStrokeW(s.mid),
-                filter:      act ? `url(#glow-${id})` : undefined,
-                style:       { cursor: "default" } as React.CSSProperties,
-                onMouseEnter: () => { setHovMid(s.mid); onHoverMuscle?.(s.mid); },
-                onMouseLeave: () => { setHovMid(null);  onHoverMuscle?.(null);  },
+                strokeWidth:   mStrokeW(s.mid),
+                filter:        act ? `url(#glow-${id})` : undefined,
+                style:         { cursor: "default" } as React.CSSProperties,
+                onMouseEnter:  () => { setHovMid(s.mid); onHoverMuscle?.(s.mid); },
+                onMouseLeave:  () => { setHovMid(null);  onHoverMuscle?.(null);  },
               };
 
-              if ("d" in s) {
-                return <path key={i} d={s.d} {...sharedProps} />;
-              }
-
-              const transform = s.rotate
-                ? `rotate(${s.rotate},${s.cx},${s.cy})`
-                : undefined;
+              if ("d" in s) return <path key={i} d={s.d} {...sharedProps} />;
+              const transform = s.rotate ? `rotate(${s.rotate},${s.cx},${s.cy})` : undefined;
               return (
-                <ellipse
-                  key={i}
-                  cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
-                  transform={transform}
-                  {...sharedProps}
-                />
+                <ellipse key={i} cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry} transform={transform} {...sharedProps} />
               );
             })}
+
+            {/* ── Anatomical detail lines ── */}
+            {detailLines.map((d, i) => (
+              <path key={`dl-${i}`} d={d}
+                fill="none"
+                stroke="rgba(255,255,255,1)"
+                strokeOpacity={0.10}
+                strokeWidth={0.28}
+                strokeLinecap="round"
+              />
+            ))}
           </g>
         </svg>
         <div className="body-lbl">{label}</div>
@@ -133,8 +148,8 @@ export default function BodyMap({ active = {}, preview = {}, onHoverMuscle }: Bo
     <div>
       <div className="map-tooltip">{hovMid ? MI[hovMid]?.n : "\u00a0"}</div>
       <div className="body-map-wrap">
-        {renderView(FM, "FRONT", "front")}
-        {renderView(BM, "BACK",  "back")}
+        {renderView(FM, FRONT_LINES, "FRONT", "front")}
+        {renderView(BM, BACK_LINES,  "BACK",  "back")}
       </div>
     </div>
   );

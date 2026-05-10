@@ -2,7 +2,8 @@ import { ArrowLeft, X, Zap } from "lucide-react";
 import type { ExerciseDef, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
-import { EM } from "../../data/exercises";
+import { EM, ALL_EX } from "../../data/exercises";
+import { FOCUS } from "../../data/focuses";
 import { analyzeEx } from "../../analysis";
 import BodyMap from "../BodyMap";
 
@@ -12,11 +13,19 @@ interface Props {
   history:     WorkoutSession[];
   onBack:      () => void;
   onStart:     () => void;
+  focus:       string;
 }
 
-export default function WizardReview({ planned, setPlanned, history, onBack, onStart }: Props) {
+export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus }: Props) {
   const finalActive = getActive(planned);
   const finalGroups = muscleGroups(finalActive);
+
+  const focusMuscles       = getActive(FOCUS[focus].exIds.flatMap(id => {
+    const ex = ALL_EX.find(e => e.id === id);
+    return ex ? [ex] : [];
+  }));
+  const focusGroups        = muscleGroups(focusMuscles);
+  const missingFocusGroups = GROUPS.filter(g => focusGroups.has(g) && !finalGroups.has(g));
 
   return (
     <>
@@ -26,7 +35,7 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
         <div style={{ width: 72 }} />
       </div>
 
-      <BodyMap active={finalActive} preview={{}} />
+      <BodyMap active={finalActive} preview={{}} focusMuscles={focusMuscles} />
 
       <div className="coverage-bar-wrap" style={{ marginBottom: 16 }}>
         <div className="coverage-top">
@@ -39,16 +48,27 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           </span>
         </div>
         <div className="coverage-groups">
-          {GROUPS.map(g => (
-            <span key={g} className="group-chip" style={{
-              color:       finalGroups.has(g) ? "var(--accent)" : "var(--muted)",
-              background:  finalGroups.has(g) ? "var(--ad)" : "transparent",
-              borderColor: finalGroups.has(g) ? "var(--ad2)" : "var(--border)",
-            }}>
-              {g}
-            </span>
-          ))}
+          {GROUPS.map(g => {
+            const covered = finalGroups.has(g);
+            const inFocus = focusGroups.has(g);
+            return (
+              <span key={g} className="group-chip" style={{
+                color:       covered ? "var(--accent)" : inFocus ? "#E8981E" : "var(--muted)",
+                background:  covered ? "var(--ad)" : inFocus ? "rgba(232,152,30,0.08)" : "transparent",
+                borderColor: covered ? "var(--ad2)" : inFocus ? "rgba(232,152,30,0.25)" : "transparent",
+                opacity:     inFocus || covered ? 1 : 0.35,
+              }}>
+                {g}
+              </span>
+            );
+          })}
         </div>
+        {missingFocusGroups.length > 0 && (
+          <div className="gap-hint">
+            <span className="gap-hint-label">MISSING</span>
+            {missingFocusGroups.map(g => <span key={g} className="gap-chip">{g}</span>)}
+          </div>
+        )}
       </div>
 
       {planned.map((ex, i) => {

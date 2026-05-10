@@ -19,6 +19,6 @@ export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry
 export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;
 export interface CoachingTip { icon: LucideIcon; title: string; body: string; }
-export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
+export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 // activeMuscles removed — SuggCard uses pre-computed newP/ovP/newS from SuggExercise
 export interface SuggCardProps { ex: SuggExercise; isAdded: boolean; onAdd: () => void; onRemove: () => void; onHover: () => void; onLeave: () => void; }
