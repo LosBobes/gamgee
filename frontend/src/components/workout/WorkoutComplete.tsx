@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Check, ArrowRight, Heart, X, Clock } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { EM } from "../../data/exercises";
@@ -104,6 +104,69 @@ export default function WorkoutComplete({ session, onDone }: Props) {
 }
 
 function StretchCard({ stretch, done, onToggle }: { stretch: Stretch; done: boolean; onToggle: () => void }) {
+  const [timerActive, setTimerActive] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(stretch.duration);
+  const [side, setSide] = useState<1 | 2>(1);
+  const [switching, setSwitching] = useState(false);
+
+  useEffect(() => {
+    if (!timerActive) return;
+    if (timeLeft <= 0) {
+      if (stretch.perSide && side === 1) {
+        setTimerActive(false);
+        setSwitching(true);
+      } else {
+        setTimerActive(false);
+        setTimeLeft(stretch.duration);
+        setSide(1);
+        if (!done) onToggle();
+      }
+      return;
+    }
+    const id = setInterval(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearInterval(id);
+  }, [timerActive, timeLeft]);
+
+  const handleStart = () => { setTimeLeft(stretch.duration); setSide(1); setSwitching(false); setTimerActive(true); };
+  const handleFlip  = () => { setTimeLeft(stretch.duration); setSide(2); setSwitching(false); setTimerActive(true); };
+  const handleStop  = () => { setTimerActive(false); setTimeLeft(stretch.duration); setSide(1); setSwitching(false); };
+
+  if (switching) {
+    return (
+      <div className="stretch-card stretch-card-switch">
+        <div className="stretch-timer-body">
+          <div className="stretch-name">{stretch.name}</div>
+          <div className="stretch-switch-prompt">SWITCH SIDES</div>
+          <div className="stretch-cue">{stretch.cue}</div>
+          <div className="stretch-timer-actions">
+            <button className="stretch-stop-btn" onClick={handleStop}>DONE</button>
+            <button className="stretch-start-btn" onClick={handleFlip}>OTHER SIDE</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (timerActive) {
+    const progress = timeLeft / stretch.duration;
+    return (
+      <div className="stretch-card stretch-card-active">
+        <div className="stretch-timer-body">
+          <div className="stretch-card-head" style={{ width: "100%", justifyContent: "space-between" }}>
+            <div className="stretch-name">{stretch.name}</div>
+            {stretch.perSide && <div className="stretch-side-label">{side === 1 ? "LEFT" : "RIGHT"}</div>}
+          </div>
+          <div className="stretch-countdown">{timeLeft}</div>
+          <div className="stretch-progress-bar">
+            <div className="stretch-progress-fill" style={{ width: `${progress * 100}%` }} />
+          </div>
+          <div className="stretch-cue">{stretch.cue}</div>
+          <button className="stretch-stop-btn" onClick={handleStop}>STOP</button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`stretch-card ${done ? "stretch-card-done" : ""}`}>
       <button className="stretch-check" onClick={onToggle} aria-label={done ? "Mark not done" : "Mark done"}>
@@ -117,7 +180,10 @@ function StretchCard({ stretch, done, onToggle }: { stretch: Stretch; done: bool
           </div>
         </div>
         <div className="stretch-cue">{stretch.cue}</div>
-        <div className="stretch-tag">{stretch.group}</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="stretch-tag">{stretch.group}</div>
+          {!done && <button className="stretch-start-btn" onClick={handleStart}>START</button>}
+        </div>
       </div>
     </div>
   );
