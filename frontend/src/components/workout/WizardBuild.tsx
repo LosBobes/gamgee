@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle } from "lucide-react";
 import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -47,6 +47,34 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
     setShowAutoPopup(false);
   };
   const handleSkipAutoPopulate = () => setShowAutoPopup(false);
+
+  const handleRandomize = () => {
+    const focusHistory = history.filter(s => s.focus === focus);
+    const avgSize = focusHistory.length > 0
+      ? Math.round(focusHistory.reduce((sum, s) => sum + s.exercises.length, 0) / focusHistory.length)
+      : 5;
+    const target = Math.max(4, Math.min(8, avgSize));
+
+    // Frequency weight: exercises you've done in this focus are slightly preferred
+    const freq: Record<string, number> = {};
+    focusHistory.forEach(s =>
+      s.exercises.forEach(ex => { freq[ex.id] = (freq[ex.id] ?? 0) + 1; })
+    );
+
+    const pool = focusDef.exIds.length >= 3
+      ? focusDef.exIds
+      : ALL_EX.filter(e => e.type !== "cardio").map(e => e.id);
+
+    const picked = [...pool]
+      .map(id => ({ id, score: (freq[id] ?? 0) * 0.4 + Math.random() }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, target)
+      .map(c => ALL_EX.find(e => e.id === c.id))
+      .filter((e): e is ExerciseDef => !!e);
+
+    setPlanned(() => picked);
+    setShowAutoPopup(false);
+  };
 
   const activeMuscles  = getActive(planned);
   const previewMuscles = hovEx ? getActive([hovEx]) : {};
@@ -252,16 +280,19 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
             <div className="autopop-top">
               <Clock size={16} />
               <div>
-                <div className="cf-modal-title" style={{ marginBottom: 4 }}>{t("Auto-populate?", "Reload last session?")}</div>
+                <div className="cf-modal-title" style={{ marginBottom: 4 }}>{t("Quick Start", "Quick Start")}</div>
                 <div className="autopop-sub">
                   {t(
-                    `Load the ${lastExercises.length} exercise${lastExercises.length !== 1 ? "s" : ""} from your last ${focusDef.name.toLowerCase()} workout. You can edit before starting.`,
-                    `Grab the ${lastExercises.length} exercise${lastExercises.length !== 1 ? "s" : ""} from your last ${focusDef.name.toLowerCase()} session. Tweak as needed, it's your workout.`
+                    `Pre-load exercises from your last ${focusDef.name.toLowerCase()} session, or get a randomized pick. You can edit everything before starting.`,
+                    `Repeat last time or throw the dice for a fresh mix. Either way, you can swap things out before you start.`
                   )}
                 </div>
               </div>
             </div>
             <div className="autopop-list">
+              <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>
+                Last Session
+              </div>
               {lastExercises.map((ex, i) => (
                 <div key={ex.id} className="autopop-row">
                   <span className="autopop-num">{i + 1}</span>
@@ -269,11 +300,19 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                 </div>
               ))}
             </div>
-            <div className="cf-modal-actions">
-              <button className="cf-btn-cancel" onClick={handleSkipAutoPopulate}>{t("Start Blank", "Start Fresh")}</button>
-              <button className="cf-btn-save" onClick={handleAutoPopulate}>
-                <Zap size={13} style={{ marginRight: 6, verticalAlign: -2 }} />
-                {t("Auto-populate", "Load Last Session")}
+            <div className="cf-modal-actions" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, width: "100%" }}>
+                <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleRandomize}>
+                  <Shuffle size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+                  {t("Randomize", "Mix It Up")}
+                </button>
+                <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleAutoPopulate}>
+                  <Zap size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+                  {t("Repeat Last", "Same as Last")}
+                </button>
+              </div>
+              <button className="cf-btn-cancel" style={{ flex: "none" }} onClick={handleSkipAutoPopulate}>
+                {t("Start Blank", "Start Fresh")}
               </button>
             </div>
           </div>

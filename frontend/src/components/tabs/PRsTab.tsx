@@ -20,7 +20,7 @@ export default function PRsTab({ prs, onDelete }: Props) {
 
   return (
     <div className="tab-anim">
-      <p className="pr-header">{Object.keys(prs).length} {t("Personal Record", "Hall of Fame PR")}{Object.keys(prs).length !== 1 ? "s" : ""}</p>
+      <p className="pr-header">{(() => { const n = Object.keys(prs).length; return t(`${n} Personal Record${n !== 1 ? "s" : ""}`, `${n} ${n !== 1 ? "Pages" : "Page"} of the Swoly Bible`); })()}</p>
       <div className="pr-grid">
         {Object.entries(prs)
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
