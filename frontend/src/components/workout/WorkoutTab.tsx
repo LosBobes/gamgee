@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardFocus from "./WizardFocus";
@@ -29,54 +30,69 @@ interface Props {
 }
 
 export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, planned, setPlanned, exercises, prs, history, doneSets, startFromWizard, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout }: Props) {
+  const prevStepRef = useRef(wStep);
+  const goingBack = wStep < prevStepRef.current;
+  prevStepRef.current = wStep;
+  const stepAnim = goingBack ? "wstep-anim-back" : "wstep-anim";
+
   return (
     <>
       {!active && wStep === 0 && (
-        <WizardStart lastSession={history[0] ?? null} onStart={() => setWStep(1)} />
+        <div key="wstep-0" className={stepAnim}>
+          <WizardStart lastSession={history[0] ?? null} onStart={() => setWStep(1)} />
+        </div>
       )}
       {!active && wStep === 1 && (
-        <WizardFocus
-          focus={focus}
-          setFocus={setFocus}
-          onBack={() => setWStep(0)}
-          onNext={() => setWStep(2)}
-        />
+        <div key="wstep-1" className={stepAnim}>
+          <WizardFocus
+            focus={focus}
+            setFocus={setFocus}
+            onBack={() => setWStep(0)}
+            onNext={() => setWStep(2)}
+          />
+        </div>
       )}
       {!active && wStep === 2 && focus && (
-        <WizardBuild
-          focus={focus}
-          planned={planned}
-          setPlanned={setPlanned}
-          onBack={() => setWStep(1)}
-          onNext={() => setWStep(3)}
-          history={history}
-        />
+        <div key="wstep-2" className={stepAnim}>
+          <WizardBuild
+            focus={focus}
+            planned={planned}
+            setPlanned={setPlanned}
+            onBack={() => setWStep(1)}
+            onNext={() => setWStep(3)}
+            history={history}
+          />
+        </div>
       )}
       {!active && wStep === 3 && focus && (
-        <WizardReview
-          planned={planned}
-          setPlanned={setPlanned}
-          history={history}
-          onBack={() => setWStep(2)}
-          onStart={startFromWizard}
-          focus={focus}
-        />
+        <div key="wstep-3" className={stepAnim}>
+          <WizardReview
+            planned={planned}
+            setPlanned={setPlanned}
+            history={history}
+            onBack={() => setWStep(2)}
+            onStart={startFromWizard}
+            focus={focus}
+          />
+        </div>
       )}
       {active && (
-        <ActiveWorkout
-          exercises={exercises}
-          prs={prs}
-          history={history}
-          doneSets={doneSets}
-          onFinish={finishWorkout}
-          addExercise={addExercise}
-          removeExercise={removeExercise}
-          updateSet={updateSet}
-          toggleSet={toggleSet}
-          addSet={addSet}
-          removeSet={removeSet}
-          isNewPr={isNewPr}
-        />
+        <div className="screen-anim">
+          <ActiveWorkout
+            exercises={exercises}
+            prs={prs}
+            history={history}
+            doneSets={doneSets}
+            onFinish={finishWorkout}
+            addExercise={addExercise}
+            removeExercise={removeExercise}
+            updateSet={updateSet}
+            toggleSet={toggleSet}
+            addSet={addSet}
+            removeSet={removeSet}
+            isNewPr={isNewPr}
+          />
+        </div>
       )}
     </>
   );

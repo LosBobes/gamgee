@@ -33,7 +33,7 @@ export default function AuthScreen({ onLogin }: Props) {
   };
 
   return (
-    <div className="wt-auth-screen">
+    <div className="wt-auth-screen tab-anim">
       <div className="auth-card">
         <img src="/logo.png" alt="Gamgee" className="auth-logo" />
         <form onSubmit={handleSubmit}>
