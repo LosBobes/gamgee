@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
@@ -6,11 +6,14 @@ import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
 
 interface Props {
-  username:      string | null;
-  history:       WorkoutSession[];
-  token:         string | null;
-  primaryColor:  string;
-  onColorChange: (color: string) => void;
+  username:        string | null;
+  name:            string | null;
+  email:           string | null;
+  history:         WorkoutSession[];
+  token:           string | null;
+  primaryColor:    string;
+  onColorChange:   (color: string) => void;
+  onProfileUpdate: (name: string | null, email: string | null) => void;
 }
 
 const PALETTE = [
@@ -85,6 +88,80 @@ function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: 
   );
 }
 
+function EditProfileCard({ name, email, token, onSave }: {
+  name: string | null;
+  email: string | null;
+  token: string | null;
+  onSave: (name: string | null, email: string | null) => void;
+}) {
+  const [nameVal,  setNameVal]  = useState(name ?? "");
+  const [emailVal, setEmailVal] = useState(email ?? "");
+  const [err,      setErr]      = useState("");
+  const [saving,   setSaving]   = useState(false);
+  const [ok,       setOk]       = useState(false);
+
+  useEffect(() => { setNameVal(name ?? ""); }, [name]);
+  useEffect(() => { setEmailVal(email ?? ""); }, [email]);
+
+  const changed = nameVal.trim() !== (name ?? "") || emailVal.trim() !== (email ?? "");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(""); setOk(false);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/auth/profile", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
+        body:    JSON.stringify({ name: nameVal.trim(), email: emailVal.trim() || null }),
+      });
+      if (!res.ok) { setErr((await res.json()).detail ?? "Failed"); return; }
+      const data = await res.json();
+      onSave(data.name ?? null, data.email ?? null);
+      setOk(true);
+      setTimeout(() => setOk(false), 2500);
+    } catch {
+      setErr("Network error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="profile-card">
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <input
+          className="field-input"
+          type="text"
+          placeholder="Display name"
+          value={nameVal}
+          onChange={e => { setNameVal(e.target.value); setOk(false); }}
+          maxLength={100}
+          required
+        />
+        <input
+          className="field-input"
+          type="email"
+          placeholder="Email address"
+          value={emailVal}
+          onChange={e => { setEmailVal(e.target.value); setOk(false); }}
+          maxLength={254}
+        />
+        {err && <p className="auth-err">{err}</p>}
+        {ok  && <p style={{ color: "var(--green)", fontSize: 12, margin: 0 }}>Saved.</p>}
+        <button
+          type="submit"
+          className="btn-primary"
+          disabled={!changed || saving || !nameVal.trim()}
+          style={{ width: "auto" }}
+        >
+          {saving ? "Saving…" : "Save Changes"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function ChangePasswordCard({ token }: { token: string | null }) {
   const [open,    setOpen]    = useState(false);
   const [current, setCurrent] = useState("");
@@ -100,7 +177,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
     e.preventDefault();
     setErr(""); setOk(false);
     if (next !== confirm) { setErr("New passwords do not match"); return; }
-    if (next.length < 8)  { setErr("New password must be at least 8 characters"); return; }
+    if (next.length < 12) { setErr("New password must be at least 12 characters"); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/change-password", {
@@ -129,6 +206,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
       ) : (
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <input
+            className="field-input"
             type="password"
             placeholder="Current password"
             value={current}
@@ -137,14 +215,16 @@ function ChangePasswordCard({ token }: { token: string | null }) {
             required
           />
           <input
+            className="field-input"
             type="password"
-            placeholder="New password (min 8 chars)"
+            placeholder="New password (min 12 chars)"
             value={next}
             onChange={e => setNext(e.target.value)}
             autoComplete="new-password"
             required
           />
           <input
+            className="field-input"
             type="password"
             placeholder="Confirm new password"
             value={confirm}
@@ -154,7 +234,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
           />
           {err && <p className="auth-err">{err}</p>}
           <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" className="auth-submit" disabled={loading} style={{ flex: 1 }}>
+            <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 1, width: "auto" }}>
               {loading ? "Saving…" : "Save"}
             </button>
             <button type="button" className="auth-toggle" onClick={() => { setOpen(false); reset(); }}>
@@ -167,11 +247,13 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, history, token, primaryColor, onColorChange }: Props) {
+export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate }: Props) {
   if (history.length === 0) {
     return (
       <div className="tab-anim">
         <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">Log your first workout to build your profile</div></div>
+        <div className="profile-section">Profile</div>
+        <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
         <div className="profile-section">Appearance</div>
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
         <div className="profile-section">Account</div>
@@ -227,7 +309,8 @@ export default function ProfileTab({ username, history, token, primaryColor, onC
     return count;
   });
 
-  const initials = username ? username.slice(0, 2).toUpperCase() : "?";
+  const displayName = name ?? username ?? "—";
+  const initials = displayName !== "—" ? displayName.slice(0, 2).toUpperCase() : "?";
 
   const fmtVol = (kg: number) =>
     kg >= 1000 ? `${(kg / 1000).toFixed(1)}t` : `${Math.round(kg)}kg`;
@@ -237,7 +320,8 @@ export default function ProfileTab({ username, history, token, primaryColor, onC
       <div className="profile-hero">
         <div className="profile-avatar">{initials}</div>
         <div>
-          <div className="profile-name">{username ?? "—"}</div>
+          <div className="profile-name">{displayName}</div>
+          {username && <div className="profile-username">@{username}</div>}
           {memberSince && <div className="profile-since">MEMBER SINCE {memberSince.toUpperCase()}</div>}
         </div>
       </div>
@@ -301,6 +385,9 @@ export default function ProfileTab({ username, history, token, primaryColor, onC
           </div>
         </>
       )}
+
+      <div className="profile-section">Profile</div>
+      <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
 
       <div className="profile-section">Appearance</div>
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />

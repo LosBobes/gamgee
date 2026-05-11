@@ -69,3 +69,23 @@ def update_preferences(
     db.commit()
     db.refresh(current_user)
     return current_user
+
+
+@router.patch("/profile", response_model=schemas.UserOut)
+def update_profile(
+    body: schemas.UserProfileUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.name = body.name
+    if body.email is not None:
+        existing = db.query(models.User).filter(
+            models.User.email == body.email,
+            models.User.id != current_user.id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use by another account")
+    current_user.email = body.email
+    db.commit()
+    db.refresh(current_user)
+    return current_user

@@ -37,6 +37,8 @@ export default function WorkoutTracker() {
   // auth
   const [token,        setToken]        = useState<string | null>(() => localStorage.getItem("iron_log_token"));
   const [username,     setUsername]     = useState<string | null>(null);
+  const [name,         setName]         = useState<string | null>(null);
+  const [email,        setEmail]        = useState<string | null>(null);
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
@@ -66,8 +68,10 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string; primary_color?: string | null }) => {
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null }) => {
         setUsername(d.username);
+        setName(d.name ?? null);
+        setEmail(d.email ?? null);
         if (d.primary_color) setPrimaryColor(d.primary_color);
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,7 +263,7 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} />}
       </div>
     </div>
   );

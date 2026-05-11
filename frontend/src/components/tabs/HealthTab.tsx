@@ -14,22 +14,6 @@ interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
-const cardStyle: React.CSSProperties = {
-  background: "var(--card)",
-  borderRadius: 12,
-  padding: 16,
-  marginBottom: 16,
-};
-
-const sectionLabel: React.CSSProperties = {
-  margin: "0 0 12px",
-  fontSize: 13,
-  color: "var(--muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  fontWeight: 600,
-};
-
 export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch }: Props) {
   const [activeMetric, setActiveMetric] = useState<MetricDef>(METRICS[0]);
   const [showAll, setShowAll]           = useState(false);
@@ -78,7 +62,6 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
     await fetchHealthMetrics(activeMetric.id);
   };
 
-  // Chart data — already ordered ascending by date from the API
   const chartData = healthMetrics.map(m => ({
     label: fmtShortDate(m.date),
     value: m.value,
@@ -88,42 +71,25 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
 
   const baseline = chartData.length > 0 ? chartData[0].value : null;
 
-  // History list — reverse chronological
   const reversed = [...healthMetrics].reverse();
   const visible  = showAll ? reversed : reversed.slice(0, 10);
 
   return (
     <div className="tab-anim">
-      {/* Toast */}
       {toast && (
-        <div style={{
-          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
-          background: "#10b981", color: "white", padding: "8px 18px",
-          borderRadius: 8, fontSize: 14, fontWeight: 600, zIndex: 1000,
-          pointerEvents: "none",
-        }}>
-          {toast}
-        </div>
+        <div className="health-toast">{toast}</div>
       )}
 
       {/* Metric selector */}
-      <div style={{ display: "flex", overflowX: "auto", gap: 8, paddingBottom: 8, marginBottom: 16 }}>
+      <div className="health-metric-bar">
         {METRICS.map(m => (
           <button
             key={m.id}
             onClick={() => setActiveMetric(m)}
-            style={{
-              flexShrink: 0,
-              padding: "6px 14px",
-              borderRadius: 20,
-              border: `2px solid ${activeMetric.id === m.id ? m.color : "transparent"}`,
-              background: activeMetric.id === m.id ? `${m.color}22` : "var(--card)",
-              color: activeMetric.id === m.id ? m.color : "var(--muted)",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-            }}
+            className={`health-metric-btn${activeMetric.id === m.id ? " active" : ""}`}
+            style={activeMetric.id === m.id
+              ? { borderColor: m.color, background: `${m.color}22`, color: m.color }
+              : undefined}
           >
             {m.label}
           </button>
@@ -131,29 +97,31 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
       </div>
 
       {/* Chart */}
-      <div style={cardStyle}>
-        <p style={sectionLabel}>{activeMetric.label} ({activeMetric.unit})</p>
+      <div className="profile-card">
+        <div className="profile-section" style={{ margin: "0 0 12px" }}>
+          {activeMetric.label} ({activeMetric.unit})
+        </div>
         {chartData.length < 2 ? (
-          <div style={{ textAlign: "center", padding: "32px 0", color: "var(--muted)", fontSize: 14 }}>
+          <div className="health-empty">
             <Heart size={28} style={{ marginBottom: 8, opacity: 0.4 }} />
             <div>Log at least 2 entries to see your trend</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -8 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis
                 dataKey="label"
-                tick={{ fontSize: 11, fill: "#888" }}
+                tick={{ fontSize: 11, fill: "var(--muted)" }}
                 tickLine={false}
-                axisLine={{ stroke: "#333" }}
+                axisLine={{ stroke: "var(--border)" }}
               />
               <YAxis
                 domain={[
                   (min: number) => Math.floor(min * 0.95),
                   (max: number) => Math.ceil(max * 1.05),
                 ]}
-                tick={{ fontSize: 11, fill: "#888" }}
+                tick={{ fontSize: 11, fill: "var(--muted)" }}
                 tickLine={false}
                 axisLine={false}
                 width={38}
@@ -161,18 +129,18 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
               {baseline !== null && (
                 <ReferenceLine
                   y={baseline}
-                  stroke="#444"
+                  stroke="var(--border)"
                   strokeDasharray="4 4"
-                  label={{ value: "Start", fill: "#666", fontSize: 11, position: "insideTopLeft" }}
+                  label={{ value: "Start", fill: "var(--muted)", fontSize: 11, position: "insideTopLeft" }}
                 />
               )}
               <Tooltip
                 contentStyle={{
-                  background: "#1a1a1a",
-                  border: "1px solid #333",
+                  background: "var(--s2)",
+                  border: "1px solid var(--border)",
                   borderRadius: 8,
                   fontSize: 13,
-                  color: "#fff",
+                  color: "var(--text)",
                 }}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(value: any, _name: any, entry: any) => {
@@ -195,64 +163,40 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
       </div>
 
       {/* Log form */}
-      <div style={cardStyle}>
-        <p style={sectionLabel}>Log {activeMetric.label}</p>
+      <div className="profile-card">
+        <div className="profile-section" style={{ margin: "0 0 12px" }}>
+          Log {activeMetric.label}
+        </div>
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "flex", gap: 8 }}>
             <input
+              className="field-input"
               type="date"
               value={form.date}
               onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-              style={{
-                flex: 1, background: "var(--bg)", border: "1px solid #333",
-                borderRadius: 8, padding: "8px 10px", color: "white", fontSize: 14,
-              }}
+              style={{ flex: 1 }}
             />
-            <div style={{
-              display: "flex", alignItems: "center", flex: 1,
-              background: "var(--bg)", border: "1px solid #333", borderRadius: 8,
-            }}>
+            <div className="field-unit-wrap">
               <input
                 type="number"
-                placeholder={`Value`}
+                placeholder="Value"
                 value={form.value}
                 onChange={e => setForm(f => ({ ...f, value: e.target.value }))}
                 step={activeMetric.step}
                 min={activeMetric.min}
                 max={activeMetric.max}
-                style={{
-                  flex: 1, background: "transparent", border: "none",
-                  padding: "8px 10px", color: "white", fontSize: 14, outline: "none",
-                }}
               />
-              <span style={{ paddingRight: 10, color: "var(--muted)", fontSize: 13 }}>
-                {activeMetric.unit}
-              </span>
+              <span className="field-unit-label">{activeMetric.unit}</span>
             </div>
           </div>
           <textarea
+            className="field-input field-textarea"
             placeholder="Note (optional)"
             value={form.note}
             onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
             rows={2}
-            style={{
-              background: "var(--bg)", border: "1px solid #333", borderRadius: 8,
-              padding: "8px 10px", color: "white", fontSize: 14, resize: "none",
-              fontFamily: "inherit",
-            }}
           />
-          <button
-            type="submit"
-            disabled={!form.value}
-            style={{
-              background: form.value ? activeMetric.color : "#333",
-              color: "white", border: "none", borderRadius: 8, padding: "10px",
-              fontSize: 14, fontWeight: 600,
-              cursor: form.value ? "pointer" : "not-allowed",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-              transition: "background 0.15s",
-            }}
-          >
+          <button type="submit" className="btn-primary" disabled={!form.value}>
             <Plus size={16} /> Log Entry
           </button>
         </form>
@@ -260,33 +204,20 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
 
       {/* History */}
       {healthMetrics.length > 0 && (
-        <div style={cardStyle}>
-          <p style={sectionLabel}>History</p>
+        <div className="profile-card">
+          <div className="profile-section" style={{ margin: "0 0 12px" }}>History</div>
           <div style={{ display: "flex", flexDirection: "column" }}>
             {visible.map(m => (
-              <div
-                key={m.id}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  padding: "7px 0", borderBottom: "1px solid #222",
-                }}
-              >
-                <span style={{ color: "var(--muted)", fontSize: 12, minWidth: 70 }}>
-                  {fmtShortDate(m.date)}
+              <div key={m.id} className="health-row">
+                <span className="health-row-date">{fmtShortDate(m.date)}</span>
+                <span className="health-row-val">
+                  {m.value} <span className="health-row-unit">{activeMetric.unit}</span>
                 </span>
-                <span style={{ fontWeight: 600, color: "white", minWidth: 72 }}>
-                  {m.value} <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12 }}>{activeMetric.unit}</span>
-                </span>
-                <span style={{
-                  color: "var(--muted)", fontSize: 12, flex: 1,
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>
-                  {m.note ?? ""}
-                </span>
+                <span className="health-row-note">{m.note ?? ""}</span>
                 <button
+                  className="health-row-del"
                   onClick={() => handleDelete(m.id)}
                   aria-label="Delete entry"
-                  style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 4, lineHeight: 0 }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -294,14 +225,7 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
             ))}
           </div>
           {reversed.length > 10 && !showAll && (
-            <button
-              onClick={() => setShowAll(true)}
-              style={{
-                marginTop: 12, background: "none", border: "none",
-                color: "var(--muted)", cursor: "pointer", fontSize: 13,
-                display: "flex", alignItems: "center", gap: 4,
-              }}
-            >
+            <button className="health-load-more" onClick={() => setShowAll(true)}>
               <ChevronDown size={14} /> Load more ({reversed.length - 10} more)
             </button>
           )}

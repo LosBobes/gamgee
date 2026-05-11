@@ -93,6 +93,29 @@ class UserPreferences(BaseModel):
         return v
 
 
+class UserProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _fmt_email(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str
