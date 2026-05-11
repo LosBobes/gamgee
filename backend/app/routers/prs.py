@@ -33,6 +33,26 @@ def list_prs(
     return [_to_schema(pr) for pr in rows]
 
 
+@router.delete("/{exercise_id}", status_code=204)
+def delete_pr(
+    exercise_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    db_pr = (
+        db.query(models.PersonalRecord)
+        .filter(
+            models.PersonalRecord.user_id == current_user.id,
+            models.PersonalRecord.exercise_id == exercise_id,
+        )
+        .first()
+    )
+    if db_pr is None:
+        raise HTTPException(status_code=404, detail="PR not found")
+    db.delete(db_pr)
+    db.commit()
+
+
 @router.put("/{exercise_id}", response_model=schemas.PersonalRecord, status_code=200)
 def upsert_pr(
     exercise_id: str,

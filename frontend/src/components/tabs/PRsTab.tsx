@@ -1,12 +1,13 @@
-import { Trophy } from "lucide-react";
+import { Trash2, Trophy } from "lucide-react";
 import type { PRDict } from "../../types";
 import { fmtDate, orm1 } from "../../utils";
 
 interface Props {
   prs: PRDict;
+  onDelete: (exerciseId: string) => void;
 }
 
-export default function PRsTab({ prs }: Props) {
+export default function PRsTab({ prs, onDelete }: Props) {
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
@@ -23,6 +24,13 @@ export default function PRsTab({ prs }: Props) {
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
           .map(([id, pr]) => (
             <div key={id} className="pr-card">
+              <button
+                className="pr-delete-btn"
+                onClick={() => onDelete(id)}
+                aria-label={`Delete PR for ${pr.name}`}
+              >
+                <Trash2 size={14} />
+              </button>
               <div className="pr-ex-name">{pr.name}</div>
               <div className="pr-weight-val">
                 {pr.weight}<span className="pr-weight-unit">{pr.isCardio ? "min" : "kg"}</span>
