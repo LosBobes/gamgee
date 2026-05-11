@@ -1,10 +1,18 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from .database import Base, engine
 from .routers import items, workouts, prs, auth, health
 
 Base.metadata.create_all(bind=engine)
+
+# Lightweight in-place migration so existing dev databases pick up newer columns
+# without a full `python -m app.init_db` reset.
+with engine.begin() as _conn:
+    _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(254)"))
+    _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20)"))
+    _conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
 
 app = FastAPI(title="Gamgee API", version="0.1.0", redirect_slashes=False)
 

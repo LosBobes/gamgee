@@ -9,6 +9,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(50), unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)
+    email = Column(String(254), unique=True, nullable=True, index=True)
+    gender = Column(String(20), nullable=True)
 
 
 class Item(Base):

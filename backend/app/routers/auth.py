@@ -13,9 +13,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.username == user_in.username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
+    if db.query(models.User).filter(models.User.email == user_in.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
     user = models.User(
         username=user_in.username,
         hashed_password=hash_password(user_in.password),
+        email=user_in.email,
+        gender=user_in.gender,
     )
     db.add(user)
     db.commit()
@@ -49,7 +53,5 @@ def change_password(
 ):
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    if len(body.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
     current_user.hashed_password = hash_password(body.new_password)
     db.commit()

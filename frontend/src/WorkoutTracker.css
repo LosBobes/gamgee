@@ -1105,6 +1105,54 @@ html, body { background: var(--bg); }
 .auth-toggle { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.875rem; text-align: center; padding: 0; transition: color 0.15s; }
 .auth-toggle:hover { color: var(--text); }
 .auth-err { color: var(--red); font-size: 0.875rem; margin: 0; }
+.auth-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+.auth-card { max-height: 92vh; overflow-y: auto; }
+.auth-field { display: flex; flex-direction: column; gap: 0.25rem; }
+.auth-field > span {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.78rem; color: var(--muted); letter-spacing: 0.3px;
+}
+.auth-field input,
+.auth-field select {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); padding: 0.7rem 0.9rem; font-size: 1rem; outline: none;
+  transition: border-color 0.18s;
+  font-family: inherit;
+}
+.auth-field input:focus,
+.auth-field select:focus { border-color: var(--accent); }
+.auth-field select { appearance: none; cursor: pointer; }
+.auth-hint { font-size: 0.78rem; margin-top: 0.15rem; }
+.auth-hint-warn { color: var(--red); }
+.auth-hint-ok   { color: #2e7d32; }
+.auth-eye {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.75rem; padding: 0; letter-spacing: 0.3px;
+}
+.auth-eye:hover { color: var(--text); }
+.pw-meter {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  margin-top: 0.1rem;
+}
+.pw-meter span {
+  height: 5px; border-radius: 3px; background: var(--border);
+  transition: background 0.18s;
+}
+.pw-meter-1 span:nth-child(-n+1) { background: #c62828; }
+.pw-meter-2 span:nth-child(-n+2) { background: #ef6c00; }
+.pw-meter-3 span:nth-child(-n+3) { background: #f9a825; }
+.pw-meter-4 span                  { background: #2e7d32; }
+.pw-strength-label { font-size: 0.78rem; color: var(--muted); }
+.pw-checklist {
+  list-style: none; margin: 0; padding: 0.4rem 0.6rem;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
+  display: flex; flex-direction: column; gap: 0.2rem;
+  font-size: 0.78rem;
+}
+.pw-checklist li { display: flex; align-items: center; gap: 0.4rem; color: var(--muted); }
+.pw-checklist li.ok  { color: #2e7d32; }
+.pw-checklist li.bad { color: var(--muted); }
+.pw-checklist .pw-mark { width: 0.85rem; text-align: center; font-weight: 700; }
 .logout-btn {
   background: none; border: 1px solid var(--border); border-radius: 6px;
   color: var(--muted); cursor: pointer; padding: 0.35rem 0.55rem;
