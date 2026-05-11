@@ -87,3 +87,19 @@ class PersonalRecord(PersonalRecordCreate):
             return cls(**data)
         return super().model_validate(obj, **kwargs)
 
+
+# ── Body metrics ──────────────────────────────────────────────────────────────
+
+class BodyMetricCreate(BaseModel):
+    metric_type: str
+    value: float
+    unit: str
+    date: str
+    note: str | None = None
+
+
+class BodyMetricOut(BodyMetricCreate):
+    id: int
+
+    model_config = {"from_attributes": True}
+

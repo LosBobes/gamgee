@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, ClipboardList, Trophy, Brain, User, LogOut, Menu, X } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X } from "lucide-react";
 import { fmtClock } from "../utils";
 
 interface Props {
@@ -22,6 +22,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "workout", Icon: Zap,           label: workoutLabel,  badge: null },
     { key: "history", Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
     { key: "prs",     Icon: Trophy,        label: "PRs",         badge: prCount || null },
+    { key: "health",  Icon: Heart,         label: "HEALTH",      badge: null },
     { key: "coach",   Icon: Brain,         label: "COACH",       badge: coachCount || null },
     { key: "profile", Icon: User,          label: "PROFILE",     badge: null },
   ];
