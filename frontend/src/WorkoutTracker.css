@@ -932,7 +932,11 @@ html, body { background: var(--bg); }
 /* ── CALENDAR ── */
 .cal-wrap { animation: fadeUp 0.2s ease; overflow-x: hidden; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
-.cal-month-label { font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; text-align: center; flex: 1; }
+.cal-month-label {
+  font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900;
+  letter-spacing: 2px; text-transform: uppercase; text-align: center;
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .cal-nav-btn {
   font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
   background: transparent; border: 1px solid var(--border); color: var(--muted);
@@ -1311,11 +1315,12 @@ html, body { background: var(--bg); }
   text-transform: uppercase; margin-bottom: 8px;
 }
 .cf-icon-grid {
-  display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 20px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(36px, 1fr));
+  gap: 6px; margin-bottom: 20px;
 }
 .cf-icon-btn {
   background: var(--s1); border: 1px solid var(--border); border-radius: 7px;
-  padding: 9px; color: var(--muted); cursor: pointer;
+  padding: 9px; color: var(--muted); cursor: pointer; min-width: 0;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.15s; -webkit-tap-highlight-color: transparent;
 }
