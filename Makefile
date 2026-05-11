@@ -1,5 +1,10 @@
 # Override on the command line: make ssh HOST=root@1.2.3.4
-HOST ?= root@YOUR_SERVER_IP
+# Set HETZNER_HOST / HETZNER_USER in your shell profile (same names as the
+# GitHub Actions secrets) or pass them on the command line:
+#   export HETZNER_HOST=1.2.3.4   HETZNER_USER=root
+#   make ssh HETZNER_HOST=1.2.3.4 HETZNER_USER=root
+HETZNER_USER ?= root
+HOST ?= $(HETZNER_USER)@$(HETZNER_HOST)
 
 .PHONY: ssh db-tunnel
 
