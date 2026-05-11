@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye } from "lucide-react";
+import { Eye, Plus, Check } from "lucide-react";
 import type { SuggCardProps } from "../types";
 import { MI } from "../data/muscles";
 import { EXERCISE_INFO } from "../data/exerciseInfo";
@@ -44,6 +44,15 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
             <Eye size={15} />
           </button>
         )}
+
+        <button
+          type="button"
+          className={`sugg-btn ${isAdded ? "added" : "add"}`}
+          aria-label={isAdded ? "Remove exercise" : "Add exercise"}
+          onClick={e => { e.stopPropagation(); toggle(); }}
+        >
+          {isAdded ? <Check size={18} /> : <Plus size={18} />}
+        </button>
       </div>
 
       {info && (
