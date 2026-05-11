@@ -1079,6 +1079,7 @@ html, body { background: var(--bg); }
 .wt-auth-screen {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
   background: var(--bg); animation: fadeIn 0.3s ease;
+  font-family: 'Nunito', sans-serif; color: var(--text);
 }
 .auth-card {
   background: var(--s1); border: 1px solid var(--border); border-radius: 14px;
