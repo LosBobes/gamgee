@@ -337,6 +337,26 @@ html, body { background: var(--bg); }
 .sugg-info-btn:hover { color: var(--accent); border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: var(--ad); }
 .sugg-info-btn.open { color: var(--accent); border-color: var(--accent); background: var(--ad2); transform: scale(1.05); }
 
+/* Per-exercise add/remove (+ / ✓) button — independent of the eye details toggle */
+.sugg-btn {
+  flex-shrink: 0;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--s2); color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+  border-radius: 7px; cursor: pointer; padding: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sugg-btn:hover { background: color-mix(in srgb, var(--green) 18%, transparent); border-color: var(--green); transform: scale(1.04); }
+.sugg-btn:active { transform: scale(0.95); }
+.sugg-btn.added {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: var(--ad);
+}
+.sugg-btn.added:hover { background: var(--ad2); border-color: var(--accent); }
+
 /* Animated info panel — grid-rows 0fr → 1fr expands to natural height */
 .sugg-info-wrap {
   display: grid;
@@ -1103,15 +1123,15 @@ html, body { background: var(--bg); }
 
 /* ── PROGRESS BUTTON (Apply Progression) ── */
 .btn-progress {
-  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 700;
-  letter-spacing: 1px; text-transform: uppercase; padding: 3px 7px;
-  background: color-mix(in srgb, var(--green) 12%, transparent);
-  color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
-  border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 8px 14px;
+  background: color-mix(in srgb, var(--green) 14%, transparent);
+  color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+  border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
   transition: all 0.15s; -webkit-tap-highlight-color: transparent;
 }
-.btn-progress:hover { background: color-mix(in srgb, var(--green) 22%, transparent); border-color: var(--green); }
-.btn-progress:active { transform: scale(0.95); }
+.btn-progress:hover { background: color-mix(in srgb, var(--green) 24%, transparent); border-color: var(--green); }
+.btn-progress:active { transform: scale(0.96); }
 
 /* ── DELOAD ACKNOWLEDGMENT BANNER ── */
 .deload-banner {

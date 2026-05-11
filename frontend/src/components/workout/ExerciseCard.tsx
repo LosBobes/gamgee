@@ -131,7 +131,7 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             {analysis && <span style={{ color: analysis.status.color }}>→ {analysis.nextWeight}kg × {analysis.nextReps}</span>}
             {analysis && ex.type === "strength" && (
               <button className="btn-progress" onClick={applyProgression} title="Apply coach recommendation to all sets">
-                <TrendingUp size={11} /> APPLY
+                <TrendingUp size={15} /> APPLY
               </button>
             )}
           </div>
