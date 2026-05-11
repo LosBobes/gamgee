@@ -676,14 +676,23 @@ html, body { background: var(--bg); }
 }
 .btn-icon:hover { color: var(--red); border-color: var(--red); }
 .btn-add-set {
-  font-family: 'Nunito', sans-serif; font-size: 11px; color: var(--muted);
-  background: transparent; border: 1px dashed var(--border); border-radius: 5px;
-  padding: 11px; width: 100%; cursor: pointer; text-align: center;
-  margin-top: 6px; letter-spacing: 1px;
-  transition: border-color 0.15s, color 0.15s, transform 0.12s;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1.5px dashed color-mix(in srgb, var(--primary) 45%, transparent);
+  border-radius: 8px;
+  padding: 14px; width: 100%; cursor: pointer; text-align: center;
+  margin-top: 10px; letter-spacing: 2px; text-transform: uppercase;
+  min-height: 48px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s, transform 0.12s;
   -webkit-tap-highlight-color: transparent;
 }
-.btn-add-set:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+.btn-add-set:hover {
+  border-style: solid; border-color: var(--accent); color: var(--accent);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  transform: translateY(-1px);
+}
+.btn-add-set:active { transform: scale(0.98); }
 .wx-actions { display: flex; gap: 10px; margin-bottom: 14px; }
 
 /* ── EXERCISE CARD (logging) ── */
@@ -701,10 +710,10 @@ html, body { background: var(--bg); }
 
 /* ── SET TABLE ── */
 .set-table { padding: 10px 12px; }
-.set-col-hdr { display: grid; grid-template-columns: 20px 1fr 1fr 46px 32px; gap: 5px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+.set-col-hdr { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
 .col-lbl { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); text-align: center; }
-.set-row { display: grid; grid-template-columns: 20px 1fr 1fr 46px 32px; gap: 5px; align-items: center; margin-bottom: 6px; }
-.set-num { font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; color: var(--muted); text-align: center; transition: color 0.2s; }
+.set-row { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; align-items: center; margin-bottom: 10px; }
+.set-num { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--muted); text-align: center; transition: color 0.2s; }
 .set-num.done { color: var(--green); }
 .set-inp {
   background: var(--s2); border: 1px solid var(--border); border-radius: 5px;
@@ -718,25 +727,83 @@ html, body { background: var(--bg); }
 .set-inp:focus { border-color: var(--accent); background: color-mix(in srgb, var(--primary) 4%, transparent); }
 .set-inp.done { border-color: rgba(76,168,124,0.5); color: var(--green); background: rgba(76,168,124,0.05); }
 .inp-wrap { position: relative; }
-.new-pr-tag { position: absolute; top: -8px; right: 1px; font-family: 'Nunito', sans-serif; font-size: 8px; font-weight: 900; color: var(--pr); letter-spacing: 1px; background: var(--s1); padding: 0 2px; pointer-events: none; animation: prPop 0.3s ease; }
+.new-pr-tag { position: absolute; top: -8px; right: 1px; font-family: 'Nunito', sans-serif; font-size: 8px; font-weight: 900; color: var(--pr); letter-spacing: 1px; background: var(--s1); padding: 0 2px; pointer-events: none; animation: prPop 0.3s ease; z-index: 2; }
+
+/* ── STEPPER (− input +) ── */
+.stepper {
+  display: flex; align-items: stretch; gap: 0;
+  background: var(--s2); border: 1px solid var(--border); border-radius: 9px;
+  overflow: hidden; min-height: 48px;
+  transition: border-color 0.18s, box-shadow 0.18s, transform 0.12s;
+}
+.stepper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary) 40%, transparent),
+              0 4px 14px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.step-btn {
+  flex: 0 0 36px; min-width: 36px;
+  background: transparent; border: none;
+  color: var(--accent); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  transition: background 0.14s, transform 0.08s, color 0.14s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.step-btn:hover {
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  color: var(--accent);
+}
+.step-btn:active {
+  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  transform: scale(0.88);
+}
+.step-minus { border-right: 1px solid var(--border); }
+.step-plus  { border-left:  1px solid var(--border); }
+.step-inp {
+  flex: 1 1 0; min-width: 0;
+  background: transparent !important; border: none !important; border-radius: 0;
+  padding: 4px 2px; font-size: 17px; font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.step-inp:focus { background: transparent !important; }
+.stepper:has(.set-inp.done) {
+  border-color: rgba(76,168,124,0.5);
+  background: rgba(76,168,124,0.05);
+}
+.stepper:has(.set-inp.done) .step-btn { color: var(--green); }
+.stepper:has(.set-inp.done) .step-minus,
+.stepper:has(.set-inp.done) .step-plus { border-color: rgba(76,168,124,0.25); }
+
 .check-btn {
-  width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--border);
+  width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border);
   background: transparent; color: var(--muted); cursor: pointer;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
-.check-btn.done { background: var(--green); border-color: var(--green); color: #060e0a; transform: scale(1.05); }
+.check-btn.done { background: var(--green); border-color: var(--green); color: #060e0a; transform: scale(1.06); box-shadow: 0 4px 14px rgba(76,168,124,0.35); }
 .check-btn:hover:not(.done) { border-color: var(--green); color: var(--green); transform: scale(1.08); }
 .check-btn:active { transform: scale(0.9) !important; }
 .rm-set-btn {
-  width: 30px; height: 44px; background: transparent; border: none; color: var(--border);
+  width: 28px; height: 48px; background: transparent; border: none; color: var(--border);
   cursor: pointer; transition: color 0.15s;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
 .rm-set-btn:hover { color: var(--red); }
 .rm-set-btn:disabled { opacity: 0.2; }
+
+@media (max-width: 380px) {
+  .set-col-hdr,
+  .set-row { grid-template-columns: 16px 1fr 1fr 44px 22px; gap: 4px; }
+  .step-btn { flex-basis: 32px; min-width: 32px; }
+  .step-inp { font-size: 16px; }
+  .check-btn { width: 44px; height: 44px; }
+  .rm-set-btn { width: 22px; height: 44px; }
+}
 
 /* ── EXERCISE PICKER ── */
 .overlay { position: fixed; inset: 0; padding-top: 92px; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: flex-end; animation: fadeIn 0.15s ease; }
