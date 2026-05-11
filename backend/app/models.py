@@ -13,6 +13,7 @@ class User(Base):
     email = Column(String(254), unique=True, nullable=True, index=True)
     gender = Column(String(20), nullable=True)
     primary_color = Column(String(7), nullable=True)
+    is_admin = Column(Boolean, nullable=False, default=False)
 
 
 class Item(Base):

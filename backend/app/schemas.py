@@ -78,6 +78,7 @@ class UserOut(BaseModel):
     email: str | None = None
     gender: str | None = None
     primary_color: str | None = None
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -172,6 +173,77 @@ class PersonalRecord(PersonalRecordCreate):
             data["isCardio"] = data.pop("is_cardio", False)
             return cls(**data)
         return super().model_validate(obj, **kwargs)
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class UserAdminOut(BaseModel):
+    id: int
+    username: str
+    name: str | None = None
+    email: str | None = None
+    gender: str | None = None
+    primary_color: str | None = None
+    is_admin: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class UserAdminUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    gender: str | None = None
+    is_admin: bool | None = None
+
+
+class ExerciseOut(BaseModel):
+    id: str
+    name: str
+    category: str
+    type: str
+    primary_muscles: list[str] = []
+    secondary_muscles: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class ExerciseCreate(BaseModel):
+    id: str
+    name: str
+    category: str
+    type: str = "strength"
+    primary_muscles: list[str] = []
+    secondary_muscles: list[str] = []
+
+
+class ExerciseUpdate(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    type: str | None = None
+    primary_muscles: list[str] | None = None
+    secondary_muscles: list[str] | None = None
+
+
+class WorkoutAdminOut(BaseModel):
+    id: str
+    user_id: int | None = None
+    username: str | None = None
+    date: str
+    duration: int
+    focus: str | None = None
+    exercise_count: int = 0
+
+
+class PRAdminOut(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str | None = None
+    exercise_id: str
+    name: str
+    weight: float
+    reps: int
+    date: str
+    is_cardio: bool = False
 
 
 # ── Body metrics ──────────────────────────────────────────────────────────────

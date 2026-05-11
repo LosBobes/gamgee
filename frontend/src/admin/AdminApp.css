@@ -1,0 +1,370 @@
+/* ── Base ───────────────────────────────────────────────────────────────────── */
+
+.adm-layout {
+  display: flex;
+  height: 100dvh;
+  background: #0a0907;
+  color: #e8e4df;
+  font-family: "Nunito", sans-serif;
+  font-size: 13px;
+}
+
+.adm-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+  background: #0a0907;
+  color: #888;
+  font-family: "Nunito", sans-serif;
+  font-size: 14px;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────────── */
+
+.adm-sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  background: #111009;
+  border-right: 1px solid #222;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+  gap: 2px;
+}
+
+.adm-logo {
+  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #e8e4df;
+  padding: 0 16px 20px;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.adm-logo span {
+  color: #28D1FF;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.adm-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.adm-nav-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-family: "Nunito", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 9px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.12s, background 0.12s;
+  border-radius: 0;
+}
+
+.adm-nav-btn:hover { color: #e8e4df; background: rgba(255,255,255,0.04); }
+.adm-nav-btn.active { color: #28D1FF; background: rgba(40,209,255,0.08); }
+
+.adm-sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 8px;
+  border-top: 1px solid #222;
+}
+
+/* ── Main ───────────────────────────────────────────────────────────────────── */
+
+.adm-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 32px;
+  min-width: 0;
+}
+
+.adm-page {}
+
+.adm-page-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.adm-page-hdr h1 {
+  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e8e4df;
+  margin: 0;
+}
+
+.adm-count {
+  font-size: 13px;
+  font-weight: 400;
+  color: #555;
+  margin-left: 6px;
+  font-family: "Nunito", sans-serif;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ── Table ──────────────────────────────────────────────────────────────────── */
+
+.adm-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #222;
+  border-radius: 8px;
+}
+
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.adm-table th {
+  background: #111009;
+  color: #555;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid #222;
+  white-space: nowrap;
+}
+
+.adm-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #1a1814;
+  vertical-align: middle;
+  color: #c8c4bf;
+}
+
+.adm-table tr:last-child td { border-bottom: none; }
+.adm-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+.adm-muted   { color: #555 !important; }
+.adm-mono    { font-family: "Courier New", monospace; font-size: 11px; }
+.adm-small   { font-size: 11px; }
+
+.adm-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* ── Badges ─────────────────────────────────────────────────────────────────── */
+
+.adm-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  background: #1a1814;
+  color: #555;
+}
+
+.adm-badge-admin {
+  background: rgba(40,209,255,0.12);
+  color: #28D1FF;
+}
+
+/* ── Inputs ─────────────────────────────────────────────────────────────────── */
+
+.adm-input {
+  width: 100%;
+  background: #16140f;
+  border: 1px solid #2a2822;
+  border-radius: 6px;
+  color: #e8e4df;
+  font-family: "Nunito", sans-serif;
+  font-size: 13px;
+  padding: 8px 10px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s;
+}
+
+.adm-input:focus { border-color: #28D1FF; }
+.adm-input.adm-mono { font-family: "Courier New", monospace; font-size: 12px; }
+.adm-input.adm-search { margin-bottom: 12px; }
+
+select.adm-input { cursor: pointer; }
+
+/* ── Buttons ────────────────────────────────────────────────────────────────── */
+
+.adm-btn-primary {
+  background: #28D1FF;
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-family: "Nunito", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 9px 18px;
+  cursor: pointer;
+  transition: opacity 0.12s;
+  flex-shrink: 0;
+}
+
+.adm-btn-primary:hover   { opacity: 0.85; }
+.adm-btn-primary:disabled { opacity: 0.4; cursor: default; }
+
+.adm-btn-ghost {
+  background: transparent;
+  border: 1px solid #2a2822;
+  border-radius: 6px;
+  color: #888;
+  font-family: "Nunito", sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.adm-btn-ghost:hover { border-color: #444; color: #e8e4df; }
+
+.adm-btn-sm {
+  background: #1a1814;
+  border: 1px solid #2a2822;
+  border-radius: 5px;
+  color: #888;
+  font-family: "Nunito", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.adm-btn-sm:hover        { border-color: #444; color: #e8e4df; }
+.adm-btn-sm.adm-btn-danger       { color: #c0504a; border-color: rgba(192,80,74,0.25); }
+.adm-btn-sm.adm-btn-danger:hover { color: #e06060; border-color: rgba(192,80,74,0.5); background: rgba(192,80,74,0.08); }
+
+/* ── Modal ──────────────────────────────────────────────────────────────────── */
+
+.adm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.adm-modal {
+  background: #16140f;
+  border: 1px solid #2a2822;
+  border-radius: 12px;
+  padding: 24px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 90dvh;
+  overflow-y: auto;
+}
+
+.adm-modal-title {
+  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e8e4df;
+  margin: 0 0 4px;
+}
+
+.adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.adm-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.adm-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #888;
+  cursor: pointer;
+}
+
+.adm-checkbox input { cursor: pointer; accent-color: #28D1FF; }
+
+.adm-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.adm-err {
+  color: #c0504a;
+  font-size: 12px;
+  margin: 0;
+}
+
+/* ── Login ──────────────────────────────────────────────────────────────────── */
+
+.adm-login-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background: #0a0907;
+  padding: 20px;
+}
+
+.adm-login-box {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-login-box .adm-logo {
+  text-align: center;
+  padding: 0 0 12px;
+  font-size: 28px;
+}
+
+.adm-login-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

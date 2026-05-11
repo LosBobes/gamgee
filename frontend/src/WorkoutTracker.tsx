@@ -42,6 +42,7 @@ export default function WorkoutTracker() {
   const [username,     setUsername]     = useState<string | null>(null);
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
+  const [isAdmin,      setIsAdmin]      = useState(false);
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
@@ -86,10 +87,11 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null }) => {
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
+        setIsAdmin(d.is_admin ?? false);
         if (d.primary_color) setPrimaryColor(d.primary_color);
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -290,7 +292,7 @@ export default function WorkoutTracker() {
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
         historyCount={history.length} prCount={Object.keys(prs).length} coachCount={coachCount}
-        tab={tab} setTab={setTab} onLogout={logout}
+        tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
       <div className="content">
