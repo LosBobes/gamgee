@@ -13,6 +13,7 @@ import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
 import { ALL_EX } from "./data/exercises";
 import { analyzeEx } from "./analysis";
+import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 
 export default function WorkoutTracker() {
   // UI
@@ -183,6 +184,14 @@ export default function WorkoutTracker() {
   const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history) !== null).length;
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
+
+  useMobileBackGesture(!!token, () => {
+    if (completed)               { setCompleted(null); setTab("history"); return true; }
+    if (tab !== "workout")       { setTab("workout"); return true; }
+    if (active)                  { return true; }
+    if (wStep > 0)               { setWStep(wStep - 1); return true; }
+    return false;
+  });
 
   if (!token) return <AuthScreen onLogin={setToken} />;
 
