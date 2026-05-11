@@ -10,6 +10,9 @@ export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: n
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
 export interface WorkoutSet { weight: string; reps: string; done: boolean; }
 export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
+export type CardioTiming = "none" | "before" | "after" | "both";
+export interface CardioSlot { exId: string; minutes: number; }
+export interface CardioPlan { timing: CardioTiming; before: CardioSlot | null; after: CardioSlot | null; }
 export interface WorkoutSession { id: string; date: string; duration: number; focus?: string | null; exercises: WorkoutExercise[]; }
 export interface PersonalRecord { name: string; weight: number; reps: number; date: string; isCardio?: boolean; }
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }

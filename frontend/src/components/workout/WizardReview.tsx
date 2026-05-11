@@ -1,5 +1,5 @@
-import { ArrowLeft, X, Zap, Clock } from "lucide-react";
-import type { ExerciseDef, WorkoutSession } from "../../types";
+import { ArrowLeft, X, Zap, Clock, Heart } from "lucide-react";
+import type { CardioPlan, ExerciseDef, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
@@ -14,9 +14,10 @@ interface Props {
   onBack:      () => void;
   onStart:     (autoFill: boolean) => void;
   focus:       string;
+  cardio:      CardioPlan;
 }
 
-export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus }: Props) {
+export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus, cardio }: Props) {
   const finalActive = getActive(planned);
   const finalGroups = muscleGroups(finalActive);
 
@@ -75,6 +76,28 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           </div>
         )}
       </div>
+
+      {(cardio.before || cardio.after) && (
+        <div className="cardio-summary-card">
+          <div className="cardio-summary-head"><Heart size={13} /> CARDIO PLAN</div>
+          {cardio.before && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">BEFORE</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.before!.exId)?.name ?? cardio.before.exId} · {cardio.before.minutes} min
+              </span>
+            </div>
+          )}
+          {cardio.after && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">AFTER</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.after!.exId)?.name ?? cardio.after.exId} · {cardio.after.minutes} min
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {planned.map((ex, i) => {
         const m    = EM[ex.id] || { p: [], s: [] };
