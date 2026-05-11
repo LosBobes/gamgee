@@ -9,8 +9,8 @@ export default function SplashScreen({ onDone }: Props) {
 
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const holdMs   = reduceMotion ? 350 : 2200;
-    const fadeMs   = reduceMotion ? 150 : 450;
+    const holdMs = reduceMotion ? 350 : 2000;
+    const fadeMs = reduceMotion ? 150 : 400;
     const leaveTimer = setTimeout(() => setLeaving(true), holdMs);
     const doneTimer  = setTimeout(onDone, holdMs + fadeMs);
     return () => { clearTimeout(leaveTimer); clearTimeout(doneTimer); };
@@ -20,19 +20,25 @@ export default function SplashScreen({ onDone }: Props) {
     <div className={`splash${leaving ? " splash-leaving" : ""}`} role="presentation" aria-hidden={leaving}>
       <div className="splash-inner">
         <div className="splash-logo-wrap">
-          <span className="splash-ring" />
-          <span className="splash-ring splash-ring-2" />
-          <div className="splash-logo-stage">
-            <img src="/logo.png" alt="" className="splash-logo splash-logo-ghost" />
-            <img src="/logo.png" alt="" className="splash-logo splash-logo-reveal" />
-            <span className="splash-scanline" />
-          </div>
+          <svg className="splash-progress" viewBox="0 0 128 128" fill="none" aria-hidden="true">
+            {/* faint track */}
+            <circle cx="64" cy="64" r="54" stroke="var(--primary)" strokeWidth="3.5" strokeOpacity="0.12" />
+            {/* animated fill — starts from top (rotated -90°) */}
+            <circle
+              cx="64" cy="64" r="54"
+              stroke="var(--primary)"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              className="splash-progress-ring"
+              transform="rotate(-90 64 64)"
+            />
+          </svg>
+          <img src="/logo.png" alt="" className="splash-logo" />
         </div>
         <div className="splash-text">
           <div className="splash-name">GAMGEE</div>
           <div className="splash-sub">Workout Tracker</div>
         </div>
-        <div className="splash-bar"><span /></div>
       </div>
     </div>
   );

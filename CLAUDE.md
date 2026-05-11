@@ -48,23 +48,27 @@ cd backend && python -m app.init_db
 ## Architecture
 
 ### Backend (`backend/app/`)
-- `main.py` — FastAPI app; registers all routers, sets up CORS (allows `localhost:5173`), auto-creates tables on startup
+- `main.py` — FastAPI app; registers all routers, sets up CORS (allows `localhost:5173`), auto-creates tables on startup; runs lightweight in-place migrations (ALTER TABLE IF NOT EXISTS) for new columns so existing dev DBs don't need a full reset
 - `database.py` — SQLAlchemy engine, `SessionLocal`, `get_db()` dependency
-- `models.py` — ORM models: `User`, `WorkoutSession`, `PersonalRecord`, `Exercise`, `Item`
+- `models.py` — ORM models: `User`, `WorkoutSession`, `PersonalRecord`, `Exercise`, `Item`, `BodyMetric`
 - `schemas.py` — Pydantic request/response schemas
 - `auth.py` — JWT (HS256, 7-day expiry), bcrypt hashing, `get_current_user` dependency; secret from `JWT_SECRET` env var
+- `password_policy.py` — OWASP/NIST 800-63B password validation (12–128 chars, complexity rules, username/email similarity check, common-password blocklist)
 - `init_db.py` / `seed.py` — DB setup and exercise seeding (~93 exercises)
-- `routers/auth.py` (`/api/auth`) — register, login (OAuth2 password flow), `/api/auth/me`
-- `routers/workouts.py` (`/api/workouts`) — list (GET) and create (POST); client generates UUID for session `id`
-- `routers/prs.py` (`/api/prs`) — list (GET) and upsert (PUT `/api/prs/{exercise_id}`)
+- `routers/auth.py` (`/api/auth`) — register, login (OAuth2 password flow), `/api/auth/me`, `POST /api/auth/change-password`
+- `routers/workouts.py` (`/api/workouts`) — list (GET), create (POST), update (PUT `/{session_id}`), delete (DELETE `/{session_id}`); client generates UUID for session `id`
+- `routers/prs.py` (`/api/prs`) — list (GET), upsert (PUT `/api/prs/{exercise_id}`), delete (DELETE `/api/prs/{exercise_id}`)
+- `routers/health.py` (`/api/health`) — body metric CRUD: list (GET, filterable by `metric_type`, `from`, `to`), create (POST), delete (DELETE `/{metric_id}`)
 - `routers/items.py` (`/api/items`) — generic CRUD (scaffold, mostly unused)
 
 **Key data model notes:**
 - `WorkoutSession.id` is a client-generated UUID string (not DB autoincrement); POST returns 409 on duplicate
 - `WorkoutSession.exercises` is a JSONB array column — no join table; full exercise+sets data embedded
 - `WorkoutSession.duration` is stored in **milliseconds**
-- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — always upsert via `PUT /api/prs/{exercise_id}`
+- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — always upsert via `PUT /api/prs/{exercise_id}`; has `is_cardio` boolean field
 - `Exercise.id` is a short human-readable key (e.g. `"bench"`, `"ohp"`) matching the frontend's `EM` map
+- `User` now has `name`, `email` (unique), and `gender` fields added via in-place migration
+- `BodyMetric` stores time-series health data: `metric_type`, `value`, `unit`, `date` (ISO string), optional `note`
 
 ### Frontend (`frontend/src/`)
 
