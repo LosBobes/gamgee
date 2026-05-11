@@ -36,6 +36,7 @@ class Item(ItemBase):
 class UserCreate(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     password: str
+    name: str = Field(min_length=1, max_length=100)
     email: str = Field(max_length=254)
     gender: Gender
 
@@ -45,6 +46,14 @@ class UserCreate(BaseModel):
         v = v.strip()
         if not _USERNAME_RE.match(v):
             raise ValueError("Username may only contain letters, digits, '.', '_' or '-'")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def _name_format(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
         return v
 
     @field_validator("email")
@@ -64,6 +73,7 @@ class UserCreate(BaseModel):
 class UserOut(BaseModel):
     id: int
     username: str
+    name: str | None = None
     email: str | None = None
     gender: str | None = None
 

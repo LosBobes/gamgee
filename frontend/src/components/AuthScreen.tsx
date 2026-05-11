@@ -78,6 +78,7 @@ export default function AuthScreen({ onLogin }: Props) {
   const [user,    setUser]    = useState("");
   const [pass,    setPass]    = useState("");
   const [pass2,   setPass2]   = useState("");
+  const [name,    setName]    = useState("");
   const [email,   setEmail]   = useState("");
   const [gender,  setGender]  = useState<Gender>("");
   const [showPw,  setShowPw]  = useState(false);
@@ -94,6 +95,7 @@ export default function AuthScreen({ onLogin }: Props) {
     (!user.trim() ||
       !USERNAME_RE.test(user.trim()) ||
       user.trim().length < 3 ||
+      !name.trim() ||
       !EMAIL_RE.test(email.trim()) ||
       !gender ||
       !allPwOk ||
@@ -130,6 +132,7 @@ export default function AuthScreen({ onLogin }: Props) {
           body: JSON.stringify({
             username: user.trim(),
             password: pass,
+            name:     name.trim(),
             email:    email.trim().toLowerCase(),
             gender,
           }),
@@ -165,7 +168,7 @@ export default function AuthScreen({ onLogin }: Props) {
           <label className="auth-field">
             <span>Username</span>
             <input
-              placeholder="At least 3 characters"
+              placeholder={view === "register" ? "At least 3 characters" : "username"}
               value={user}
               onChange={e => setUser(e.target.value)}
               autoComplete="username"
@@ -177,6 +180,18 @@ export default function AuthScreen({ onLogin }: Props) {
 
           {view === "register" && (
             <>
+              <label className="auth-field">
+                <span>Name</span>
+                <input
+                  placeholder="Your name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  autoComplete="name"
+                  maxLength={100}
+                  required
+                />
+              </label>
+
               <label className="auth-field">
                 <span>Email</span>
                 <input
@@ -222,7 +237,7 @@ export default function AuthScreen({ onLogin }: Props) {
             </span>
             <input
               type={showPw ? "text" : "password"}
-              placeholder={view === "register" ? `At least ${PW_MIN} characters` : "Password"}
+              placeholder={view === "register" ? `At least ${PW_MIN} characters` : "password"}
               value={pass}
               onChange={e => setPass(e.target.value)}
               autoComplete={view === "register" ? "new-password" : "current-password"}
