@@ -39,7 +39,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
       <div className="hdr">
         <div className="hdr-top">
           <div className="hdr-brand">
-            <img src="/logo.png" alt="Gamgee" className="logo-img" />
+            <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
               <div className="logo-sub">Workout Tracker</div>

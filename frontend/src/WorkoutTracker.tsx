@@ -15,6 +15,7 @@ import { ALL_EX } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 
+
 export default function WorkoutTracker() {
   // UI
   const [tab,       setTab]       = useState("workout");
@@ -34,8 +35,11 @@ export default function WorkoutTracker() {
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
-  const [token,     setToken]     = useState<string | null>(() => localStorage.getItem("iron_log_token"));
-  const [username,  setUsername]  = useState<string | null>(null);
+  const [token,        setToken]        = useState<string | null>(() => localStorage.getItem("iron_log_token"));
+  const [username,     setUsername]     = useState<string | null>(null);
+  const [primaryColor, setPrimaryColor] = useState<string>(
+    () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
+  );
 
   const authFetch = (url: string, opts: RequestInit = {}) =>
     fetch(url, {
@@ -45,6 +49,11 @@ export default function WorkoutTracker() {
       if (res.status === 401) { localStorage.removeItem("iron_log_token"); setToken(null); }
       return res;
     });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--primary", primaryColor);
+    localStorage.setItem("gamgee_primary_color", primaryColor);
+  }, [primaryColor]);
 
   useEffect(() => {
     if (!token) return;
@@ -57,7 +66,10 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string }) => setUsername(d.username)).catch(() => {});
+      .then(r => r.json()).then((d: { username: string; primary_color?: string | null }) => {
+        setUsername(d.username);
+        if (d.primary_color) setPrimaryColor(d.primary_color);
+      }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -247,7 +259,7 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} />}
       </div>
     </div>
   );

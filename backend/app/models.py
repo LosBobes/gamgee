@@ -12,6 +12,7 @@ class User(Base):
     name = Column(String(100), nullable=True)
     email = Column(String(254), unique=True, nullable=True, index=True)
     gender = Column(String(20), nullable=True)
+    primary_color = Column(String(7), nullable=True)
 
 
 class Item(Base):

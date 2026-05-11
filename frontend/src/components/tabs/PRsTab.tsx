@@ -39,7 +39,7 @@ export default function PRsTab({ prs, onDelete }: Props) {
                 <div className="pr-reps">{pr.isCardio ? `${pr.reps} km` : `× ${pr.reps} reps`}</div>
               )}
               {!pr.isCardio && pr.weight && pr.reps > 0 && (
-                <div className="pr-reps" style={{ color: "var(--blue)" }}>est. 1RM ~{orm1(pr.weight, pr.reps)}kg</div>
+                <div className="pr-reps" style={{ color: "var(--pr-muted)" }}>est. 1RM ~{orm1(pr.weight, pr.reps)}kg</div>
               )}
               <div className="pr-date">{fmtDate(pr.date)}</div>
             </div>

@@ -33,7 +33,7 @@ export default function SplashScreen({ onDone }: Props) {
               transform="rotate(-90 64 64)"
             />
           </svg>
-          <img src="/logo.png" alt="" className="splash-logo" />
+          <div className="splash-logo" role="img" aria-hidden="true" />
         </div>
         <div className="splash-text">
           <div className="splash-name">GAMGEE</div>

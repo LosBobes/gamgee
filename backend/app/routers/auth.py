@@ -56,3 +56,16 @@ def change_password(
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     current_user.hashed_password = hash_password(body.new_password)
     db.commit()
+
+
+@router.patch("/preferences", response_model=schemas.UserOut)
+def update_preferences(
+    body: schemas.UserPreferences,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.primary_color is not None:
+        current_user.primary_color = body.primary_color
+    db.commit()
+    db.refresh(current_user)
+    return current_user

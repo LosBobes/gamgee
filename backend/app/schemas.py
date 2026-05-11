@@ -7,6 +7,7 @@ from .password_policy import validate_password
 
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 _USERNAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+_HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 Gender = Literal["female", "male", "non_binary", "other", "prefer_not_to_say"]
 
@@ -76,8 +77,20 @@ class UserOut(BaseModel):
     name: str | None = None
     email: str | None = None
     gender: str | None = None
+    primary_color: str | None = None
 
     model_config = {"from_attributes": True}
+
+
+class UserPreferences(BaseModel):
+    primary_color: str | None = None
+
+    @field_validator("primary_color")
+    @classmethod
+    def _valid_hex(cls, v: str | None) -> str | None:
+        if v is not None and not _HEX_COLOR_RE.match(v):
+            raise ValueError("primary_color must be a valid #RRGGBB hex color")
+        return v
 
 
 class Token(BaseModel):

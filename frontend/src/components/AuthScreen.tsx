@@ -162,7 +162,7 @@ export default function AuthScreen({ onLogin }: Props) {
   return (
     <div className="wt-auth-screen tab-anim">
       <div className="auth-card">
-        <img src="/logo.png" alt="Gamgee" className="auth-logo" />
+        <div className="auth-logo" role="img" aria-label="Gamgee" />
         <h2>{view === "login" ? "Welcome back" : "Create your account"}</h2>
         <form onSubmit={handleSubmit} noValidate>
           <label className="auth-field">

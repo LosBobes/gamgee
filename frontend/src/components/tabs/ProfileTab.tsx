@@ -6,9 +6,83 @@ import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
 
 interface Props {
-  username: string | null;
-  history:  WorkoutSession[];
-  token:    string | null;
+  username:      string | null;
+  history:       WorkoutSession[];
+  token:         string | null;
+  primaryColor:  string;
+  onColorChange: (color: string) => void;
+}
+
+const PALETTE = [
+  "#28D1FF", // cyan (default)
+  "#4CA87C", // green
+  "#8C70D8", // purple
+  "#E8C547", // gold
+  "#FF6B6B", // coral
+  "#FF9F43", // orange
+  "#5C90C0", // steel blue
+  "#E879A0", // pink
+];
+
+function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: string) => void; token: string | null }) {
+  const [saving, setSaving] = useState(false);
+
+  const save = async (c: string) => {
+    onChange(c);
+    setSaving(true);
+    try {
+      await fetch("/api/auth/preferences", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
+        body:    JSON.stringify({ primary_color: c }),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="profile-card">
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        {saving ? "Saving…" : "Accent color"}
+      </div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        {PALETTE.map(c => (
+          <button
+            key={c}
+            onClick={() => save(c)}
+            title={c}
+            style={{
+              width: 30, height: 30, borderRadius: "50%", background: c, padding: 0,
+              border: "none", cursor: "pointer", flexShrink: 0,
+              outline: c.toLowerCase() === color.toLowerCase() ? `3px solid ${c}` : "none",
+              outlineOffset: 3,
+              boxShadow: c.toLowerCase() === color.toLowerCase() ? "0 0 0 1px var(--border)" : "none",
+              transition: "outline 0.15s, box-shadow 0.15s",
+            }}
+          />
+        ))}
+        <label
+          title="Custom color"
+          style={{
+            width: 30, height: 30, borderRadius: "50%", border: "2px dashed var(--border)",
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0, overflow: "hidden",
+            outline: !PALETTE.some(c => c.toLowerCase() === color.toLowerCase()) ? `3px solid ${color}` : "none",
+            outlineOffset: 3,
+          }}
+        >
+          <input
+            type="color"
+            value={color}
+            onChange={e => save(e.target.value)}
+            style={{ width: 40, height: 40, border: "none", padding: 0, cursor: "pointer", opacity: 0, position: "absolute" }}
+          />
+          <span style={{ fontSize: 14, color: "var(--muted)", lineHeight: 1, pointerEvents: "none" }}>+</span>
+        </label>
+      </div>
+    </div>
+  );
 }
 
 function ChangePasswordCard({ token }: { token: string | null }) {
@@ -93,11 +167,13 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, history, token }: Props) {
+export default function ProfileTab({ username, history, token, primaryColor, onColorChange }: Props) {
   if (history.length === 0) {
     return (
       <div className="tab-anim">
         <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">Log your first workout to build your profile</div></div>
+        <div className="profile-section">Appearance</div>
+        <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
         <div className="profile-section">Account</div>
         <ChangePasswordCard token={token} />
       </div>
@@ -225,6 +301,9 @@ export default function ProfileTab({ username, history, token }: Props) {
           </div>
         </>
       )}
+
+      <div className="profile-section">Appearance</div>
+      <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
 
       <div className="profile-section">Account</div>
       <ChangePasswordCard token={token} />
