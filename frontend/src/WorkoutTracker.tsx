@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./WorkoutTracker.css";
-import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
+import type { CardioPlan, ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -20,6 +20,7 @@ export default function WorkoutTracker() {
   const [tab,       setTab]       = useState("workout");
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
+  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
   const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
   // logging
   const [active,    setActive]    = useState(false);
@@ -70,7 +71,19 @@ export default function WorkoutTracker() {
 
   const startFromWizard = (autoFill = false) => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
-    setExercises(planned.map(ex => {
+
+    const cardioEx = (slot: CardioPlan["before"]): WorkoutExercise | null => {
+      if (!slot) return null;
+      const def = ALL_EX.find(e => e.id === slot.exId);
+      if (!def) return null;
+      return {
+        ...def,
+        uid: `${def.id}_${Date.now()}_${Math.random()}`,
+        sets: [{ weight: String(slot.minutes), reps: "", done: false }],
+      };
+    };
+
+    const mainExercises: WorkoutExercise[] = planned.map(ex => {
       let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
       if (autoFill) {
         const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
@@ -81,8 +94,17 @@ export default function WorkoutTracker() {
         }
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
-    }));
+    });
+
+    const before = cardioEx(cardio.before);
+    const after  = cardioEx(cardio.after);
+    setExercises([
+      ...(before ? [before] : []),
+      ...mainExercises,
+      ...(after ? [after] : []),
+    ]);
     setPlanned([]);
+    setCardio({ timing: "none", before: null, after: null });
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -144,6 +166,7 @@ export default function WorkoutTracker() {
     setPrs(newPrs);
     setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
     setWStep(0); setPlanned([]); setFocus(null);
+    setCardio({ timing: "none", before: null, after: null });
     setCompleted(session);
   };
 
@@ -211,6 +234,7 @@ export default function WorkoutTracker() {
           <WorkoutTab
             active={active} wStep={wStep} setWStep={setWStep}
             focus={focus} setFocus={setFocus}
+            cardio={cardio} setCardio={setCardio}
             planned={planned} setPlanned={setPlanned}
             exercises={exercises} prs={prs} history={history}
             doneSets={doneSets} startFromWizard={startFromWizard}

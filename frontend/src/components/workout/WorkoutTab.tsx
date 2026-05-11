@@ -1,7 +1,8 @@
 import { useRef } from "react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
+import type { CardioPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardFocus from "./WizardFocus";
+import WizardCardio from "./WizardCardio";
 import WizardBuild from "./WizardBuild";
 import WizardReview from "./WizardReview";
 import ActiveWorkout from "./ActiveWorkout";
@@ -12,6 +13,8 @@ interface Props {
   setWStep:       (s: number) => void;
   focus:          string | null;
   setFocus:       (f: string) => void;
+  cardio:         CardioPlan;
+  setCardio:      (c: CardioPlan) => void;
   planned:        ExerciseDef[];
   setPlanned:     (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
   exercises:      WorkoutExercise[];
@@ -29,7 +32,7 @@ interface Props {
   finishWorkout:  () => void;
 }
 
-export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, planned, setPlanned, exercises, prs, history, doneSets, startFromWizard, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout }: Props) {
+export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, cardio, setCardio, planned, setPlanned, exercises, prs, history, doneSets, startFromWizard, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack = wStep < prevStepRef.current;
   prevStepRef.current = wStep;
@@ -52,27 +55,38 @@ export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, p
           />
         </div>
       )}
-      {!active && wStep === 2 && focus && (
+      {!active && wStep === 2 && (
         <div key="wstep-2" className={stepAnim}>
-          <WizardBuild
-            focus={focus}
-            planned={planned}
-            setPlanned={setPlanned}
+          <WizardCardio
+            plan={cardio}
+            setPlan={setCardio}
             onBack={() => setWStep(1)}
             onNext={() => setWStep(3)}
-            history={history}
           />
         </div>
       )}
       {!active && wStep === 3 && focus && (
         <div key="wstep-3" className={stepAnim}>
+          <WizardBuild
+            focus={focus}
+            planned={planned}
+            setPlanned={setPlanned}
+            onBack={() => setWStep(2)}
+            onNext={() => setWStep(4)}
+            history={history}
+          />
+        </div>
+      )}
+      {!active && wStep === 4 && focus && (
+        <div key="wstep-4" className={stepAnim}>
           <WizardReview
             planned={planned}
             setPlanned={setPlanned}
             history={history}
-            onBack={() => setWStep(2)}
+            onBack={() => setWStep(3)}
             onStart={startFromWizard}
             focus={focus}
+            cardio={cardio}
           />
         </div>
       )}

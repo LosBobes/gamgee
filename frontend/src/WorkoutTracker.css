@@ -1322,3 +1322,67 @@ html, body { background: var(--bg); }
   width: 16px; flex-shrink: 0;
 }
 .autopop-name { font-size: 13px; color: var(--text); }
+
+/* ── Cardio picker ──────────────────────────────────────────────────── */
+.cardio-timing-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px; margin-bottom: 18px;
+}
+.cardio-slot {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px; margin-bottom: 12px;
+}
+.cardio-slot-label {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--accent); margin-bottom: 10px;
+}
+.cardio-field { display: block; margin-bottom: 10px; }
+.cardio-field:last-child { margin-bottom: 0; }
+.cardio-field-label {
+  display: block; font-size: 10px; font-family: 'Nunito', sans-serif;
+  font-weight: 700; letter-spacing: 1px; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.cardio-select {
+  width: 100%; padding: 10px 12px; background: var(--s2);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+  font-size: 13px; font-family: inherit;
+}
+.cardio-select:focus { outline: none; border-color: var(--accent); }
+.cardio-duration-row { display: flex; flex-direction: column; gap: 8px; }
+.cardio-duration-input {
+  width: 100%; padding: 10px 12px; background: var(--s2);
+  border: 1px solid var(--border); border-radius: 8px; color: var(--text);
+  font-size: 13px; font-family: inherit;
+}
+.cardio-duration-input:focus { outline: none; border-color: var(--accent); }
+.cardio-duration-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.cardio-chip {
+  padding: 6px 12px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 999px; color: var(--muted); font-size: 12px; cursor: pointer;
+  font-family: 'Nunito', sans-serif; font-weight: 700;
+}
+.cardio-chip:hover { color: var(--text); border-color: var(--muted); }
+.cardio-chip.selected {
+  background: var(--ad2); border-color: var(--accent); color: var(--accent);
+}
+
+/* ── Cardio review summary ──────────────────────────────────────────── */
+.cardio-summary-card {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px 14px; margin-bottom: 12px;
+}
+.cardio-summary-head {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; color: var(--accent); margin-bottom: 8px;
+}
+.cardio-summary-row {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0;
+}
+.cardio-summary-tag {
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; color: var(--muted); background: var(--s2);
+  padding: 3px 8px; border-radius: 999px; border: 1px solid var(--border);
+}
+.cardio-summary-text { font-size: 13px; color: var(--text); }

@@ -48,7 +48,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><X size={12} /> Cancel</button>
         <span className="wz-focus-label">STEP 1 — FOCUS</span>
-        <button className="wz-next" onClick={onNext} disabled={!focus}>BUILD <ChevronRight size={13} /></button>
+        <button className="wz-next" onClick={onNext} disabled={!focus}>CARDIO <ChevronRight size={13} /></button>
       </div>
       <div className="wizard-title">What are we training?</div>
       <div className="wizard-sub">Pick a focus to get smart exercise suggestions</div>
