@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./WorkoutTracker.css";
-import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet } from "./types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -8,6 +8,7 @@ import WorkoutTab from "./components/workout/WorkoutTab";
 import WorkoutComplete from "./components/workout/WorkoutComplete";
 import HistoryTab from "./components/tabs/HistoryTab";
 import PRsTab from "./components/tabs/PRsTab";
+import HealthTab from "./components/tabs/HealthTab";
 import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
 import { ALL_EX } from "./data/exercises";
@@ -25,8 +26,9 @@ export default function WorkoutTracker() {
   const [elapsed,   setElapsed]   = useState(0);
   const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
   // data
-  const [history,   setHistory]   = useState<WorkoutSession[]>([]);
-  const [prs,       setPrs]       = useState<PRDict>({});
+  const [history,       setHistory]       = useState<WorkoutSession[]>([]);
+  const [prs,           setPrs]           = useState<PRDict>({});
+  const [healthMetrics, setHealthMetrics] = useState<BodyMetric[]>([]);
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
@@ -162,6 +164,12 @@ export default function WorkoutTracker() {
     setPrs(p => { const n = { ...p }; delete n[exerciseId]; return n; });
   };
 
+  const fetchHealthMetrics = (type: string): Promise<void> =>
+    authFetch(`/api/health?metric_type=${type}`)
+      .then(r => r.json())
+      .then((data: BodyMetric[]) => setHealthMetrics(data))
+      .catch(() => {});
+
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
   const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history) !== null).length;
@@ -196,6 +204,7 @@ export default function WorkoutTracker() {
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
+        {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
         {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
       </div>

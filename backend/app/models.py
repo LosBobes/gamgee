@@ -53,3 +53,15 @@ class Exercise(Base):
     type = Column(String(20), nullable=False)     # strength | cardio | timed
     primary_muscles = Column(JSONB, nullable=False, default=list)
     secondary_muscles = Column(JSONB, nullable=False, default=list)
+
+
+class BodyMetric(Base):
+    __tablename__ = "body_metrics"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    metric_type = Column(String(50), nullable=False)
+    value = Column(Float, nullable=False)
+    unit = Column(String(20), nullable=False)
+    date = Column(String, nullable=False)        # ISO date string YYYY-MM-DD
+    note = Column(Text, nullable=True)
