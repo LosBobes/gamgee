@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { User } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
@@ -302,6 +302,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
         <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
+        <Duck />
       </div>
     );
   }
@@ -439,6 +440,62 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
+
+      <Duck />
     </div>
+  );
+}
+
+const DUCK_MSGS = [
+  "QUACK",
+  "You found the duck. +1 to all lifts.",
+  "The duck has spoken. Lift heavy.",
+  "QUACK QUACK (that's bro for 'good job')",
+  "The Swoly Bible has a duck chapter. Thou shalt quack.",
+  "Rubber ducky, you're the one making gains so much fun.",
+  "The iron duck never lies.",
+  "Disciples of the Swoly Duck do not skip leg day.",
+  "Every rep is a quack for the person you want to be.",
+];
+
+function Duck() {
+  const [msg, setMsg]       = useState<string | null>(null);
+  const [bounce, setBounce] = useState(false);
+
+  const handleDuck = useCallback(() => {
+    setMsg(DUCK_MSGS[Math.floor(Math.random() * DUCK_MSGS.length)]);
+    setBounce(true);
+    setTimeout(() => setBounce(false), 500);
+    setTimeout(() => setMsg(null), 2800);
+  }, []);
+
+  return (
+    <div style={{ textAlign: "center" }}>
+      {msg && <div className="health-toast">{msg}</div>}
+      <button className={`duck-btn${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
+        <DuckIcon size={22} />
+      </button>
+    </div>
+  );
+}
+
+function DuckIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round">
+      {/* body */}
+      <path d="M2 18C2 14 6 12 11 12C16 12 20 14 20 18C20 21 16 23 11 23C6 23 2 21 2 18Z" />
+      {/* tail curving up at back */}
+      <path d="M2 15C1 12 2 9 4 8" />
+      {/* head */}
+      <circle cx="17" cy="9" r="3" />
+      {/* beak */}
+      <path d="M20 8.5L23 9L20 10.5" />
+      {/* eye */}
+      <circle cx="18.5" cy="8" r=".5" fill="currentColor" stroke="none" />
+      {/* wing */}
+      <path d="M6 18C9 16 13 16 16 18" />
+    </svg>
   );
 }

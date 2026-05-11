@@ -24,6 +24,9 @@ export type MuscleShape = MuscleDef | MusclePathDef;
 export interface CoachingTip { icon: LucideIcon; title: string; body: string; bodyBro?: string; }
 export interface CustomFocusDef { id: string; name: string; iconName: string; desc: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }
+export type WeekPlanDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+export interface DayPlan { focus: string; exerciseIds: string[]; enabled: boolean; }
+export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>>;
 export interface MetricDef { id: string; label: string; unit: string; color: string; step: number; min: number; max: number; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 // activeMuscles removed — SuggCard uses pre-computed newP/ovP/newS from SuggExercise

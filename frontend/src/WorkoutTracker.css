@@ -323,6 +323,19 @@ html, body { background: var(--bg); }
   line-height: 1.4; color: var(--text);
   margin-bottom: 28px; max-width: 340px; text-align: center;
 }
+.duck-btn {
+  background: none; border: none; cursor: pointer; font-size: 18px;
+  opacity: 0.05; padding: 8px; margin-top: 20px;
+  transition: opacity 0.2s; display: block;
+}
+.duck-btn:hover { opacity: 0.5; }
+.duck-btn.bounce { animation: duck-bounce 0.5s ease; }
+@keyframes duck-bounce {
+  0%   { transform: scale(1)    rotate(0deg); }
+  25%  { transform: scale(1.5)  rotate(-20deg); }
+  60%  { transform: scale(0.85) rotate(12deg); }
+  100% { transform: scale(1)    rotate(0deg); }
+}
 .start-quote-attr {
   font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
   color: var(--accent); margin-top: 10px; font-style: normal; font-weight: 700;
@@ -331,6 +344,88 @@ html, body { background: var(--bg); }
 /* ── WIZARD ── */
 .wizard-title { font-family: 'Nunito', sans-serif; font-size: 28px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 4px; }
 .wizard-sub { font-size: 11px; color: var(--muted); letter-spacing: 1px; margin-bottom: 20px; }
+
+/* ── WIZARD MODE (step 1) ── */
+.wm-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+.wm-today-card {
+  background: var(--ad); border: 1px solid var(--ad2); border-radius: 12px;
+  padding: 16px; margin-bottom: 16px;
+}
+.wm-today-day { font-size: 10px; font-weight: 700; letter-spacing: 3px; color: var(--accent); margin-bottom: 2px; }
+.wm-today-focus { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 900; color: var(--text); margin-bottom: 10px; }
+.wm-today-exercises { margin-bottom: 4px; }
+.wm-today-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+.wm-today-num { font-size: 10px; font-weight: 700; color: var(--muted); width: 14px; flex-shrink: 0; font-family: 'Nunito', sans-serif; }
+.wm-today-name { font-size: 13px; color: var(--text); font-family: 'Nunito', sans-serif; }
+.wm-today-auto { font-size: 11px; color: var(--muted); font-family: 'Nunito', sans-serif; font-style: italic; margin-bottom: 4px; }
+.wm-rest-card {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; margin-bottom: 16px; text-align: center;
+}
+.wm-rest-label { font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.wm-rest-sub { font-size: 11px; color: var(--muted); }
+
+/* ── WEEKLY SETUP (step 6) ── */
+.ww-day-tabs {
+  display: flex; gap: 3px; margin-bottom: 16px;
+  background: var(--s2); border-radius: 8px; padding: 4px;
+}
+.ww-day-tab {
+  flex: 1; padding: 7px 2px; border: none; background: transparent; border-radius: 5px;
+  font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--muted);
+  cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif; text-transform: uppercase;
+}
+.ww-day-tab.active { background: var(--accent); color: #0a0804; }
+.ww-day-tab.rest { opacity: 0.45; }
+.ww-day-tab.rest.active { background: var(--s3); color: var(--muted); opacity: 1; }
+.ww-day-editor {
+  background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+}
+.ww-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.ww-day-name { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 900; color: var(--text); }
+.ww-rest-toggle {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px; background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; color: var(--muted); font-size: 9px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
+  font-family: 'Nunito', sans-serif; transition: all 0.15s;
+}
+.ww-rest-toggle.active { background: var(--s3); border-color: var(--muted); color: var(--text); }
+.ww-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--muted);
+  text-transform: uppercase; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.ww-section-hint { font-weight: 400; letter-spacing: 0; font-style: italic; font-size: 10px; text-transform: none; }
+.ww-focus-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.ww-focus-chip {
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 10px; background: var(--s1); border: 1px solid var(--border);
+  border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--muted);
+  cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif;
+}
+.ww-focus-chip.selected { background: var(--ad); border-color: var(--ad2); color: var(--accent); }
+.ww-exercise-list { display: flex; flex-direction: column; gap: 2px; }
+.ww-ex-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; background: var(--s1); border: 1px solid transparent;
+  border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  font-family: 'Nunito', sans-serif; text-align: left; width: 100%;
+}
+.ww-ex-row.checked { background: var(--ad); border-color: var(--ad2); }
+.ww-ex-check {
+  width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border);
+  background: var(--s2); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: var(--accent); transition: all 0.15s;
+}
+.ww-ex-row.checked .ww-ex-check { background: var(--accent); border-color: var(--accent); color: #0a0804; }
+.ww-ex-name { font-size: 13px; color: var(--text); }
+.ww-auto-note { font-size: 11px; color: var(--muted); font-style: italic; padding: 10px 0; }
+.ww-rest-msg {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 28px 12px; color: var(--muted); font-family: 'Nunito', sans-serif;
+  font-size: 13px; text-align: center; line-height: 1.5;
+}
 .focus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 20px; }
 .focus-card {
   background: var(--s1); border: 1px solid var(--border); border-radius: 10px;

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import "./WorkoutTracker.css";
-import type { CardioPlan, ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan } from "./types";
+import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
+import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -46,6 +48,12 @@ export default function WorkoutTracker() {
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
   );
+  const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
+
+  const setWeeklyPlan = (plan: WeeklyPlan) => {
+    saveWeeklyPlan(plan);
+    setWeeklyPlanState(plan);
+  };
 
   const authFetch = (url: string, opts: RequestInit = {}) =>
     fetch(url, {
@@ -164,6 +172,37 @@ export default function WorkoutTracker() {
     return !isNaN(w) && w > 0 && (!prs[exId] || w > prs[exId].weight);
   };
 
+  const loadTodayPlan = (dayPlan: DayPlan) => {
+    setFocus(dayPlan.focus);
+    if (dayPlan.exerciseIds.length > 0) {
+      const exs = dayPlan.exerciseIds
+        .map(id => ALL_EX.find(e => e.id === id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(exs);
+    } else {
+      const focusDef     = getFocusDef(dayPlan.focus);
+      const pool         = focusDef?.exIds ?? [];
+      const focusHistory = history.filter(s => s.focus === dayPlan.focus);
+      const avgSize      = focusHistory.length > 0
+        ? Math.round(focusHistory.reduce((sum, s) => sum + s.exercises.length, 0) / focusHistory.length)
+        : 5;
+      const target = Math.max(4, Math.min(8, avgSize));
+      const freq: Record<string, number> = {};
+      focusHistory.forEach(s => s.exercises.forEach(ex => { freq[ex.id] = (freq[ex.id] ?? 0) + 1; }));
+      const effectivePool = pool.length >= 3
+        ? pool
+        : ALL_EX.filter(e => e.type !== "cardio").map(e => e.id);
+      const picked = effectivePool
+        .map(id => ({ id, score: (freq[id] ?? 0) * 0.4 + Math.random() }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, target)
+        .map(c => ALL_EX.find(e => e.id === c.id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(picked);
+    }
+    setWStep(5);
+  };
+
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
@@ -238,6 +277,7 @@ export default function WorkoutTracker() {
     if (completed)               { setCompleted(null); setTab("history"); return true; }
     if (tab !== "workout")       { setTab("workout"); return true; }
     if (active)                  { return true; }
+    if (wStep === 6)              { setWStep(1); return true; }
     if (wStep > 0)               { setWStep(wStep - 1); return true; }
     return false;
   });
@@ -264,7 +304,9 @@ export default function WorkoutTracker() {
             cardio={cardio} setCardio={setCardio}
             planned={planned} setPlanned={setPlanned}
             exercises={exercises} prs={prs} history={history}
-            doneSets={doneSets} startFromWizard={startFromWizard}
+            doneSets={doneSets}
+            weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
+            startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}

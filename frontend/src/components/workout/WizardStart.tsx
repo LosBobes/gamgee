@@ -14,7 +14,6 @@ export default function WizardStart({ lastSession, onStart }: Props) {
   const [broQuote]  = useState(() => BRO_QUOTES[Math.floor(Math.random() * BRO_QUOTES.length)]);
   const [proQuote]  = useState(() => PRO_QUOTES[Math.floor(Math.random() * PRO_QUOTES.length)]);
   const [hero]      = useState(() => HERO_CALLS[Math.floor(Math.random() * HERO_CALLS.length)]);
-
   const isBro = mode === "bro";
 
   return (

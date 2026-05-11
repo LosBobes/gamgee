@@ -33,12 +33,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
   // Show the popup once per wizard build entry, only when there's something to populate
   // and the user hasn't already added exercises.
-  const [showAutoPopup, setShowAutoPopup] = useState(
-    () => lastExercises.length > 0 && planned.length === 0
-  );
-  // Re-trigger the prompt if the focus changes mid-session
+  const [showAutoPopup, setShowAutoPopup] = useState(() => planned.length === 0);
+  // Re-trigger whenever the focus changes (user went back and picked a different one)
   useEffect(() => {
-    setShowAutoPopup(lastExercises.length > 0 && planned.length === 0);
+    setShowAutoPopup(planned.length === 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
@@ -274,7 +272,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
         </div>
       </div>
 
-      {showAutoPopup && lastFocusSession && (
+      {showAutoPopup && (
         <div className="cf-overlay" onClick={handleSkipAutoPopulate}>
           <div className="cf-modal autopop-modal" onClick={e => e.stopPropagation()}>
             <div className="autopop-top">
@@ -282,34 +280,44 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               <div>
                 <div className="cf-modal-title" style={{ marginBottom: 4 }}>{t("Quick Start", "Quick Start")}</div>
                 <div className="autopop-sub">
-                  {t(
-                    `Pre-load exercises from your last ${focusDef.name.toLowerCase()} session, or get a randomized pick. You can edit everything before starting.`,
-                    `Repeat last time or throw the dice for a fresh mix. Either way, you can swap things out before you start.`
-                  )}
+                  {lastExercises.length > 0
+                    ? t(
+                        `Pre-load exercises from your last ${focusDef.name.toLowerCase()} session, or get a randomized pick. You can edit before starting.`,
+                        `Repeat last time or throw the dice for a fresh mix. Swap things out before you start.`
+                      )
+                    : t(
+                        `New to ${focusDef.name.toLowerCase()}? Get a smart randomized selection to start from.`,
+                        `First time with this focus? We'll throw a smart pick at you. Tweak it from there, bro.`
+                      )
+                  }
                 </div>
               </div>
             </div>
-            <div className="autopop-list">
-              <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>
-                Last Session
-              </div>
-              {lastExercises.map((ex, i) => (
-                <div key={ex.id} className="autopop-row">
-                  <span className="autopop-num">{i + 1}</span>
-                  <span className="autopop-name">{ex.name}</span>
+            {lastExercises.length > 0 && (
+              <div className="autopop-list">
+                <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>
+                  Last Session
                 </div>
-              ))}
-            </div>
+                {lastExercises.map((ex, i) => (
+                  <div key={ex.id} className="autopop-row">
+                    <span className="autopop-num">{i + 1}</span>
+                    <span className="autopop-name">{ex.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="cf-modal-actions" style={{ flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleRandomize}>
                   <Shuffle size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
                   {t("Randomize", "Mix It Up")}
                 </button>
-                <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleAutoPopulate}>
-                  <Zap size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
-                  {t("Repeat Last", "Same as Last")}
-                </button>
+                {lastExercises.length > 0 && (
+                  <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleAutoPopulate}>
+                    <Zap size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+                    {t("Repeat Last", "Same as Last")}
+                  </button>
+                )}
               </div>
               <button className="cf-btn-cancel" style={{ flex: "none" }} onClick={handleSkipAutoPopulate}>
                 {t("Start Blank", "Start Fresh")}
