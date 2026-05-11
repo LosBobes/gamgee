@@ -1147,3 +1147,28 @@ html, body { background: var(--bg); }
 }
 .btn-deload-skip:hover { color: var(--text); border-color: var(--muted); }
 .timed-stop-btn:active { transform: scale(0.9); }
+
+/* ── AUTO-POPULATE EXERCISES POPUP ── */
+.autopop-modal { max-width: 420px; }
+.autopop-top {
+  display: flex; align-items: flex-start; gap: 10px;
+  color: var(--accent); margin-bottom: 14px;
+}
+.autopop-sub {
+  font-size: 11px; color: var(--muted); line-height: 1.45;
+  font-family: 'Nunito', sans-serif; letter-spacing: 0.3px;
+}
+.autopop-list {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; margin-bottom: 18px; max-height: 200px; overflow-y: auto;
+}
+.autopop-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 5px 2px; font-family: 'Nunito', sans-serif;
+}
+.autopop-row + .autopop-row { border-top: 1px solid var(--border); }
+.autopop-num {
+  font-size: 10px; font-weight: 700; color: var(--muted);
+  width: 16px; flex-shrink: 0;
+}
+.autopop-name { font-size: 13px; color: var(--text); }

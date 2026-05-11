@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap } from "lucide-react";
 import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -20,6 +20,31 @@ interface Props {
 export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
   const [hovEx,  setHovEx]  = useState<ExerciseDef | null>(null);
   const [search, setSearch] = useState("");
+
+  // Most recent prior session matching this focus (used for the auto-populate prompt)
+  const lastFocusSession = history.find(s => s.focus === focus && s.exercises.length > 0) ?? null;
+  const lastExercises: ExerciseDef[] = lastFocusSession
+    ? lastFocusSession.exercises
+        .map(e => ALL_EX.find(x => x.id === e.id))
+        .filter((x): x is ExerciseDef => !!x)
+    : [];
+
+  // Show the popup once per wizard build entry, only when there's something to populate
+  // and the user hasn't already added exercises.
+  const [showAutoPopup, setShowAutoPopup] = useState(
+    () => lastExercises.length > 0 && planned.length === 0
+  );
+  // Re-trigger the prompt if the focus changes mid-session
+  useEffect(() => {
+    setShowAutoPopup(lastExercises.length > 0 && planned.length === 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
+
+  const handleAutoPopulate = () => {
+    setPlanned(() => lastExercises);
+    setShowAutoPopup(false);
+  };
+  const handleSkipAutoPopulate = () => setShowAutoPopup(false);
 
   const activeMuscles  = getActive(planned);
   const previewMuscles = hovEx ? getActive([hovEx]) : {};
@@ -218,6 +243,38 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           )}
         </div>
       </div>
+
+      {showAutoPopup && lastFocusSession && (
+        <div className="cf-overlay" onClick={handleSkipAutoPopulate}>
+          <div className="cf-modal autopop-modal" onClick={e => e.stopPropagation()}>
+            <div className="autopop-top">
+              <Clock size={16} />
+              <div>
+                <div className="cf-modal-title" style={{ marginBottom: 4 }}>Auto-populate?</div>
+                <div className="autopop-sub">
+                  Load the {lastExercises.length} exercise{lastExercises.length !== 1 ? "s" : ""} from
+                  your last {focusDef.name.toLowerCase()} workout. You can edit before starting.
+                </div>
+              </div>
+            </div>
+            <div className="autopop-list">
+              {lastExercises.map((ex, i) => (
+                <div key={ex.id} className="autopop-row">
+                  <span className="autopop-num">{i + 1}</span>
+                  <span className="autopop-name">{ex.name}</span>
+                </div>
+              ))}
+            </div>
+            <div className="cf-modal-actions">
+              <button className="cf-btn-cancel" onClick={handleSkipAutoPopulate}>Start Blank</button>
+              <button className="cf-btn-save" onClick={handleAutoPopulate}>
+                <Zap size={13} style={{ marginRight: 6, verticalAlign: -2 }} />
+                Auto-populate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
