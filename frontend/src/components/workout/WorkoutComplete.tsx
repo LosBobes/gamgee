@@ -33,7 +33,7 @@ export default function WorkoutComplete({ session, onDone }: Props) {
 
   if (stage === "prompt") {
     return (
-      <div className="complete-screen">
+      <div className="complete-screen tab-anim">
         <div className="complete-icon"><Check size={48} /></div>
         <h1 className="complete-hero">NICE<br /><span>WORK</span></h1>
         <p className="complete-sub">

@@ -41,6 +41,18 @@ html, body { background: var(--bg); }
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wstepInFwd {
+  from { opacity: 0; transform: translateX(18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes wstepInBack {
+  from { opacity: 0; transform: translateX(-18px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
@@ -62,7 +74,16 @@ html, body { background: var(--bg); }
   50%       { box-shadow: 0 0 0 5px transparent; }
 }
 
-.tab-anim { animation: fadeUp 0.22s ease backwards; }
+.tab-anim    { animation: screenIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.screen-anim { animation: screenIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.wstep-anim       { animation: wstepInFwd  0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+.wstep-anim-back  { animation: wstepInBack 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
+    animation: fadeIn 0.15s ease backwards;
+  }
+}
 
 /* ── ICON UTILS ── */
 .tab { display: inline-flex; align-items: center; gap: 5px; }
