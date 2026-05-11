@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import "./WorkoutTracker.css";
-import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet } from "./types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, CoachPreset } from "./types";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -27,6 +27,8 @@ export default function WorkoutTracker() {
   // data
   const [history,   setHistory]   = useState<WorkoutSession[]>([]);
   const [prs,       setPrs]       = useState<PRDict>({});
+  // coach suggestions pre-loaded into next workout
+  const [coachPresets, setCoachPresets] = useState<Record<string, CoachPreset>>({});
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
@@ -67,11 +69,25 @@ export default function WorkoutTracker() {
 
   const startFromWizard = () => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
-    setExercises(planned.map(ex => ({
-      ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`,
-      sets: [{ weight: "", reps: "", done: false }],
-    })));
+    setExercises(planned.map(ex => {
+      const preset = coachPresets[ex.id];
+      return {
+        ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`,
+        sets: [preset
+          ? { weight: String(preset.weight), reps: String(preset.reps), done: false }
+          : { weight: "", reps: "", done: false }
+        ],
+      };
+    }));
     setPlanned([]);
+    setCoachPresets({});
+  };
+
+  const acceptCoachSuggestion = (ex: ExerciseDef, weight: number, reps: number) => {
+    setCoachPresets(p => ({ ...p, [ex.id]: { weight, reps } }));
+    setPlanned(p => p.find(e => e.id === ex.id) ? p : [...p, ex]);
+    setTab("workout");
+    setWStep(1);
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -196,7 +212,7 @@ export default function WorkoutTracker() {
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
-        {!completed && tab === "coach"   && <CoachTab history={history} />}
+        {!completed && tab === "coach"   && <CoachTab history={history} onAccept={acceptCoachSuggestion} />}
         {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
       </div>
     </div>

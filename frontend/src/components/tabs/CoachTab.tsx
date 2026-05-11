@@ -1,4 +1,5 @@
-import { Brain, ChevronRight } from "lucide-react";
+import { useState } from "react";
+import { Brain, ChevronRight, Check } from "lucide-react";
 import type { ExerciseDef, WorkoutSession } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { TIPS } from "../../data/tips";
@@ -6,6 +7,7 @@ import { analyzeEx, type AnalysisResult } from "../../analysis";
 
 interface Props {
   history: WorkoutSession[];
+  onAccept: (ex: ExerciseDef, weight: number, reps: number) => void;
 }
 
 const STATUS_ORDER: Record<string, number> = {
@@ -13,11 +15,20 @@ const STATUS_ORDER: Record<string, number> = {
   "READY TO JUMP": 3, "PROGRESSING": 4, "BUILDING REPS": 5, "NEW": 6,
 };
 
-export default function CoachTab({ history }: Props) {
+export default function CoachTab({ history, onAccept }: Props) {
+  const [overrides, setOverrides]       = useState<Record<string, string>>({});
+  const [deloadAcked, setDeloadAcked]   = useState<Set<string>>(new Set());
+
   const coachData = ALL_EX
     .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
+
+  const getEffectiveWeight = (exId: string, nextWeight: number): number => {
+    const raw = overrides[exId];
+    const parsed = parseFloat(raw);
+    return !isNaN(parsed) && parsed > 0 ? parsed : nextWeight;
+  };
 
   return (
     <div className="tab-anim">
@@ -29,7 +40,11 @@ export default function CoachTab({ history }: Props) {
           </div>
           {coachData.map(({ ex, a }) => {
             const { sessions, last, est1RM, status, nextWeight, nextReps, reason } = a;
-            const maxW = Math.max(...sessions.map(s => s.topW));
+            const maxW        = Math.max(...sessions.map(s => s.topW));
+            const isDeload    = status.label === "DELOAD";
+            const acked       = deloadAcked.has(ex.id);
+            const effWeight   = getEffectiveWeight(ex.id, nextWeight);
+
             return (
               <div key={ex.id} className="coach-card">
                 <div className="coach-hdr">
@@ -41,7 +56,41 @@ export default function CoachTab({ history }: Props) {
                     {status.label}
                   </span>
                 </div>
+
                 <div className="coach-body">
+                  {/* ── Deload banner ── */}
+                  {isDeload && !acked && (
+                    <div className="deload-banner">
+                      <div className="deload-banner-text">
+                        Stuck at <strong>{last.topW}kg</strong> for 3 sessions.
+                        Drop to <strong>{nextWeight}kg</strong> (~85%), nail the reps, then rebuild.
+                      </div>
+                      <div className="deload-banner-actions">
+                        <button
+                          className="deload-accept-btn"
+                          onClick={() => {
+                            setDeloadAcked(s => new Set([...s, ex.id]));
+                            onAccept(ex, nextWeight, nextReps);
+                          }}
+                        >
+                          <Check size={12} /> Accept Deload
+                        </button>
+                        <button
+                          className="deload-dismiss-btn"
+                          onClick={() => setDeloadAcked(s => new Set([...s, ex.id]))}
+                        >
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {isDeload && acked && (
+                    <div className="deload-acked">
+                      <Check size={12} /> Deload accepted — {nextWeight}kg pre-loaded for your next workout
+                    </div>
+                  )}
+
+                  {/* ── Sparkline trend ── */}
                   {sessions.length > 1 && (
                     <div className="trend-wrap">
                       {sessions.map((s, i) => {
@@ -58,6 +107,8 @@ export default function CoachTab({ history }: Props) {
                       <span style={{ fontSize: 8, color: "var(--muted)", marginLeft: 5, alignSelf: "center", letterSpacing: 1 }}>TREND</span>
                     </div>
                   )}
+
+                  {/* ── Stats row ── */}
                   <div className="coach-row">
                     <div>
                       <div className="coach-stat-lbl">Last Weight</div>
@@ -80,10 +131,29 @@ export default function CoachTab({ history }: Props) {
                       </div>
                     )}
                   </div>
+
+                  {/* ── Recommendation box ── */}
                   <div className="rec-box">
                     <div className="rec-box-label"><ChevronRight size={11} /> Next Session Target</div>
-                    <div className="rec-target">
-                      {nextWeight}kg<span className="rec-target-unit"> × {nextReps} reps</span>
+                    <div className="rec-action-row">
+                      <div className="rec-weight-wrap">
+                        <input
+                          className="rec-weight-input"
+                          type="number"
+                          min={0}
+                          step={2.5}
+                          value={overrides[ex.id] ?? nextWeight}
+                          onChange={e => setOverrides(o => ({ ...o, [ex.id]: e.target.value }))}
+                          aria-label="Override target weight"
+                        />
+                        <span className="rec-target-unit"> kg × {nextReps} reps</span>
+                      </div>
+                      <button
+                        className="do-this-btn"
+                        onClick={() => onAccept(ex, effWeight, nextReps)}
+                      >
+                        Do this
+                      </button>
                     </div>
                     <div className="rec-reason">{reason}</div>
                   </div>
