@@ -26,6 +26,8 @@
         var c = localStorage.getItem('gamgee_primary_color');
         if (c && /^#[0-9A-Fa-f]{6}$/.test(c)) {
           document.documentElement.style.setProperty('--primary', c);
+          var m = document.querySelector('meta[name="theme-color"]');
+          if (m) m.setAttribute('content', c);
         }
       })();
     </script>

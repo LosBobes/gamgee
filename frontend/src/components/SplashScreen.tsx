@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTxt } from "../context/ToneContext";
 
 interface Props {
   onDone: () => void;
@@ -6,6 +7,7 @@ interface Props {
 
 export default function SplashScreen({ onDone }: Props) {
   const [leaving, setLeaving] = useState(false);
+  const t = useTxt();
 
   useEffect(() => {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -37,7 +39,7 @@ export default function SplashScreen({ onDone }: Props) {
         </div>
         <div className="splash-text">
           <div className="splash-name">GAMGEE</div>
-          <div className="splash-sub">Workout Tracker</div>
+          <div className="splash-sub">{t("Workout Tracker", "Built Different (Allegedly)")}</div>
         </div>
       </div>
     </div>

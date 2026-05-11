@@ -4,6 +4,7 @@ import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
+import { useTxt, type ToneMode } from "../../context/ToneContext";
 
 interface Props {
   username:        string | null;
@@ -14,6 +15,8 @@ interface Props {
   primaryColor:    string;
   onColorChange:   (color: string) => void;
   onProfileUpdate: (name: string | null, email: string | null) => void;
+  toneMode:        ToneMode;
+  onToneChange:    (mode: ToneMode) => void;
 }
 
 const PALETTE = [
@@ -27,8 +30,45 @@ const PALETTE = [
   "#E879A0", // pink
 ];
 
+function ToneToggle({ toneMode, onToneChange }: { toneMode: ToneMode; onToneChange: (m: ToneMode) => void }) {
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        App Tone
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button
+          onClick={() => onToneChange("pro")}
+          style={{
+            flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+            background: toneMode === "pro" ? "var(--primary)" : "transparent",
+            color: toneMode === "pro" ? "#000" : "var(--muted)",
+            border: toneMode === "pro" ? "none" : "1px solid var(--border)",
+            cursor: "pointer", transition: "all 0.15s",
+          }}
+        >
+          {toneMode === "bro" ? "Boring Mode" : "Professional"}
+        </button>
+        <button
+          onClick={() => onToneChange("bro")}
+          style={{
+            flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
+            background: toneMode === "bro" ? "var(--primary)" : "transparent",
+            color: toneMode === "bro" ? "#000" : "var(--muted)",
+            border: toneMode === "bro" ? "none" : "1px solid var(--border)",
+            cursor: "pointer", transition: "all 0.15s",
+          }}
+        >
+          BroScience
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: string) => void; token: string | null }) {
   const [saving, setSaving] = useState(false);
+  const t = useTxt();
 
   const save = async (c: string) => {
     onChange(c);
@@ -47,7 +87,7 @@ function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: 
   return (
     <div className="profile-card">
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-        {saving ? "Saving…" : "Accent color"}
+        {saving ? "Saving…" : t("Accent color", "Your vibe")}
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         {PALETTE.map(c => (
@@ -203,6 +243,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
         <button className="auth-toggle" style={{ width: "100%", textAlign: "left" }} onClick={() => { setOpen(true); setOk(false); }}>
           Change Password
         </button>
+
       ) : (
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <input
@@ -247,16 +288,19 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate }: Props) {
+export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange }: Props) {
+  const t = useTxt();
+
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">Log your first workout to build your profile</div></div>
-        <div className="profile-section">Profile</div>
+        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">{t("Log your first workout to build your profile", "Drop your first session and this page goes hard")}</div></div>
+        <div className="profile-section">{t("Profile", "Profile")}</div>
         <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
-        <div className="profile-section">Appearance</div>
+        <div className="profile-section">{t("Appearance", "Appearance")}</div>
+        <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
-        <div className="profile-section">Account</div>
+        <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
       </div>
     );
@@ -328,10 +372,10 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       <div className="profile-stats-grid">
         {[
-          { v: history.length,             l: "Workouts"    },
-          { v: fmtVol(totalVolume),         l: "Vol Lifted"  },
-          { v: fmtDur(totalTime),           l: "Time Logged" },
-          { v: totalSets.toLocaleString(),  l: "Total Sets"  },
+          { v: history.length,             l: t("Workouts",    "Sessions")    },
+          { v: fmtVol(totalVolume),         l: t("Vol Lifted",  "Iron Moved")  },
+          { v: fmtDur(totalTime),           l: t("Time Logged", "Time In")     },
+          { v: totalSets.toLocaleString(),  l: t("Total Sets",  "Sets Fired")  },
         ].map(({ v, l }) => (
           <div key={l} className="profile-stat">
             <div className="profile-stat-val">{v}</div>
@@ -340,7 +384,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
         ))}
       </div>
 
-      <div className="profile-section">Activity — Last 16 Weeks</div>
+      <div className="profile-section">{t("Activity: Last 16 Weeks", "Grind Log: Last 16 Weeks")}</div>
       <div className="profile-card">
         <div className="heatmap-grid">
           {weeks.map((count, i) => {
@@ -357,7 +401,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       {topExercises.length > 0 && (
         <>
-          <div className="profile-section">Most Logged Exercises</div>
+          <div className="profile-section">{t("Most Logged Exercises", "Your Go-To Moves")}</div>
           <div className="profile-card">
             {topExercises.map(([name, count]) => (
               <div key={name} className="top-ex-row">
@@ -371,7 +415,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       {topGroups.length > 0 && (
         <>
-          <div className="profile-section">Muscle Group Focus</div>
+          <div className="profile-section">{t("Muscle Group Focus", "Where You Put In Work")}</div>
           <div className="profile-card">
             {topGroups.map(([group, count]) => (
               <div key={group} className="muscle-bar-row">
@@ -386,13 +430,14 @@ export default function ProfileTab({ username, name, email, history, token, prim
         </>
       )}
 
-      <div className="profile-section">Profile</div>
+      <div className="profile-section">{t("Profile", "Profile")}</div>
       <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
 
-      <div className="profile-section">Appearance</div>
+      <div className="profile-section">{t("Appearance", "Appearance")}</div>
+      <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
 
-      <div className="profile-section">Account</div>
+      <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
     </div>
   );

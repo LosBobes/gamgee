@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTxt } from "../context/ToneContext";
 
 interface Props {
   onLogin: (token: string) => void;
@@ -85,6 +86,7 @@ export default function AuthScreen({ onLogin }: Props) {
   const [err,     setErr]     = useState("");
   const [busy,    setBusy]    = useState(false);
 
+  const t        = useTxt();
   const checks   = useMemo(() => pwChecks(pass, user, email), [pass, user, email]);
   const strength = useMemo(() => pwStrength(pass), [pass]);
   const allPwOk  = checks.every(c => c.ok);
@@ -163,7 +165,7 @@ export default function AuthScreen({ onLogin }: Props) {
     <div className="wt-auth-screen tab-anim">
       <div className="auth-card">
         <div className="auth-logo" role="img" aria-label="Gamgee" />
-        <h2>{view === "login" ? "Welcome back" : "Create your account"}</h2>
+        <h2>{view === "login" ? t("Welcome back", "Welcome back, beast!") : t("Create your account", "Join the Church of Iron")}</h2>
         <form onSubmit={handleSubmit} noValidate>
           <label className="auth-field">
             <span>Username</span>
@@ -290,14 +292,14 @@ export default function AuthScreen({ onLogin }: Props) {
             className="auth-submit"
             disabled={busy || registerInvalid}
           >
-            {busy ? "Please wait…" : view === "login" ? "Sign In" : "Create account"}
+            {busy ? t("Please wait…", "Hang tight…") : view === "login" ? t("Sign In", "LET'S GO") : t("Create account", "BUILD MY ACCOUNT")}
           </button>
         </form>
         <button
           className="auth-toggle"
           onClick={() => reset(view === "login" ? "register" : "login")}
         >
-          {view === "login" ? "Need an account? Register" : "Have an account? Sign In"}
+          {view === "login" ? t("Need an account? Register", "New here? Join the Church of Iron") : t("Have an account? Sign In", "Already a Disciple? Sign in")}
         </button>
       </div>
     </div>

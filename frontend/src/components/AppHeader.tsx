@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X } from "lucide-react";
 import { fmtClock } from "../utils";
+import { useTxt } from "../context/ToneContext";
 
 interface Props {
   active:       boolean;
@@ -16,6 +17,7 @@ interface Props {
 
 export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
   const tabs = [
@@ -42,7 +44,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
-              <div className="logo-sub">Workout Tracker</div>
+              <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)")}</div>
             </div>
           </div>
           {active

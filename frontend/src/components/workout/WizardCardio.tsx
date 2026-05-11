@@ -1,6 +1,7 @@
 import { ArrowLeft, ChevronRight, Heart, Sunrise, Sunset, ArrowLeftRight, Ban } from "lucide-react";
 import type { CardioPlan, CardioSlot, CardioTiming } from "../../types";
 import { EX } from "../../data/exercises";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   plan:    CardioPlan;
@@ -13,11 +14,11 @@ const CARDIO_EX = EX.Cardio;
 const DEFAULT_MIN = 10;
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60];
 
-const TIMING_OPTIONS: { id: CardioTiming; label: string; desc: string; Icon: typeof Heart }[] = [
-  { id: "none",   label: "No Cardio",  desc: "Skip and go straight to lifting", Icon: Ban },
-  { id: "before", label: "Before",     desc: "Warm up with cardio",             Icon: Sunrise },
-  { id: "after",  label: "After",      desc: "Cool down with cardio",           Icon: Sunset },
-  { id: "both",   label: "Before & After", desc: "Bookend the workout",         Icon: ArrowLeftRight },
+const TIMING_OPTIONS: { id: CardioTiming; label: string; desc: string; descBro: string; Icon: typeof Heart }[] = [
+  { id: "none",   label: "Skip Cardio",    desc: "Skip and go straight to lifting",      descBro: "Straight to the iron, no detours",           Icon: Ban },
+  { id: "before", label: "Before",         desc: "Warm up with cardio",                  descBro: "Fire up the engine first",                    Icon: Sunrise },
+  { id: "after",  label: "After",          desc: "Cool down with cardio",                descBro: "Bring it home with some steady state",        Icon: Sunset },
+  { id: "both",   label: "Before & After", desc: "Bookend the workout",                  descBro: "Full cardio sandwich. You absolute unit.",    Icon: ArrowLeftRight },
 ];
 
 function defaultSlot(): CardioSlot {
@@ -72,6 +73,7 @@ function SlotEditor({ label, slot, onChange }: { label: string; slot: CardioSlot
 }
 
 export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
+  const t = useTxt();
   const setTiming = (timing: CardioTiming) => {
     const wantsBefore = timing === "before" || timing === "both";
     const wantsAfter  = timing === "after"  || timing === "both";
@@ -90,12 +92,12 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
     <>
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
-        <span className="wz-focus-label"><Heart size={13} /> STEP 2 — CARDIO</span>
+        <span className="wz-focus-label"><Heart size={13} /> STEP 2: CARDIO</span>
         <button className="wz-next" onClick={onNext} disabled={!slotsValid}>BUILD <ChevronRight size={13} /></button>
       </div>
 
-      <div className="wizard-title">Cardio today?</div>
-      <div className="wizard-sub">Add a warm-up, cool-down, or both before we pick exercises</div>
+      <div className="wizard-title">{t("Cardio today?", "Getting your cardio in?")}</div>
+      <div className="wizard-sub">{t("Add a warm-up, cool-down, or both before we pick exercises", "Bookend the session or skip it. No judgment. (We're judging a little.)")}</div>
 
       <div className="cardio-timing-grid">
         {TIMING_OPTIONS.map(opt => {
@@ -109,7 +111,7 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
             >
               <div className="focus-icon"><Icon size={22} /></div>
               <div className="focus-name">{opt.label}</div>
-              <div className="focus-desc">{opt.desc}</div>
+              <div className="focus-desc">{t(opt.desc, opt.descBro)}</div>
             </div>
           );
         })}

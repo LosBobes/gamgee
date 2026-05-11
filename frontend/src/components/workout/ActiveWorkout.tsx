@@ -4,6 +4,7 @@ import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession }
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   exercises:      WorkoutExercise[];
@@ -22,6 +23,7 @@ interface Props {
 
 export default function ActiveWorkout({ exercises, prs, history, doneSets, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [showPick, setShowPick] = useState(false);
+  const t = useTxt();
 
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
@@ -38,7 +40,7 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
       {exercises.length === 0 && (
         <div className="empty">
           <div className="empty-icon"><Dumbbell size={40} /></div>
-          <div className="empty-label">No exercises yet</div>
+          <div className="empty-label">{t("No exercises yet", "Add something. The bar isn't going to lift itself.")}</div>
         </div>
       )}
 

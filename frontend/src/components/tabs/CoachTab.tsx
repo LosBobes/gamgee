@@ -3,6 +3,7 @@ import type { ExerciseDef, WorkoutSession } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { TIPS } from "../../data/tips";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
@@ -14,6 +15,7 @@ const STATUS_ORDER: Record<string, number> = {
 };
 
 export default function CoachTab({ history }: Props) {
+  const t = useTxt();
   const coachData = ALL_EX
     .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
@@ -24,8 +26,10 @@ export default function CoachTab({ history }: Props) {
       {coachData.length > 0 ? (
         <>
           <div className="coach-intro">
-            Progression analysis from your logged history — sorted by exercises that need the most attention.
-            Red = intervene, amber = ready for weight jump, green = moving forward.
+            {t(
+              "Progression analysis from your logged history, sorted by exercises that need the most attention. Red = intervene, amber = ready for weight jump, green = moving forward.",
+              "Crunching your logged history and telling it like it is. Sorted by what needs attention most. Red = intervene now, amber = ready to jump weight, green = you're crushing it."
+            )}
           </div>
           {coachData.map(({ ex, a }) => {
             const { sessions, last, est1RM, status, nextWeight, nextReps, reason } = a;
@@ -81,7 +85,7 @@ export default function CoachTab({ history }: Props) {
                     )}
                   </div>
                   <div className="rec-box">
-                    <div className="rec-box-label"><ChevronRight size={11} /> Next Session Target</div>
+                    <div className="rec-box-label"><ChevronRight size={11} /> {t("Next Session Target", "Next Session: Go For It")}</div>
                     <div className="rec-target">
                       {nextWeight}kg<span className="rec-target-unit"> × {nextReps} reps</span>
                     </div>
@@ -95,16 +99,16 @@ export default function CoachTab({ history }: Props) {
       ) : (
         <div className="empty" style={{ paddingBottom: 16 }}>
           <div className="empty-icon"><Brain size={40} /></div>
-          <div className="empty-label">Log sessions to unlock coaching</div>
+          <div className="empty-label">{t("Log sessions to unlock coaching", "Log some sessions and the coach wakes up")}</div>
         </div>
       )}
-      <div className="coach-section-title">General Principles</div>
+      <div className="coach-section-title">{t("General Principles", "Disciples of the Swoly Bible")}</div>
       <div className="tips-grid">
-        {TIPS.map(t => (
-          <div key={t.title} className="tip-card">
-            <div className="tip-icon"><t.icon size={20} /></div>
-            <div className="tip-title">{t.title}</div>
-            <div className="tip-body">{t.body}</div>
+        {TIPS.map(tip => (
+          <div key={tip.title} className="tip-card">
+            <div className="tip-icon"><tip.icon size={20} /></div>
+            <div className="tip-title">{tip.title}</div>
+            <div className="tip-body">{t(tip.body, tip.bodyBro ?? tip.body)}</div>
           </div>
         ))}
       </div>

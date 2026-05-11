@@ -7,6 +7,7 @@ import { EM, ALL_EX } from "../../data/exercises";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import BodyMap from "../BodyMap";
 import SuggCard from "../SuggCard";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   focus:      string;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
+  const t = useTxt();
   const [hovEx,  setHovEx]  = useState<ExerciseDef | null>(null);
   const [search, setSearch] = useState("");
 
@@ -215,7 +217,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                 {searchResults.map(renderCard)}
               </>
             ) : (
-              <p className="search-empty">No exercises match "{search}"</p>
+              <p className="search-empty">{t(`No exercises match "${search}"`, `Nothing matches "${search}". Try a different name.`)}</p>
             )
           ) : (
             <>
@@ -250,10 +252,12 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
             <div className="autopop-top">
               <Clock size={16} />
               <div>
-                <div className="cf-modal-title" style={{ marginBottom: 4 }}>Auto-populate?</div>
+                <div className="cf-modal-title" style={{ marginBottom: 4 }}>{t("Auto-populate?", "Reload last session?")}</div>
                 <div className="autopop-sub">
-                  Load the {lastExercises.length} exercise{lastExercises.length !== 1 ? "s" : ""} from
-                  your last {focusDef.name.toLowerCase()} workout. You can edit before starting.
+                  {t(
+                    `Load the ${lastExercises.length} exercise${lastExercises.length !== 1 ? "s" : ""} from your last ${focusDef.name.toLowerCase()} workout. You can edit before starting.`,
+                    `Grab the ${lastExercises.length} exercise${lastExercises.length !== 1 ? "s" : ""} from your last ${focusDef.name.toLowerCase()} session. Tweak as needed, it's your workout.`
+                  )}
                 </div>
               </div>
             </div>
@@ -266,10 +270,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               ))}
             </div>
             <div className="cf-modal-actions">
-              <button className="cf-btn-cancel" onClick={handleSkipAutoPopulate}>Start Blank</button>
+              <button className="cf-btn-cancel" onClick={handleSkipAutoPopulate}>{t("Start Blank", "Start Fresh")}</button>
               <button className="cf-btn-save" onClick={handleAutoPopulate}>
                 <Zap size={13} style={{ marginRight: 6, verticalAlign: -2 }} />
-                Auto-populate
+                {t("Auto-populate", "Load Last Session")}
               </button>
             </div>
           </div>

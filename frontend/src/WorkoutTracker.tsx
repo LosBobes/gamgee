@@ -14,6 +14,7 @@ import ProfileTab from "./components/tabs/ProfileTab";
 import { ALL_EX } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
+import { ToneProvider, type ToneMode } from "./context/ToneContext";
 
 
 export default function WorkoutTracker() {
@@ -42,6 +43,9 @@ export default function WorkoutTracker() {
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
+  const [toneMode, setToneMode] = useState<ToneMode>(
+    () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
+  );
 
   const authFetch = (url: string, opts: RequestInit = {}) =>
     fetch(url, {
@@ -55,7 +59,13 @@ export default function WorkoutTracker() {
   useEffect(() => {
     document.documentElement.style.setProperty("--primary", primaryColor);
     localStorage.setItem("gamgee_primary_color", primaryColor);
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = primaryColor;
   }, [primaryColor]);
+
+  useEffect(() => {
+    localStorage.setItem("gamgee_tone", toneMode);
+  }, [toneMode]);
 
   useEffect(() => {
     if (!token) return;
@@ -232,9 +242,10 @@ export default function WorkoutTracker() {
     return false;
   });
 
-  if (!token) return <AuthScreen onLogin={setToken} />;
+  if (!token) return <ToneProvider value={toneMode}><AuthScreen onLogin={setToken} /></ToneProvider>;
 
   return (
+  <ToneProvider value={toneMode}>
     <div className="app">
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
@@ -263,8 +274,9 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} />}
       </div>
     </div>
+  </ToneProvider>
   );
 }

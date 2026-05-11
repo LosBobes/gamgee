@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { X, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { FOCUS, ICON_OPTIONS, getCustomFocuses, saveCustomFocuses } from "../../data/focuses";
 import type { CustomFocusDef } from "../../types";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   focus:    string | null;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) {
+  const t = useTxt();
   const [customs,     setCustoms]     = useState<CustomFocusDef[]>([]);
   const [creating,    setCreating]    = useState(false);
   const [newName,     setNewName]     = useState("");
@@ -25,7 +27,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
       id: `custom_${Date.now()}`,
       name,
       iconName: newIconName,
-      desc: "Custom workout",
+      desc: "Your custom grind",
     };
     const updated = [...customs, cf];
     setCustoms(updated);
@@ -47,11 +49,11 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
     <>
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><X size={12} /> Cancel</button>
-        <span className="wz-focus-label">STEP 1 — FOCUS</span>
+        <span className="wz-focus-label">STEP 1: FOCUS</span>
         <button className="wz-next" onClick={onNext} disabled={!focus}>CARDIO <ChevronRight size={13} /></button>
       </div>
-      <div className="wizard-title">What are we training?</div>
-      <div className="wizard-sub">Pick a focus to get smart exercise suggestions</div>
+      <div className="wizard-title">{t("What are we training?", "What are we DESTROYING today?")}</div>
+      <div className="wizard-sub">{t("Pick a focus to get smart exercise suggestions", "Pick your battleground and we'll arm you with the right exercises")}</div>
 
       <div className="focus-grid">
         {Object.entries(FOCUS).map(([k, f]) => (
@@ -77,14 +79,14 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
         <div className="focus-card focus-card-create" onClick={() => setCreating(true)}>
           <div className="focus-icon" style={{ color: "var(--muted)" }}><Plus size={24} /></div>
           <div className="focus-name" style={{ color: "var(--muted)" }}>Custom</div>
-          <div className="focus-desc">Create your own type</div>
+          <div className="focus-desc">{t("Create your own type", "Make it yours")}</div>
         </div>
       </div>
 
       {creating && (
         <div className="cf-overlay" onClick={() => setCreating(false)}>
           <div className="cf-modal" onClick={e => e.stopPropagation()}>
-            <div className="cf-modal-title">New Custom Workout</div>
+            <div className="cf-modal-title">{t("New Custom Workout", "New Custom Grind")}</div>
             <input
               className="cf-modal-input"
               placeholder="Name (e.g. Mobility, Swim, Rehab…)"

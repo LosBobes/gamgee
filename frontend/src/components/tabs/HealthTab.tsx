@@ -145,7 +145,7 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 formatter={(value: any, _name: any, entry: any) => {
                   const note = entry?.payload?.note;
-                  return [`${value} ${activeMetric.unit}${note ? ` — ${note}` : ""}`, activeMetric.label];
+                  return [`${value} ${activeMetric.unit}${note ? ` · ${note}` : ""}`, activeMetric.label];
                 }}
               />
               <Line

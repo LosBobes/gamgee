@@ -1,6 +1,7 @@
 import { Trash2, Trophy } from "lucide-react";
 import type { PRDict } from "../../types";
 import { fmtDate, orm1 } from "../../utils";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   prs: PRDict;
@@ -8,17 +9,18 @@ interface Props {
 }
 
 export default function PRsTab({ prs, onDelete }: Props) {
+  const t = useTxt();
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">No PRs yet</div></div>
+        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">{t("No PRs yet", "No PRs yet. Do you even lift, bro?")}</div></div>
       </div>
     );
   }
 
   return (
     <div className="tab-anim">
-      <p className="pr-header">{Object.keys(prs).length} Personal Records</p>
+      <p className="pr-header">{Object.keys(prs).length} {t("Personal Record", "Hall of Fame PR")}{Object.keys(prs).length !== 1 ? "s" : ""}</p>
       <div className="pr-grid">
         {Object.entries(prs)
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())

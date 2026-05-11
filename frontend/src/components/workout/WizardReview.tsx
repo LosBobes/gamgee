@@ -6,6 +6,7 @@ import { EM, ALL_EX } from "../../data/exercises";
 import { getFocusDef } from "../../data/focuses";
 import { analyzeEx } from "../../analysis";
 import BodyMap from "../BodyMap";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   planned:     ExerciseDef[];
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus, cardio }: Props) {
+  const t = useTxt();
   const finalActive = getActive(planned);
   const finalGroups = muscleGroups(finalActive);
 
@@ -139,8 +141,8 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           <div className="review-autofill-top">
             <Clock size={15} />
             <div>
-              <div className="review-autofill-title">Auto-fill from last session?</div>
-              <div className="review-autofill-sub">Pre-loads weight & reps — edit freely during the workout</div>
+              <div className="review-autofill-title">{t("Auto-fill from last session?", "Load weights from last session?")}</div>
+              <div className="review-autofill-sub">{t("Pre-loads weight and reps. Edit freely during the workout.", "Pre-fills your weight and reps. You're free to push past it.")}</div>
             </div>
           </div>
           <div className="review-autofill-btns">
@@ -148,13 +150,13 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
               Start Fresh
             </button>
             <button className="btn-start" onClick={() => onStart(true)} disabled={planned.length === 0}>
-              <Zap size={16} /> Use Last Session
+              <Zap size={16} /> {t("Use Last Session", "Load Last Session")}
             </button>
           </div>
         </div>
       ) : (
         <button className="btn-start" onClick={() => onStart(false)} disabled={planned.length === 0} style={{ marginTop: 8 }}>
-          <Zap size={18} /> START WORKOUT ({planned.length} exercises)
+          <Zap size={18} /> {t(`START WORKOUT (${planned.length} exercises)`, `LET'S GO (${planned.length} exercises)`)}
         </button>
       )}
     </>

@@ -1,4 +1,5 @@
 import type { WorkoutExercise } from "../types";
+import { useTxt } from "../context/ToneContext";
 
 interface Props {
   exercises: WorkoutExercise[];
@@ -6,15 +7,16 @@ interface Props {
 }
 
 export default function StatsBar({ exercises, doneSets }: Props) {
+  const t = useTxt();
   const volume = exercises.reduce((a, ex) => ex.type !== "strength" ? a :
     a + ex.sets.filter(s => s.done).reduce((b, s) => b + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
   const reps = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done && s.reps).length, 0);
 
   const stats = [
-    { v: exercises.length,                              l: "Exercises" },
-    { v: doneSets,                                      l: "Sets Done"  },
-    { v: volume > 0 ? `${Math.round(volume)}` : "—",   l: "Vol (kg)"  },
-    { v: reps || "—",                                   l: "Reps"      },
+    { v: exercises.length,                              l: "Exercises"           },
+    { v: doneSets,                                      l: "Sets Done"           },
+    { v: volume > 0 ? `${Math.round(volume)}` : "—",   l: "Vol (kg)"            },
+    { v: reps || "—",                                   l: t("Reps", "Reps Fired") },
   ];
 
   return (
