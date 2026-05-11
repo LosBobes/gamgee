@@ -4,7 +4,7 @@ import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
-import { FOCUS } from "../../data/focuses";
+import { FOCUS, getFocusDef } from "../../data/focuses";
 import BodyMap from "../BodyMap";
 import SuggCard from "../SuggCard";
 
@@ -26,7 +26,8 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
   const plannedIds     = new Set(planned.map(e => e.id));
 
   // Muscles the focus type expects to train
-  const focusMuscles = getActive(FOCUS[focus].exIds.flatMap(id => {
+  const focusDef     = getFocusDef(focus) ?? { name: focus, icon: FOCUS.full.icon, desc: "", exIds: [] };
+  const focusMuscles = getActive(focusDef.exIds.flatMap(id => {
     const ex = ALL_EX.find(e => e.id === id);
     return ex ? [ex] : [];
   }));
@@ -53,7 +54,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
       const newP    = m.p.filter(mid => !activeMuscles[mid]);
       const ovP     = m.p.filter(mid => activeMuscles[mid] === "primary");
       const newS    = m.s.filter(mid => !activeMuscles[mid]);
-      const isFocus = FOCUS[focus].exIds.includes(ex.id);
+      const isFocus = focusDef.exIds.includes(ex.id);
       const gap     = m.p.filter(mid => missingMids.has(mid)).length;
       const fav     = (favFreq[ex.id] || 0) / maxFav;
       return { ...ex, score: gap * 30 + fav * 20 + (isFocus ? 10 : 0) + newS.length * 2, newP, ovP, newS, isFocus };
@@ -71,7 +72,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
   const focusSuggs = sorted.filter(s => s.isFocus);
   const otherSuggs = sorted.filter(s => !s.isFocus);
 
-  const FocusIcon = FOCUS[focus]?.icon;
+  const FocusIcon = focusDef.icon;
 
   const renderCard = (ex: SuggExercise) => (
     <SuggCard key={ex.id} ex={ex}
@@ -88,7 +89,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
         <span className="wz-focus-label">
-          {FocusIcon && <FocusIcon size={13} />} {FOCUS[focus]?.name.toUpperCase()}
+          <FocusIcon size={13} /> {focusDef.name.toUpperCase()}
         </span>
         <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW <ChevronRight size={13} /></button>
       </div>
@@ -196,7 +197,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               {focusSuggs.length > 0 && (
                 <>
                   <div className="section-title">
-                    <Star size={12} /> {FOCUS[focus]?.name.toUpperCase()}
+                    <Star size={12} /> {focusDef.name.toUpperCase()}
                     <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400, letterSpacing: 0 }}>
                       hover to preview
                     </span>

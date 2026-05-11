@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
+import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
 
@@ -92,8 +93,29 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
 
 export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
-  const doneCt   = ex.sets.filter(s => s.done).length;
-  const m        = EM[ex.id] || { p: [], s: [] };
+  const [deloadDone, setDeloadDone] = useState(false);
+  const doneCt = ex.sets.filter(s => s.done).length;
+  const m      = EM[ex.id] || { p: [], s: [] };
+
+  const isDeload  = analysis?.status === STATUS.DELOAD;
+  const showDeload = isDeload && !deloadDone && ex.type === "strength";
+
+  const applyProgression = () => {
+    if (!analysis) return;
+    ex.sets.forEach((_, idx) => {
+      updateSet(idx, "weight", String(analysis.nextWeight));
+      updateSet(idx, "reps",   String(analysis.nextReps));
+    });
+  };
+
+  const acceptDeload = () => {
+    if (!analysis) return;
+    ex.sets.forEach((_, idx) => {
+      updateSet(idx, "weight", String(analysis.nextWeight));
+      updateSet(idx, "reps",   String(analysis.nextReps));
+    });
+    setDeloadDone(true);
+  };
 
   return (
     <div className="ex-card">
@@ -107,6 +129,11 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             <span style={{ color: TYPE_COLOR[ex.type] }}>●</span>
             <span>{doneCt}/{ex.sets.length} sets</span>
             {analysis && <span style={{ color: analysis.status.color }}>→ {analysis.nextWeight}kg × {analysis.nextReps}</span>}
+            {analysis && ex.type === "strength" && (
+              <button className="btn-progress" onClick={applyProgression} title="Apply coach recommendation to all sets">
+                <TrendingUp size={11} /> APPLY
+              </button>
+            )}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 5 }}>
             {m.p.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
@@ -115,6 +142,25 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
         </div>
         <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
       </div>
+
+      {showDeload && (
+        <div className="deload-banner">
+          <AlertTriangle size={14} className="deload-icon" />
+          <div className="deload-body">
+            <div className="deload-msg">
+              Stuck at {analysis!.last.topW}kg for 3 sessions. Accept deload to {analysis!.nextWeight}kg?
+            </div>
+            <div className="deload-actions">
+              <button className="btn-deload-confirm" onClick={acceptDeload}>
+                <Check size={11} /> Accept Deload
+              </button>
+              <button className="btn-deload-skip" onClick={() => setDeloadDone(true)}>
+                Keep Current
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="set-table">
         <div className="set-col-hdr">

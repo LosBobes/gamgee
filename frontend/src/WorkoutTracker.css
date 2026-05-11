@@ -1004,4 +1004,146 @@ html, body { background: var(--bg); }
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* ── CUSTOM FOCUS CARDS ── */
+.focus-card-custom { position: relative; }
+.focus-card-del {
+  position: absolute; top: 7px; right: 7px;
+  background: rgba(200,68,68,0.12); border: 1px solid rgba(200,68,68,0.3);
+  color: var(--red); border-radius: 4px; padding: 3px 5px; cursor: pointer;
+  display: flex; align-items: center; opacity: 0; transition: opacity 0.15s;
+}
+.focus-card-custom:hover .focus-card-del { opacity: 1; }
+.focus-card-create {
+  border-style: dashed; opacity: 0.65;
+  transition: opacity 0.18s, border-color 0.18s, background 0.18s, transform 0.18s;
+}
+.focus-card-create:hover { opacity: 1; }
+
+/* ── CUSTOM FOCUS CREATION MODAL ── */
+.cf-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300; padding: 16px; animation: fadeIn 0.15s ease;
+}
+.cf-modal {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px; width: 100%; max-width: 380px;
+  animation: fadeUp 0.2s ease;
+}
+.cf-modal-title {
+  font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 900;
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 16px;
+}
+.cf-modal-input {
+  width: 100%; background: var(--s1); border: 1px solid var(--border);
+  border-radius: 7px; padding: 11px 13px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 600;
+  outline: none; margin-bottom: 16px; transition: border-color 0.15s;
+}
+.cf-modal-input:focus { border-color: var(--accent); }
+.cf-modal-icon-label {
+  font-size: 10px; color: var(--muted); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.cf-icon-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; margin-bottom: 20px;
+}
+.cf-icon-btn {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 7px;
+  padding: 9px; color: var(--muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.cf-icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--ad); }
+.cf-icon-btn.selected { border-color: var(--accent); color: var(--accent); background: var(--ad2); }
+.cf-modal-actions { display: flex; gap: 10px; }
+.cf-btn-cancel {
+  flex: 1; padding: 11px; background: transparent; border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); font-family: 'Nunito', sans-serif;
+  font-size: 13px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s;
+}
+.cf-btn-cancel:hover { border-color: var(--muted); color: var(--text); }
+.cf-btn-save {
+  flex: 2; padding: 11px; background: var(--accent); border: none;
+  border-radius: 7px; color: #0a0804; font-family: 'Nunito', sans-serif;
+  font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase;
+  cursor: pointer; transition: opacity 0.15s;
+}
+.cf-btn-save:disabled { opacity: 0.3; cursor: default; }
+.cf-btn-save:not(:disabled):hover { opacity: 0.88; }
+
+/* ── REVIEW AUTO-FILL PROMPT ── */
+.review-last-hint {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; color: var(--muted); letter-spacing: 1px;
+  text-transform: uppercase; margin-top: 6px;
+}
+.review-autofill-card {
+  background: var(--s1); border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px; margin-top: 8px; animation: fadeUp 0.2s ease;
+}
+.review-autofill-top {
+  display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px;
+  color: var(--accent);
+}
+.review-autofill-title {
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--text);
+}
+.review-autofill-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.review-autofill-btns { display: flex; gap: 10px; }
+.btn-start-fresh {
+  background: var(--s2); color: var(--muted); border: 1px solid var(--border);
+  font-size: 14px; padding: 12px 18px; flex: 0 0 auto;
+}
+.btn-start-fresh:not(:disabled):hover { background: var(--s3); color: var(--text); transform: none; box-shadow: none; opacity: 1; }
+.review-autofill-btns .btn-start { flex: 1; font-size: 14px; padding: 12px 18px; display: flex; align-items: center; justify-content: center; gap: 7px; }
+
+/* ── PROGRESS BUTTON (Apply Progression) ── */
+.btn-progress {
+  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; padding: 3px 7px;
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  color: var(--green); border: 1px solid color-mix(in srgb, var(--green) 35%, transparent);
+  border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.btn-progress:hover { background: color-mix(in srgb, var(--green) 22%, transparent); border-color: var(--green); }
+.btn-progress:active { transform: scale(0.95); }
+
+/* ── DELOAD ACKNOWLEDGMENT BANNER ── */
+.deload-banner {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: color-mix(in srgb, var(--purple) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--purple) 35%, transparent);
+  border-radius: 0; padding: 12px 14px;
+  animation: fadeIn 0.2s ease;
+}
+.deload-icon { color: var(--purple); flex-shrink: 0; margin-top: 1px; }
+.deload-body { flex: 1; min-width: 0; }
+.deload-msg {
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+  color: var(--text); margin-bottom: 8px; line-height: 1.4;
+}
+.deload-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-deload-confirm {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: color-mix(in srgb, var(--purple) 18%, transparent);
+  color: var(--purple); border: 1px solid color-mix(in srgb, var(--purple) 50%, transparent);
+  border-radius: 5px; padding: 6px 12px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.btn-deload-confirm:hover { background: color-mix(in srgb, var(--purple) 28%, transparent); }
+.btn-deload-skip {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px;
+  cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.btn-deload-skip:hover { color: var(--text); border-color: var(--muted); }
 .timed-stop-btn:active { transform: scale(0.9); }
