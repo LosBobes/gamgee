@@ -24,6 +24,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-gamgee}:${POSTGRES_PASSWORD:-gamgee}@db:5432/${POSTGRES_DB:-gamgee}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-please}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:-}
     ports:
       - "8000:8000"
     volumes:

@@ -26,12 +26,18 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=schemas.Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == form.username).first()
-    if not user or not verify_password(form.password, user.hashed_password):
+    verified, needs_rehash = (False, False)
+    if user:
+        verified, needs_rehash = verify_password(form.password, user.hashed_password)
+    if not user or not verified:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if needs_rehash:
+        user.hashed_password = hash_password(form.password)
+        db.commit()
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
@@ -47,7 +53,8 @@ def change_password(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not verify_password(body.current_password, current_user.hashed_password):
+    verified, _ = verify_password(body.current_password, current_user.hashed_password)
+    if not verified:
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if len(body.new_password) < 8:
         raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
