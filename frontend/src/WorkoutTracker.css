@@ -317,6 +317,16 @@ html, body { background: var(--bg); }
   animation: heroBreath 4s ease-in-out infinite;
 }
 .start-hero span { color: var(--accent); }
+.start-quote {
+  font-family: 'Nunito', sans-serif;
+  font-size: 20px; font-weight: 800; font-style: italic;
+  line-height: 1.4; color: var(--text);
+  margin-bottom: 28px; max-width: 340px; text-align: center;
+}
+.start-quote-attr {
+  font-size: 10px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--accent); margin-top: 10px; font-style: normal; font-weight: 700;
+}
 
 /* ── WIZARD ── */
 .wizard-title { font-family: 'Nunito', sans-serif; font-size: 28px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 4px; }

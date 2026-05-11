@@ -1,32 +1,151 @@
-export const QUOTES: string[] = [
+export const BRO_QUOTES: string[] = [
+  // The Classics
+  "AAaaAAaRGGGh - Arnold Schwarzenegger's secret to lifting 16 plates",
   "The Swoly Bible says: thou shalt not skip leg day.",
-  "The only bad workout is the one that didn't happen.",
-  "Somewhere out there, someone is warming up with your max.",
-  "Pain is weakness leaving the body. Allegedly.",
+  "Welcome to the Church of Iron. Reps are the sermon.",
+  "Disciples of the Swoly Bible do not skip leg day. Ever.",
+  "The Swoly Bible, Chapter 1: thou art not too tired. Thou art just getting started.",
+
+  // Reddit BroScience Hall of Fame
+  "Chickens evolved from dinosaurs, and they were huge, bro. So eat lots of chicken.",
+  "I only eat whale. It has three letters in common with swole.",
+  "You don't need to train legs. Nobody can see them in the club!",
+  "Don't eat sandwiches. The bread blocks the protein.",
+  "If you eat sugar, it cancels out the protein.",
+  "Sprints release HGH and HGH makes you taller. Expecting 2-3 inches by summer.",
+  "Wendy's formulated the Baconator to give sick gains directly to the shoulders.",
+  "Whey protein goes around your body zapping fat. That's just how it works.",
+  "Bitches can smell squat on you. Always squat before a date.",
+
+  // Dom Mazzetti
+  "Every workout is Arm Day. It's always Arm Day.",
+  "I don't do cardio because it interferes with my nap time.",
+  "You can't spell 'legendary' without 'leg day.' Coincidence? I think not.",
+  "The squat rack is my sanctuary. It's where I go to pray for bigger quads.",
+  "There's no such thing as overtraining. Just under-consuming protein shakes.",
+  "Why drink protein shakes when you can just eat a whole chicken? It's nature's shaker bottle.",
+  "Why do yoga when you can lift weights and scream at them? Namaste gains, bro.",
+  "Abs are made in the gym, but pizza is made in heaven.",
+  "You don't get a pump from doing curls. You get a pump from flexing in the mirror while doing curls.",
+  "Sweat is just my muscles crying tears of joy.",
+  "The secret to a great physique? 10% genetics, 90% gym selfies.",
+  "I don't need pre-workout. I just sniff the chalk and let the gains flow through me.",
+  "Cardio? I prefer to call it heart gains.",
+
+  // Originals
   "The iron never lies.",
   "Your comfort zone has zero PRs.",
   "Sweat now, flex later. It's a whole thing.",
-  "Welcome to the Church of Iron. Reps are the sermon.",
+  "The only bad workout is the one that didn't happen.",
+  "Somewhere out there, someone is warming up with your max.",
+  "Pain is weakness leaving the body. Allegedly.",
   "Do you even lift, bro? (This is your sign to lift.)",
-  "Disciples of the Swoly Bible do not skip leg day. Ever.",
-  "Every rep is a vote for the person you want to be.",
-  "The bar doesn't know how many times you've failed. Lift it anyway.",
+  "Every rep is a vote for a bigger, swole-er you. Voter fraud encouraged.",
+  "The bar has no memory. It doesn't know you failed last time. Use this against it.",
   "Gainz don't care about your excuses.",
   "Sore today, strong tomorrow, swole eventually.",
-  "Your future self is watching. Don't disappoint them.",
+  "Your future self is watching. He's absolutely jacked and deeply disappointed.",
   "The gym is the one place you pay to suffer and then beg for more.",
   "Sleep is the original pre-workout.",
-  "If it doesn't challenge you, it doesn't change you.",
+  "If it doesn't make you question your life choices, add more weight.",
   "You could be sleeping right now. You chose this instead. Respect.",
   "Progress, not perfection. But also, more plates.",
-  "Today's workout is tomorrow's warm-up.",
-  "The only person you're competing with is last week's you.",
+  "Today's max is next month's warm-up. Terrifying. Beautiful. Let's go.",
+  "The only person you're competing with is last week's you. Last week's you was a weakling.",
   "Eat. Lift. Sleep. Repeat. Live forever. (Results may vary.)",
-  "Champions train. Everyone else has opinions.",
+  "Champions train. Everyone else is on Reddit asking if their program is optimal.",
   "Show up ugly, leave sweaty, come back stronger.",
-  "Don't count the reps. Make the reps count.",
-  "You didn't come this far to only come this far.",
-  "Motivation gets you started. Habit keeps you coming back.",
+  "You didn't drive to the gym, find parking, and change just to do three sets and leave.",
+  "Motivation is unreliable. Discipline is boring. Gains are forever.",
   "Leave nothing in the tank. The tank is the enemy.",
-  "The Swoly Bible, Chapter 1: thou art not too tired. Thou art just getting started.",
 ];
+
+export const PRO_QUOTES: Array<{ text: string; source: string }> = [
+  // Arnold Schwarzenegger
+  { source: "Arnold Schwarzenegger", text: "The last three or four reps is what makes the muscle grow. This area of pain divides the champion from someone who is not a champion." },
+  { source: "Arnold Schwarzenegger", text: "The mind is the limit. As long as the mind can envision the fact that you can do something, you can do it." },
+  { source: "Arnold Schwarzenegger", text: "Strength does not come from winning. Your struggles develop your strengths. When you go through hardships and decide not to surrender, that is strength." },
+  { source: "Arnold Schwarzenegger", text: "You can have results or excuses. Not both." },
+  { source: "Arnold Schwarzenegger", text: "Pain makes me grow. Growing is what I want. Therefore, for me pain is pleasure." },
+  { source: "Arnold Schwarzenegger", text: "The day I stop training is the day I die." },
+  { source: "Arnold Schwarzenegger", text: "The worst thing I can be is the same as everybody else." },
+  { source: "Arnold Schwarzenegger", text: "Milk is for babies. When you grow up you have to drink beer." },
+  { source: "Arnold Schwarzenegger", text: "For me, life is continuously being hungry. The meaning of life is not simply to exist, but to move ahead, to achieve, to conquer." },
+  { source: "Arnold Schwarzenegger", text: "Everybody pities the weak. Jealousy you have to earn." },
+
+  // Ronnie Coleman — 8x Mr. Olympia
+  { source: "Ronnie Coleman", text: "Everybody wants to be a bodybuilder, but nobody wants to lift no heavy-ass weights." },
+  { source: "Ronnie Coleman", text: "Ain't nothin' but a peanut." },
+  { source: "Ronnie Coleman", text: "Light weight, baby! Light weight!" },
+  { source: "Ronnie Coleman", text: "Yeah, buddy! Lightweight! Nothing to it but to do it." },
+
+  // Lee Haney — 8x Mr. Olympia
+  { source: "Lee Haney", text: "Exercise to stimulate, not to annihilate. The world wasn't formed in a day, and neither were we. Set small goals and achieve them daily." },
+  { source: "Lee Haney", text: "Stimulate, don't annihilate." },
+
+  // Dorian Yates — 6x Mr. Olympia
+  { source: "Dorian Yates", text: "A lot of people are afraid of the pain. But pain is your friend. Pain is how the body communicates to the mind that it needs to change." },
+  { source: "Dorian Yates", text: "The more I train, the more I realize how much I don't know." },
+  { source: "Dorian Yates", text: "Blood and guts. That's the only way." },
+
+  // Tom Platz — The Quadfather
+  { source: "Tom Platz", text: "The squat is the king of all exercises. Squat deep and squat often." },
+  { source: "Tom Platz", text: "When the legs get tired, run with your heart." },
+  { source: "Tom Platz", text: "You have to be willing to be uncomfortable. Only then will you grow." },
+
+  // Kai Greene
+  { source: "Kai Greene", text: "Thoughts become things. If you see it in your mind, you will hold it in your hand." },
+  { source: "Kai Greene", text: "Don't count days. Make the days count." },
+  { source: "Kai Greene", text: "The body achieves what the mind believes." },
+
+  // Frank Zane — 3x Mr. Olympia
+  { source: "Frank Zane", text: "The body is the costume of the soul." },
+  { source: "Frank Zane", text: "Think of what you want to look like, then become it." },
+
+  // Reg Park — 3x Mr. Universe, Arnold's idol
+  { source: "Reg Park", text: "There are no shortcuts. Everything is reps, reps, reps." },
+  { source: "Reg Park", text: "If you want to be a champion, you must train like one." },
+
+  // Ed Coan — Greatest powerlifter of all time
+  { source: "Ed Coan", text: "You have to believe you can do it. If you believe it, then you can achieve it." },
+  { source: "Ed Coan", text: "Hard work and consistency will always beat talent." },
+
+  // Lou Ferrigno
+  { source: "Lou Ferrigno", text: "The competition is not with others. It's with yourself." },
+];
+
+// [line1 = gray, line2 = accent]
+export const HERO_CALLS: Array<[string, string]> = [
+  // Standard
+  ["LET'S", "WORK"],
+  ["LET'S", "GO"],
+  ["LET'S", "CRUSH IT"],
+  ["TIME TO", "GRIND"],
+  ["TIME TO", "TRAIN"],
+  ["GET", "AFTER IT"],
+  ["NO DAYS", "OFF"],
+  ["EARN IT", "TODAY"],
+  ["SHOW", "UP"],
+  ["LET'S CRUSH", "SOME PRs"],
+  ["MAKE IT", "COUNT"],
+  ["PUT IN", "THE WORK"],
+  // Bro
+  ["FEEL THE", "GAINS"],
+  ["SWOLE", "SZEASON"],
+  ["THE IRON", "AWAITS"],
+  ["HOLY", "GAINZ"],
+  ["CHAPEL", "OF IRON"],
+  ["WITNESS", "ME"],
+  ["SEND", "IT"],
+  ["TODAY WE", "FEAST"],
+  ["GLORY", "AWAITS"],
+  ["WE DO NOT", "SKIP"],
+  ["IRON", "NEVER LIES"],
+  ["NOTHING BUT", "A PEANUT"],
+  ["LIGHT", "WEIGHT"],
+  ["YEAH", "BUDDY"],
+];
+
+// Legacy exports
+export const ARNOLD_QUOTES = PRO_QUOTES;
+export const QUOTES = BRO_QUOTES;
