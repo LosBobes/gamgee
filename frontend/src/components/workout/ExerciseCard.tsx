@@ -1,20 +1,25 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square } from "lucide-react";
+import { X, Check, Circle, Play, Square, Link2, Link2Off } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
 
 interface Props {
-  ex:         WorkoutExercise;
-  pr:         PersonalRecord | undefined;
-  analysis:   AnalysisResult | null;
-  onRemove:   () => void;
-  updateSet:  (idx: number, field: keyof WorkoutSet, value: string) => void;
-  toggleSet:  (idx: number) => void;
-  addSet:     () => void;
-  removeSet:  (idx: number) => void;
-  isNewPr:    (weight: string) => boolean;
+  ex:           WorkoutExercise;
+  pr:           PersonalRecord | undefined;
+  analysis:     AnalysisResult | null;
+  linked:       boolean;
+  isLinkSource: boolean;
+  isLinkTarget: boolean;
+  onRemove:     () => void;
+  updateSet:    (idx: number, field: keyof WorkoutSet, value: string) => void;
+  toggleSet:    (idx: number) => void;
+  addSet:       () => void;
+  removeSet:    (idx: number) => void;
+  addDropSet:   () => void;
+  onLinkClick:  () => void;
+  isNewPr:      (weight: string) => boolean;
 }
 
 const colLabels = (ex: WorkoutExercise): [string, string] =>
@@ -23,9 +28,9 @@ const colLabels = (ex: WorkoutExercise): [string, string] =>
   : ["WEIGHT (kg)", "REPS"];
 
 interface TimedSetRowProps {
-  set: WorkoutSet;
-  idx: number;
-  setCount: number;
+  set:       WorkoutSet;
+  idx:       number;
+  setCount:  number;
   updateSet: (idx: number, field: keyof WorkoutSet, value: string) => void;
   toggleSet: (idx: number) => void;
   removeSet: (idx: number) => void;
@@ -90,13 +95,19 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, isLinkTarget, onRemove, updateSet, toggleSet, addSet, removeSet, addDropSet, onLinkClick, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
   const doneCt   = ex.sets.filter(s => s.done).length;
   const m        = EM[ex.id] || { p: [], s: [] };
 
+  const cardClass = [
+    "ex-card",
+    isLinkSource ? "ex-card-link-source" : "",
+    isLinkTarget ? "ex-card-link-target" : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <div className="ex-card">
+    <div className={cardClass} onClick={isLinkTarget ? onLinkClick : undefined} style={isLinkTarget ? { cursor: "pointer" } : undefined}>
       <div className="ex-hdr">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
@@ -113,7 +124,16 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             {m.s.slice(0, 2).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
           </div>
         </div>
-        <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          <button
+            className={["btn-icon", "link-btn", linked ? "link-btn-linked" : "", isLinkSource ? "link-btn-source" : ""].filter(Boolean).join(" ")}
+            onClick={e => { e.stopPropagation(); onLinkClick(); }}
+            title={linked ? "Unlink superset" : isLinkSource ? "Cancel superset" : "Create superset"}
+          >
+            {linked ? <Link2Off size={14} /> : <Link2 size={14} />}
+          </button>
+          <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
+        </div>
       </div>
 
       <div className="set-table">
@@ -140,8 +160,10 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
           ex.sets.map((set, idx) => {
             const showPrTag = ex.type === "strength" && isNewPr(set.weight) && !!set.weight;
             return (
-              <div key={idx} className="set-row">
-                <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
+              <div key={idx} className={`set-row${set.drop ? " drop-set-row" : ""}`}>
+                <div className={`set-num${set.done ? " done" : ""}${set.drop ? " drop-num" : ""}`}>
+                  {set.drop ? "↓" : idx + 1}
+                </div>
                 <div className="inp-wrap">
                   <input
                     className={`set-inp ${set.done ? "done" : ""}`}
@@ -173,7 +195,12 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             );
           })
         )}
-        <button className="btn-add-set" onClick={addSet}>+ add set</button>
+        <div className="set-footer">
+          <button className="btn-add-set" onClick={addSet}>+ add set</button>
+          {ex.type === "strength" && (
+            <button className="btn-drop-set" onClick={addDropSet}>↓ drop</button>
+          )}
+        </div>
       </div>
     </div>
   );

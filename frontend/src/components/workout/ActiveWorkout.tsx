@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Dumbbell } from "lucide-react";
+import { Check, Dumbbell, Link2 } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
@@ -17,15 +17,85 @@ interface Props {
   toggleSet:      (uid: string, idx: number) => void;
   addSet:         (uid: string) => void;
   removeSet:      (uid: string, idx: number) => void;
+  addDropSet:     (uid: string) => void;
+  linkSuperset:   (uid1: string, uid2: string) => void;
+  unlinkSuperset: (uid: string) => void;
   isNewPr:        (exId: string, weight: string) => boolean;
 }
 
-export default function ActiveWorkout({ exercises, prs, history, doneSets, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
-  const [showPick, setShowPick] = useState(false);
+type RenderItem =
+  | { type: "single";    ex: WorkoutExercise }
+  | { type: "superset";  exes: WorkoutExercise[]; groupId: string };
+
+export default function ActiveWorkout({ exercises, prs, history, doneSets, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, addDropSet, linkSuperset, unlinkSuperset, isNewPr }: Props) {
+  const [showPick,   setShowPick]   = useState(false);
+  const [linkingUid, setLinkingUid] = useState<string | null>(null);
 
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
     setShowPick(false);
+  };
+
+  const handleLinkClick = (uid: string) => {
+    const ex = exercises.find(e => e.uid === uid);
+    if (ex?.supersetId) {
+      unlinkSuperset(uid);
+      return;
+    }
+    if (!linkingUid) {
+      setLinkingUid(uid);
+    } else if (linkingUid === uid) {
+      setLinkingUid(null);
+    } else {
+      linkSuperset(linkingUid, uid);
+      setLinkingUid(null);
+    }
+  };
+
+  // Build ordered render items, preserving first-occurrence position of each group
+  const renderItems: RenderItem[] = [];
+  const seenGroups = new Set<string>();
+  for (const ex of exercises) {
+    if (ex.supersetId) {
+      if (!seenGroups.has(ex.supersetId)) {
+        seenGroups.add(ex.supersetId);
+        renderItems.push({
+          type: "superset",
+          groupId: ex.supersetId,
+          exes: exercises.filter(e => e.supersetId === ex.supersetId),
+        });
+      }
+    } else {
+      renderItems.push({ type: "single", ex });
+    }
+  }
+
+  const linkingName = linkingUid ? exercises.find(e => e.uid === linkingUid)?.name : null;
+
+  const renderCard = (ex: WorkoutExercise) => {
+    const linked   = !!ex.supersetId;
+    const isSource = linkingUid === ex.uid;
+    const isTarget = !!linkingUid && !isSource && !linked;
+
+    return (
+      <ExerciseCard
+        key={ex.uid}
+        ex={ex}
+        pr={prs[ex.id]}
+        analysis={analyzeEx(ex.id, history)}
+        linked={linked}
+        isLinkSource={isSource}
+        isLinkTarget={isTarget}
+        onRemove={() => removeExercise(ex.uid)}
+        updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
+        toggleSet={(idx) => toggleSet(ex.uid, idx)}
+        addSet={() => addSet(ex.uid)}
+        removeSet={(idx) => removeSet(ex.uid, idx)}
+        addDropSet={() => addDropSet(ex.uid)}
+        onLinkClick={() => handleLinkClick(ex.uid)}
+        isNewPr={(w) => isNewPr(ex.id, w)}
+      />
+    );
   };
 
   return (
@@ -35,6 +105,14 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
         <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
       </div>
 
+      {linkingUid && (
+        <div className="superset-link-banner">
+          <Link2 size={13} />
+          <span>Tap another exercise to superset with <strong>{linkingName}</strong></span>
+          <button className="superset-link-cancel" onClick={() => setLinkingUid(null)}>Cancel</button>
+        </div>
+      )}
+
       {exercises.length === 0 && (
         <div className="empty">
           <div className="empty-icon"><Dumbbell size={40} /></div>
@@ -42,20 +120,19 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
         </div>
       )}
 
-      {exercises.map(ex => (
-        <ExerciseCard
-          key={ex.uid}
-          ex={ex}
-          pr={prs[ex.id]}
-          analysis={analyzeEx(ex.id, history)}
-          onRemove={() => removeExercise(ex.uid)}
-          updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
-          toggleSet={(idx) => toggleSet(ex.uid, idx)}
-          addSet={() => addSet(ex.uid)}
-          removeSet={(idx) => removeSet(ex.uid, idx)}
-          isNewPr={(w) => isNewPr(ex.id, w)}
-        />
-      ))}
+      {renderItems.map(item => {
+        if (item.type === "superset") {
+          return (
+            <div key={item.groupId} className="superset-group">
+              <div className="superset-group-label">
+                <Link2 size={10} /> SUPERSET
+              </div>
+              {item.exes.map(renderCard)}
+            </div>
+          );
+        }
+        return renderCard(item.ex);
+      })}
 
       {showPick && (
         <ExercisePicker prs={prs} onAdd={handleAdd} onClose={() => setShowPick(false)} />

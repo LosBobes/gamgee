@@ -116,6 +116,37 @@ export default function WorkoutTracker() {
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== idx) }
     ));
 
+  const addDropSet = (uid: string) =>
+    setExercises(p => p.map(ex => {
+      if (ex.uid !== uid) return ex;
+      const last  = ex.sets[ex.sets.length - 1];
+      const lastW = parseFloat(last?.weight);
+      const dropW = !isNaN(lastW) && lastW > 0
+        ? String(Math.round(lastW * 0.8 / 2.5) * 2.5)
+        : "";
+      return { ...ex, sets: [...ex.sets, { weight: dropW, reps: last?.reps ?? "", done: false, drop: true }] };
+    }));
+
+  const linkSuperset = (uid1: string, uid2: string) => {
+    const groupId = crypto.randomUUID();
+    setExercises(p => p.map(ex =>
+      ex.uid === uid1 || ex.uid === uid2 ? { ...ex, supersetId: groupId } : ex
+    ));
+  };
+
+  const unlinkSuperset = (uid: string) =>
+    setExercises(p => {
+      const target = p.find(e => e.uid === uid);
+      if (!target?.supersetId) return p;
+      const gid     = target.supersetId;
+      const inGroup = p.filter(e => e.supersetId === gid);
+      return p.map(e =>
+        inGroup.length <= 2
+          ? e.supersetId === gid ? { ...e, supersetId: undefined } : e
+          : e.uid === uid        ? { ...e, supersetId: undefined } : e
+      );
+    });
+
   const isNewPr = (exId: string, weight: string): boolean => {
     const w = parseFloat(weight);
     return !isNaN(w) && w > 0 && (!prs[exId] || w > prs[exId].weight);
@@ -207,6 +238,7 @@ export default function WorkoutTracker() {
             doneSets={doneSets} startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
+            addDropSet={addDropSet} linkSuperset={linkSuperset} unlinkSuperset={unlinkSuperset}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
           />
         )}

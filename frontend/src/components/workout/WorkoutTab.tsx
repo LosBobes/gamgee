@@ -6,29 +6,32 @@ import WizardReview from "./WizardReview";
 import ActiveWorkout from "./ActiveWorkout";
 
 interface Props {
-  active:         boolean;
-  wStep:          number;
-  setWStep:       (s: number) => void;
-  focus:          string | null;
-  setFocus:       (f: string) => void;
-  planned:        ExerciseDef[];
-  setPlanned:     (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
-  exercises:      WorkoutExercise[];
-  prs:            PRDict;
-  history:        WorkoutSession[];
-  doneSets:       number;
-  startFromWizard: () => void;
-  addExercise:    (ex: ExerciseDef) => void;
-  removeExercise: (uid: string) => void;
-  updateSet:      (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
-  toggleSet:      (uid: string, idx: number) => void;
-  addSet:         (uid: string) => void;
-  removeSet:      (uid: string, idx: number) => void;
-  isNewPr:        (exId: string, weight: string) => boolean;
-  finishWorkout:  () => void;
+  active:           boolean;
+  wStep:            number;
+  setWStep:         (s: number) => void;
+  focus:            string | null;
+  setFocus:         (f: string) => void;
+  planned:          ExerciseDef[];
+  setPlanned:       (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
+  exercises:        WorkoutExercise[];
+  prs:              PRDict;
+  history:          WorkoutSession[];
+  doneSets:         number;
+  startFromWizard:  () => void;
+  addExercise:      (ex: ExerciseDef) => void;
+  removeExercise:   (uid: string) => void;
+  updateSet:        (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
+  toggleSet:        (uid: string, idx: number) => void;
+  addSet:           (uid: string) => void;
+  removeSet:        (uid: string, idx: number) => void;
+  addDropSet:       (uid: string) => void;
+  linkSuperset:     (uid1: string, uid2: string) => void;
+  unlinkSuperset:   (uid: string) => void;
+  isNewPr:          (exId: string, weight: string) => boolean;
+  finishWorkout:    () => void;
 }
 
-export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, planned, setPlanned, exercises, prs, history, doneSets, startFromWizard, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout }: Props) {
+export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, planned, setPlanned, exercises, prs, history, doneSets, startFromWizard, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, addDropSet, linkSuperset, unlinkSuperset, isNewPr, finishWorkout }: Props) {
   return (
     <>
       {!active && wStep === 0 && (
@@ -75,6 +78,9 @@ export default function WorkoutTab({ active, wStep, setWStep, focus, setFocus, p
           toggleSet={toggleSet}
           addSet={addSet}
           removeSet={removeSet}
+          addDropSet={addDropSet}
+          linkSuperset={linkSuperset}
+          unlinkSuperset={unlinkSuperset}
           isNewPr={isNewPr}
         />
       )}

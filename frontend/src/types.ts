@@ -8,8 +8,8 @@ export interface MuscleInfo { n: string; g: string; }
 export interface ExerciseDef { id: string; name: string; type: ExerciseType; cat?: string; }
 export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: number; newP?: string[]; ovP?: string[]; newS?: string[]; }
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
-export interface WorkoutSet { weight: string; reps: string; done: boolean; }
-export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
+export interface WorkoutSet { weight: string; reps: string; done: boolean; drop?: boolean; }
+export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; supersetId?: string; }
 export interface WorkoutSession { id: string; date: string; duration: number; focus?: string | null; exercises: WorkoutExercise[]; }
 export interface PersonalRecord { name: string; weight: number; reps: number; date: string; isCardio?: boolean; }
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
