@@ -1,5 +1,14 @@
-from pydantic import BaseModel
-from typing import Any
+import re
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from .password_policy import validate_password
+
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+
+Gender = Literal["female", "male", "non_binary", "other", "prefer_not_to_say"]
 
 
 class ItemBase(BaseModel):
@@ -25,13 +34,38 @@ class Item(ItemBase):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class UserCreate(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=50)
     password: str
+    email: str = Field(max_length=254)
+    gender: Gender
+
+    @field_validator("username")
+    @classmethod
+    def _username_format(cls, v: str) -> str:
+        v = v.strip()
+        if not _USERNAME_RE.match(v):
+            raise ValueError("Username may only contain letters, digits, '.', '_' or '-'")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _email_format(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+    @model_validator(mode="after")
+    def _check_password(self) -> "UserCreate":
+        validate_password(self.password, username=self.username, email=self.email)
+        return self
 
 
 class UserOut(BaseModel):
     id: int
     username: str
+    email: str | None = None
+    gender: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -48,6 +82,12 @@ class TokenData(BaseModel):
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong(cls, v: str) -> str:
+        validate_password(v)
+        return v
 
 
 # ── Workout sessions ──────────────────────────────────────────────────────────
