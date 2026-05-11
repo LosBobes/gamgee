@@ -67,12 +67,20 @@ export default function WorkoutTracker() {
 
   // ── Workout handlers ──
 
-  const startFromWizard = () => {
+  const startFromWizard = (autoFill = false) => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
-    setExercises(planned.map(ex => ({
-      ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`,
-      sets: [{ weight: "", reps: "", done: false }],
-    })));
+    setExercises(planned.map(ex => {
+      let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
+      if (autoFill) {
+        const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
+        if (lastSession) {
+          const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
+          if (lastEx.sets.length > 0)
+            initSets = lastEx.sets.map(s => ({ weight: s.weight, reps: s.reps, done: false }));
+        }
+      }
+      return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
+    }));
     setPlanned([]);
   };
 

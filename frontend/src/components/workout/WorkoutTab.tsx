@@ -17,7 +17,7 @@ interface Props {
   prs:            PRDict;
   history:        WorkoutSession[];
   doneSets:       number;
-  startFromWizard: () => void;
+  startFromWizard: (autoFill: boolean) => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
   updateSet:      (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
