@@ -28,6 +28,7 @@ export interface StickFigureProps {
   hubColor?: string;    // inner-circle fill; defaults to var(--bg) for a "hole-in-plate" look
   bench?: boolean;      // render a horizontal bench under a lying body
   floor?: boolean;      // render a dashed floor line at the bottom
+  barLine?: number;     // y-coord of a fixed horizontal bar across the frame (pull-up rig, etc.)
   width?: number | string;
   height?: number | string;
   color?: string;       // override stroke colour; defaults to currentColor
@@ -48,6 +49,7 @@ export default function StickFigure({
   hubColor = "var(--bg)",
   bench = false,
   floor = false,
+  barLine,
   width,
   height,
   color = "currentColor",
@@ -87,6 +89,13 @@ export default function StickFigure({
           <line x1={32} y1={91} x2={32} y2={108} stroke={color} strokeWidth={2} strokeLinecap="round" />
           <line x1={82} y1={91} x2={82} y2={108} stroke={color} strokeWidth={2} strokeLinecap="round" />
         </g>
+      )}
+
+      {barLine !== undefined && (
+        <line
+          x1={2} y1={barLine} x2={VB_W - 2} y2={barLine}
+          stroke={color} strokeWidth={3.4} strokeLinecap="round" opacity={0.85}
+        />
       )}
 
       <g
