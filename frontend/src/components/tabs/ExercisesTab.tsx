@@ -28,7 +28,7 @@ export default function ExercisesTab() {
     <div className="tab-anim">
       <div className="profile-section">
         <Wrench size={11} style={{ marginRight: 5, verticalAlign: -1 }} />
-        {t("Custom Exercises", "Custom Lifts")}
+        {t("Custom Exercises", "Custom Lifts", "Custom Moves")}
       </div>
 
       <div className="profile-card">
@@ -36,7 +36,8 @@ export default function ExercisesTab() {
           <div className="cx-mgr-empty">
             {t(
               "No custom exercises yet. Build one to add it to your catalog.",
-              "No homemade lifts yet, bro. Roll your own."
+              "No homemade lifts yet, bro. Roll your own.",
+              "No custom moves yet, bestie. Cook one up."
             )}
           </div>
         ) : (
@@ -90,7 +91,8 @@ export default function ExercisesTab() {
                       <div className="cx-mgr-detail-empty">
                         {t(
                           "No instructions yet. Tap edit to add cues.",
-                          "No notes yet — hit edit and drop some wisdom."
+                          "No notes yet — hit edit and drop some wisdom.",
+                          "No notes yet — hit edit and gatekeep nothing."
                         )}
                       </div>
                     )}
@@ -103,7 +105,7 @@ export default function ExercisesTab() {
 
         <button className="cx-mgr-add" onClick={() => setCreating(true)}>
           <Plus size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-          {t("Add Custom Exercise", "Build a New Lift")}
+          {t("Add Custom Exercise", "Build a New Lift", "Cook Up a New Move")}
         </button>
       </div>
 

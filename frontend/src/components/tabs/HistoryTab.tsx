@@ -61,7 +61,7 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><ClipboardList size={40} /></div><div className="empty-label">{t("No sessions yet", "No sessions yet. Your legend starts today.")}</div></div>
+        <div className="empty"><div className="empty-icon"><ClipboardList size={40} /></div><div className="empty-label">{t("No sessions yet", "No sessions yet. Your legend starts today.", "No sessions yet. Your villain origin starts today.")}</div></div>
       </div>
     );
   }

@@ -39,7 +39,7 @@ export default function SplashScreen({ onDone }: Props) {
         </div>
         <div className="splash-text">
           <div className="splash-name">GAMGEE</div>
-          <div className="splash-sub">{t("Workout Tracker", "Built Different (Allegedly)")}</div>
+          <div className="splash-sub">{t("Workout Tracker", "Built Different (Allegedly)", "She's Built That Way")}</div>
         </div>
       </div>
     </div>

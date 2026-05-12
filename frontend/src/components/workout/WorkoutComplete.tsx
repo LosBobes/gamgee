@@ -37,18 +37,18 @@ export default function WorkoutComplete({ session, onDone }: Props) {
     return (
       <div className="complete-screen tab-anim">
         <div className="complete-icon"><Check size={48} /></div>
-        <h1 className="complete-hero">{t("NICE", "BEAST")}<br /><span>{t("WORK", "MODE")}</span></h1>
+        <h1 className="complete-hero">{t("NICE", "BEAST", "QUEEN")}<br /><span>{t("WORK", "MODE", "ENERGY")}</span></h1>
         <p className="complete-sub">
-          {t("You hit", "You crushed")} {session.exercises.length} exercise{session.exercises.length === 1 ? "" : "s"}
-          {groups.size > 0 && <> across {groups.size} muscle group{groups.size === 1 ? "" : "s"}</>}.{t("", " Absolute unit.")}
+          {t("You hit", "You crushed", "You ate")} {session.exercises.length} exercise{session.exercises.length === 1 ? "" : "s"}
+          {groups.size > 0 && <> across {groups.size} muscle group{groups.size === 1 ? "" : "s"}</>}.{t("", " Absolute unit.", " Iconic behavior.")}
         </p>
 
         <div className="complete-prompt">
           <Heart size={20} className="complete-prompt-icon" />
           <div>
-            <div className="complete-prompt-title">{t("Want to stretch?", "Don't skip the cooldown")}</div>
+            <div className="complete-prompt-title">{t("Want to stretch?", "Don't skip the cooldown", "Cool-down era?")}</div>
             <div className="complete-prompt-sub">
-              {t("We'll suggest a few based on what you trained today.", "Stretch it out. Your future self will thank you.")}
+              {t("We'll suggest a few based on what you trained today.", "Stretch it out. Your future self will thank you.", "Stretch it out, bestie. Future you is sending love.")}
             </div>
           </div>
         </div>
@@ -58,7 +58,7 @@ export default function WorkoutComplete({ session, onDone }: Props) {
             <X size={14} /> SKIP
           </button>
           <button className="btn-start" onClick={() => setStage("stretch")} disabled={stretches.length === 0}>
-            {t("YES, STRETCH", "LET'S STRETCH")} <ArrowRight size={14} />
+            {t("YES, STRETCH", "LET'S STRETCH", "STRETCH ERA")} <ArrowRight size={14} />
           </button>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function WorkoutComplete({ session, onDone }: Props) {
           <X size={14} /> SKIP REST
         </button>
         <button className="btn-finish" onClick={onDone}>
-          <Check size={14} /> {allDone ? t("ALL DONE", "CRUSHED IT") : "FINISH"}
+          <Check size={14} /> {allDone ? t("ALL DONE", "CRUSHED IT", "ATE THAT") : "FINISH"}
         </button>
       </div>
     </div>

@@ -91,13 +91,13 @@ export default function CustomExerciseModal({ onClose, onCreated, editing }: Pro
       <div className="cf-modal cx-modal" onClick={e => e.stopPropagation()}>
         <div className="cf-modal-title">
           {editing
-            ? t("Edit Custom Exercise", "Tune Your Lift")
-            : t("New Custom Exercise", "Roll-Your-Own Lift")}
+            ? t("Edit Custom Exercise", "Tune Your Lift", "Tune Your Move")
+            : t("New Custom Exercise", "Roll-Your-Own Lift", "Cook Your Own Move")}
         </div>
 
         <input
           className="cf-modal-input"
-          placeholder={t("Name (e.g. Cable Crossover)", "Name it, bro")}
+          placeholder={t("Name (e.g. Cable Crossover)", "Name it, bro", "Name it, bestie")}
           value={name}
           maxLength={48}
           autoFocus
@@ -184,7 +184,7 @@ export default function CustomExerciseModal({ onClose, onCreated, editing }: Pro
         </div>
         <textarea
           className="cf-modal-input cx-instructions"
-          placeholder={t("Cue your form, setup, and tempo…", "Tell future-you how to nail this lift…")}
+          placeholder={t("Cue your form, setup, and tempo…", "Tell future-you how to nail this lift…", "Tell future-you how to slay this move…")}
           value={instructions}
           maxLength={2000}
           rows={4}
@@ -194,7 +194,7 @@ export default function CustomExerciseModal({ onClose, onCreated, editing }: Pro
         <div className="cf-modal-actions" style={{ marginTop: 18 }}>
           <button className="cf-btn-cancel" onClick={onClose}>Cancel</button>
           <button className="cf-btn-save" onClick={handleSave} disabled={!canSave}>
-            {editing ? t("Save", "Lock It In") : t("Create", "Make It")}
+            {editing ? t("Save", "Lock It In", "Lock It In") : t("Create", "Make It", "Make It Happen")}
           </button>
         </div>
       </div>

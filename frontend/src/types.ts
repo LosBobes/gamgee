@@ -21,7 +21,7 @@ export interface StatusDef { label: string; color: string; bg: string; }
 export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; rotate?: number; }
 export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;
-export interface CoachingTip { icon: LucideIcon; title: string; body: string; bodyBro?: string; }
+export interface CoachingTip { icon: LucideIcon; title: string; body: string; bodyBro?: string; bodyGrl?: string; }
 export interface CustomFocusDef { id: string; name: string; iconName: string; desc: string; }
 export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; instructions?: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }

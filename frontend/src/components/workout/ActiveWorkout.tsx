@@ -40,7 +40,7 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
       {exercises.length === 0 && (
         <div className="empty">
           <div className="empty-icon"><Dumbbell size={40} /></div>
-          <div className="empty-label">{t("No exercises yet", "Add something. The bar isn't going to lift itself.")}</div>
+          <div className="empty-label">{t("No exercises yet", "Add something. The bar isn't going to lift itself.", "Add something, bestie. The bar isn't lifting itself.")}</div>
         </div>
       )}
 
