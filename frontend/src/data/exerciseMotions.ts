@@ -14,7 +14,7 @@
 // All figures are drawn side-on, facing right (+x).
 
 import type { Frame } from "../components/exercise/ExerciseAnimation";
-import type { Pose } from "../components/exercise/StickFigure";
+import type { Pose, RigConfig } from "../components/exercise/StickFigure";
 
 // Neutral standing pose — reused as a base for upright exercises.
 const STAND: Pose = {
@@ -723,42 +723,53 @@ export interface ExerciseMotion {
   bench?:    boolean;
   floor?:    boolean;
   category?: string;
+  rig?:      RigConfig;
 }
+
+// Default rigs reused below. Most upright/symmetric movements look best with
+// mirrored arms+legs; lying/seated/single-side movements turn off the mirrors.
+const RIG_SYMMETRIC: RigConfig = { feet: "oval", arm2: "mirror", leg2: "mirror" };
+const RIG_SINGLE:    RigConfig = { feet: "oval", arm2: "none",   leg2: "none"   };
+const RIG_LEGS_ONLY: RigConfig = { feet: "oval", arm2: "none",   leg2: "mirror" };
+const RIG_ASYM:      RigConfig = { feet: "oval", arm2: "independent", leg2: "independent" };
 
 export const MOTIONS: Record<string, ExerciseMotion> = {
   // ── Push ────────────────────────────────────────────────────────────────
-  bench:      { name: "Bench press",     frames: BENCH_FRAMES,       duration: 2200, bench: true,  category: "Push" },
-  ohp:        { name: "Overhead press",  frames: OHP_FRAMES,         duration: 2000, floor: true,  category: "Push" },
-  push_up:    { name: "Push-up",         frames: PUSHUP_FRAMES,      duration: 1800, floor: true,  category: "Push" },
-  dips:       { name: "Dips",            frames: DIPS_FRAMES,        duration: 2200,               category: "Push" },
-  tri_push:   { name: "Tricep pushdown", frames: TRI_PUSH_FRAMES,    duration: 1600, floor: true,  category: "Push" },
+  bench:      { name: "Bench press",     frames: BENCH_FRAMES,       duration: 2200, bench: true,  category: "Push",      rig: RIG_SYMMETRIC },
+  ohp:        { name: "Overhead press",  frames: OHP_FRAMES,         duration: 2000, floor: true,  category: "Push",      rig: RIG_SYMMETRIC },
+  push_up:    { name: "Push-up",         frames: PUSHUP_FRAMES,      duration: 1800, floor: true,  category: "Push",      rig: RIG_SYMMETRIC },
+  dips:       { name: "Dips",            frames: DIPS_FRAMES,        duration: 2200,               category: "Push",      rig: RIG_SYMMETRIC },
+  tri_push:   { name: "Tricep pushdown", frames: TRI_PUSH_FRAMES,    duration: 1600, floor: true,  category: "Push",      rig: RIG_SYMMETRIC },
 
   // ── Pull ────────────────────────────────────────────────────────────────
-  bb_curl:    { name: "Barbell curl",    frames: CURL_FRAMES,        duration: 1800, floor: true,  category: "Pull" },
-  pullups:    { name: "Pull-up",         frames: PULLUP_FRAMES,      duration: 2400,               category: "Pull" },
-  bb_row:     { name: "Bent-over row",   frames: ROW_FRAMES,         duration: 2000, floor: true,  category: "Pull" },
-  lat_pd:     { name: "Lat pulldown",    frames: LATPD_FRAMES,       duration: 2000,               category: "Pull" },
-  shrug:      { name: "Shrug",           frames: SHRUG_FRAMES,       duration: 1600, floor: true,  category: "Pull" },
+  bb_curl:    { name: "Barbell curl",    frames: CURL_FRAMES,        duration: 1800, floor: true,  category: "Pull",      rig: RIG_SYMMETRIC },
+  pullups:    { name: "Pull-up",         frames: PULLUP_FRAMES,      duration: 2400,               category: "Pull",      rig: RIG_SYMMETRIC },
+  bb_row:     { name: "Bent-over row",   frames: ROW_FRAMES,         duration: 2000, floor: true,  category: "Pull",      rig: RIG_SYMMETRIC },
+  lat_pd:     { name: "Lat pulldown",    frames: LATPD_FRAMES,       duration: 2000,               category: "Pull",      rig: RIG_SYMMETRIC },
+  shrug:      { name: "Shrug",           frames: SHRUG_FRAMES,       duration: 1600, floor: true,  category: "Pull",      rig: RIG_SYMMETRIC },
 
   // ── Shoulders ──────────────────────────────────────────────────────────
-  lat_raise:   { name: "Lateral raise",  frames: LAT_RAISE_FRAMES,   duration: 1800, floor: true,  category: "Shoulders" },
-  front_raise: { name: "Front raise",    frames: FRONT_RAISE_FRAMES, duration: 1800, floor: true,  category: "Shoulders" },
+  lat_raise:   { name: "Lateral raise",  frames: LAT_RAISE_FRAMES,   duration: 1800, floor: true,  category: "Shoulders", rig: RIG_SYMMETRIC },
+  front_raise: { name: "Front raise",    frames: FRONT_RAISE_FRAMES, duration: 1800, floor: true,  category: "Shoulders", rig: RIG_SYMMETRIC },
 
   // ── Legs ────────────────────────────────────────────────────────────────
-  squat:      { name: "Back squat",      frames: SQUAT_FRAMES,       duration: 3000, floor: true,  category: "Legs" },
-  dead:       { name: "Deadlift",        frames: DEAD_FRAMES,        duration: 2800, floor: true,  category: "Legs" },
-  rdl:        { name: "Romanian deadlift", frames: RDL_FRAMES,       duration: 2600, floor: true,  category: "Legs" },
-  lunges:     { name: "Lunge",           frames: LUNGE_FRAMES,       duration: 2400, floor: true,  category: "Legs" },
-  calf_raise: { name: "Calf raise",      frames: CALF_FRAMES,        duration: 1400, floor: true,  category: "Legs" },
-  leg_curl:   { name: "Lying leg curl",  frames: LEG_CURL_FRAMES,    duration: 1800,               category: "Legs" },
-  leg_ext:    { name: "Leg extension",   frames: LEG_EXT_FRAMES,     duration: 1800,               category: "Legs" },
-  hip_thrust: { name: "Hip thrust",      frames: HIP_FRAMES,         duration: 2200,               category: "Legs" },
+  squat:      { name: "Back squat",      frames: SQUAT_FRAMES,       duration: 3000, floor: true,  category: "Legs",      rig: RIG_SYMMETRIC },
+  dead:       { name: "Deadlift",        frames: DEAD_FRAMES,        duration: 2800, floor: true,  category: "Legs",      rig: RIG_SYMMETRIC },
+  rdl:        { name: "Romanian deadlift", frames: RDL_FRAMES,       duration: 2600, floor: true,  category: "Legs",      rig: RIG_SYMMETRIC },
+  lunges:     { name: "Lunge",           frames: LUNGE_FRAMES,       duration: 2400, floor: true,  category: "Legs",      rig: RIG_ASYM      },
+  calf_raise: { name: "Calf raise",      frames: CALF_FRAMES,        duration: 1400, floor: true,  category: "Legs",      rig: RIG_SYMMETRIC },
+  leg_curl:   { name: "Lying leg curl",  frames: LEG_CURL_FRAMES,    duration: 1800,               category: "Legs",      rig: RIG_LEGS_ONLY },
+  leg_ext:    { name: "Leg extension",   frames: LEG_EXT_FRAMES,     duration: 1800,               category: "Legs",      rig: RIG_LEGS_ONLY },
+  hip_thrust: { name: "Hip thrust",      frames: HIP_FRAMES,         duration: 2200,               category: "Legs",      rig: RIG_SYMMETRIC },
 
   // ── Core ────────────────────────────────────────────────────────────────
-  w_situp:    { name: "Sit-up",          frames: SITUP_FRAMES,       duration: 2000, floor: true,  category: "Core" },
-  plank:      { name: "Plank",           frames: PLANK_FRAMES,       duration: 2400, floor: true,  category: "Core" },
+  w_situp:    { name: "Sit-up",          frames: SITUP_FRAMES,       duration: 2000, floor: true,  category: "Core",      rig: RIG_SYMMETRIC },
+  plank:      { name: "Plank",           frames: PLANK_FRAMES,       duration: 2400, floor: true,  category: "Core",      rig: RIG_SYMMETRIC },
 
   // ── Cardio ──────────────────────────────────────────────────────────────
-  run:        { name: "Running",         frames: RUN_FRAMES,         duration: 600,  floor: true,  category: "Cardio" },
-  jump_rope:  { name: "Jump rope",       frames: JUMP_FRAMES,        duration: 600,  floor: true,  category: "Cardio" },
+  run:        { name: "Running",         frames: RUN_FRAMES,         duration: 600,  floor: true,  category: "Cardio",    rig: RIG_ASYM      },
+  jump_rope:  { name: "Jump rope",       frames: JUMP_FRAMES,        duration: 600,  floor: true,  category: "Cardio",    rig: RIG_SYMMETRIC },
 };
+
+// Silence "unused" if the consumer doesn't import RIG_SINGLE.
+export { RIG_SINGLE };

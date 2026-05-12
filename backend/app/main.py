@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import Base, engine
-from .routers import items, workouts, prs, auth, health, admin, buddies, notifications, live, feedback, events
+from .routers import items, workouts, prs, auth, health, admin, buddies, notifications, live, feedback, events, content
 
 Base.metadata.create_all(bind=engine)
 
@@ -42,6 +42,21 @@ app.include_router(live.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(feedback.admin_router, prefix="/api")
 app.include_router(events.router, prefix="/api")
+app.include_router(content.router, prefix="/api")
+
+
+# Seed any empty content tables on startup so a fresh dev DB or upgrade is
+# immediately usable. Existing rows are left alone (the seeder upserts by id
+# only for missing rows), so admin edits survive container restarts.
+try:
+    from . import content_seed
+    content_seed.seed_if_empty()
+except Exception as _exc:
+    # Don't take the API down if seeding hits an issue mid-rollout — log and
+    # continue. The /api/content/* endpoints just return empty arrays until the
+    # operator runs `python -m app.content_seed` manually.
+    import logging
+    logging.getLogger(__name__).warning("Content seed skipped: %s", _exc)
 
 
 @app.get("/health")
