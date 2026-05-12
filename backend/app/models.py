@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, Integer, String, Text, Float, Boolean, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, DateTime, Integer, String, Text, Float, Boolean, ForeignKey, UniqueConstraint, BigInteger, Index
 from sqlalchemy.dialects.postgresql import JSONB
 from .database import Base
 
@@ -91,3 +91,96 @@ class BodyMetric(Base):
     unit = Column(String(20), nullable=False)
     date = Column(String, nullable=False)        # ISO date string YYYY-MM-DD
     note = Column(Text, nullable=True)
+
+
+# ── Buddy system ──────────────────────────────────────────────────────────────
+
+class Buddy(Base):
+    """Directed friendship rows. Two rows per accepted buddy pair (one each
+    direction) so simple `WHERE user_id = X` queries return every buddy."""
+    __tablename__ = "buddies"
+    __table_args__ = (
+        UniqueConstraint("user_id", "buddy_user_id", name="uq_buddy_pair"),
+        Index("ix_buddies_user_status", "user_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    buddy_user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # "pending_out" — this user sent a request; "pending_in" — received one;
+    # "accepted" — both rows flip to accepted when the recipient confirms.
+    status = Column(String(20), nullable=False, default="pending_out")
+    notify_workout = Column(Boolean, nullable=False, default=True)
+    notify_pr = Column(Boolean, nullable=False, default=True)
+    notify_motivate = Column(Boolean, nullable=False, default=True)
+    notify_live = Column(Boolean, nullable=False, default=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    __table_args__ = (
+        Index("ix_notif_user_read", "user_id", "read"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # "buddy_request" | "buddy_accepted" | "workout_done" | "pr_set"
+    # | "motivate" | "live_started" | "live_joined" | "live_ended"
+    kind = Column(String(30), nullable=False)
+    sender_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    message = Column(Text, nullable=False)
+    payload = Column(JSONB, nullable=True)
+    read = Column(Boolean, nullable=False, default=False, index=True)
+    created_at = Column(BigInteger, nullable=False, default=0, index=True)
+
+
+class LiveSession(Base):
+    """Real-time co-working-out session. Owner broadcasts; buddies can join
+    and contribute set counts. Lifecycle: active -> ended."""
+    __tablename__ = "live_sessions"
+
+    id = Column(String, primary_key=True)                # client-generated UUID
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    focus = Column(String, nullable=True)
+    note = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="active")  # active | ended
+    started_at = Column(BigInteger, nullable=False, default=0)
+    ended_at = Column(BigInteger, nullable=True)
+    # Owner-side counters updated as workout progresses
+    owner_sets_done = Column(Integer, nullable=False, default=0)
+
+
+class LiveParticipant(Base):
+    __tablename__ = "live_participants"
+    __table_args__ = (
+        UniqueConstraint("session_id", "user_id", name="uq_live_participant"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String, ForeignKey("live_sessions.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    sets_done = Column(Integer, nullable=False, default=0)
+    joined_at = Column(BigInteger, nullable=False, default=0)
+    last_seen = Column(BigInteger, nullable=False, default=0)
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+class Feedback(Base):
+    """User-submitted feedback, bug reports, or feature requests.
+    Visible only to admins via /api/admin/feedback."""
+    __tablename__ = "feedback"
+    __table_args__ = (
+        Index("ix_feedback_status_created", "status", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    # "bug" | "feature" | "general"
+    kind = Column(String(20), nullable=False, default="general")
+    message = Column(Text, nullable=False)
+    # "open" | "resolved" | "dismissed"
+    status = Column(String(20), nullable=False, default="open", index=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+    resolved_at = Column(BigInteger, nullable=True)

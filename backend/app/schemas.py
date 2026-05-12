@@ -316,6 +316,126 @@ class PRAdminOut(BaseModel):
     is_cardio: bool = False
 
 
+# ── Buddies ───────────────────────────────────────────────────────────────────
+
+class BuddyRequestCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+
+
+class BuddyOut(BaseModel):
+    id: int                                 # buddy row id
+    user_id: int                            # the other user's id
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    status: str                             # pending_out | pending_in | accepted
+    notify_workout: bool = True
+    notify_pr: bool = True
+    notify_motivate: bool = True
+    notify_live: bool = True
+
+    model_config = {"from_attributes": True}
+
+
+class BuddyPrefsUpdate(BaseModel):
+    notify_workout: bool | None = None
+    notify_pr: bool | None = None
+    notify_motivate: bool | None = None
+    notify_live: bool | None = None
+
+
+class UserSearchOut(BaseModel):
+    id: int
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    relationship: str = "none"              # none | accepted | pending_out | pending_in | self
+
+    model_config = {"from_attributes": True}
+
+
+class ScoreboardRow(BaseModel):
+    user_id: int
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    is_self: bool = False
+    workouts_week: int = 0
+    workouts_month: int = 0
+    workouts_total: int = 0
+    sets_week: int = 0
+    volume_week: float = 0.0
+    pr_count: int = 0
+    last_workout: str | None = None
+    current_streak: int = 0
+
+
+class MotivateBody(BaseModel):
+    message: str = Field(min_length=1, max_length=240)
+    preset: str | None = None
+
+    @field_validator("message")
+    @classmethod
+    def _strip_message(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        return v
+
+
+# ── Notifications ─────────────────────────────────────────────────────────────
+
+class NotificationOut(BaseModel):
+    id: int
+    kind: str
+    sender_user_id: int | None = None
+    sender_username: str | None = None
+    sender_name: str | None = None
+    message: str
+    payload: Any | None = None
+    read: bool = False
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+# ── Live (co-working-out) sessions ────────────────────────────────────────────
+
+class LiveSessionCreate(BaseModel):
+    id: str
+    focus: str | None = None
+    note: str | None = None
+
+
+class LiveParticipantOut(BaseModel):
+    user_id: int
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    sets_done: int = 0
+    joined_at: int = 0
+    last_seen: int = 0
+
+
+class LiveSessionOut(BaseModel):
+    id: str
+    owner_id: int
+    owner_username: str
+    owner_name: str | None = None
+    owner_primary_color: str | None = None
+    focus: str | None = None
+    note: str | None = None
+    status: str
+    started_at: int = 0
+    ended_at: int | None = None
+    owner_sets_done: int = 0
+    participants: list[LiveParticipantOut] = []
+
+
+class LiveProgressUpdate(BaseModel):
+    sets_done: int = Field(ge=0, le=10000)
+
+
 # ── Body metrics ──────────────────────────────────────────────────────────────
 
 class BodyMetricCreate(BaseModel):
@@ -330,4 +450,49 @@ class BodyMetricOut(BodyMetricCreate):
     id: int
 
     model_config = {"from_attributes": True}
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+FeedbackKind   = Literal["bug", "feature", "general"]
+FeedbackStatus = Literal["open", "resolved", "dismissed"]
+
+
+class FeedbackCreate(BaseModel):
+    kind: FeedbackKind = "general"
+    message: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("message")
+    @classmethod
+    def _strip_message(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        return v
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    kind: str
+    message: str
+    status: str
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class FeedbackAdminOut(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str | None = None
+    name: str | None = None
+    kind: str
+    message: str
+    status: str
+    created_at: int = 0
+    resolved_at: int | None = None
+
+
+class FeedbackStatusUpdate(BaseModel):
+    status: FeedbackStatus
 
