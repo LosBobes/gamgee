@@ -17,6 +17,7 @@ interface Props {
   onProfileUpdate: (name: string | null, email: string | null) => void;
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
+  isAdmin?:        boolean;
 }
 
 const PALETTE = [
@@ -288,7 +289,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange }: Props) {
+export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange, isAdmin }: Props) {
   const t = useTxt();
 
   if (history.length === 0) {
@@ -302,7 +303,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
         <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
-        <Duck />
+        <Duck isAdmin={isAdmin} />
       </div>
     );
   }
@@ -441,7 +442,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
 
-      <Duck />
+      <Duck isAdmin={isAdmin} />
     </div>
   );
 }
@@ -458,7 +459,7 @@ const DUCK_MSGS = [
   "Every rep is a quack for the person you want to be.",
 ];
 
-function Duck() {
+function Duck({ isAdmin }: { isAdmin?: boolean }) {
   const [msg, setMsg]       = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
 
@@ -472,7 +473,7 @@ function Duck() {
   return (
     <div style={{ textAlign: "center" }}>
       {msg && <div className="health-toast">{msg}</div>}
-      <button className={`duck-btn${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
+      <button className={`duck-btn${isAdmin ? " admin" : ""}${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
         <DuckIcon size={22} />
       </button>
     </div>

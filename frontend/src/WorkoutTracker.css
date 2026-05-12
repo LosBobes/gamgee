@@ -329,6 +329,8 @@ html, body { background: var(--bg); }
   transition: opacity 0.2s; display: block;
 }
 .duck-btn:hover { opacity: 0.5; }
+.duck-btn.admin { opacity: 1; }
+.duck-btn.admin:hover { opacity: 0.85; }
 .duck-btn.bounce { animation: duck-bounce 0.5s ease; }
 @keyframes duck-bounce {
   0%   { transform: scale(1)    rotate(0deg); }

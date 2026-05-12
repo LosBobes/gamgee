@@ -318,7 +318,7 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} />}
       </div>
     </div>
   </ToneProvider>

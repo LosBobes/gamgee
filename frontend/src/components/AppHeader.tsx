@@ -93,6 +93,17 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
               </button>
             ))}
             <div className="mobile-nav-divider" />
+            {isAdmin && (
+              <a
+                href="/admin"
+                className="mobile-nav-item mobile-nav-admin"
+                onClick={() => setMenuOpen(false)}
+                style={{ textDecoration: "none" }}
+              >
+                <Shield size={18} />
+                <span>Admin</span>
+              </a>
+            )}
             <button
               className="mobile-nav-item mobile-nav-logout"
               onClick={() => { setMenuOpen(false); onLogout(); }}
