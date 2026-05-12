@@ -1,13 +1,55 @@
-import { useState } from "react";
-import { Pause, Play } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Pause, Pencil, Play, RotateCcw } from "lucide-react";
 import ExerciseAnimation from "./ExerciseAnimation";
-import { MOTIONS } from "../../data/exerciseMotions";
+import type { ExerciseMotion } from "../../data/exerciseMotions";
 import { EXERCISE_INFO } from "../../data/exerciseInfo";
+import {
+  clearAllOverrides,
+  loadAllMotions,
+  loadOverrides,
+} from "../../data/motionStorage";
 
 // Standalone evaluation page for the exercise motion graphics.
 // Mounted at /exercise-graphics by App.tsx — no auth required.
 
 export default function ExerciseGraphicsDemo() {
+  const [motions, setMotions] = useState<Record<string, ExerciseMotion>>(() => loadAllMotions());
+  const [overrideIds, setOverrideIds] = useState<Set<string>>(() => new Set(Object.keys(loadOverrides())));
+
+  // Reload on focus so changes saved in the editor (other tab) show up here.
+  useEffect(() => {
+    const refresh = () => {
+      setMotions(loadAllMotions());
+      setOverrideIds(new Set(Object.keys(loadOverrides())));
+    };
+    window.addEventListener("focus", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  const byCategory = useMemo(() => {
+    const groups = new Map<string, [string, ExerciseMotion][]>();
+    for (const [id, m] of Object.entries(motions)) {
+      const cat = m.category ?? "Other";
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat)!.push([id, m]);
+    }
+    const order = ["Push", "Pull", "Shoulders", "Legs", "Core", "Cardio", "Other"];
+    return order
+      .filter(cat => groups.has(cat))
+      .map(cat => [cat, groups.get(cat)!.sort((a, b) => a[1].name.localeCompare(b[1].name))] as const);
+  }, [motions]);
+
+  const onReset = () => {
+    if (!confirm("Discard all locally-saved keyframe edits and restore the bundled motions?")) return;
+    clearAllOverrides();
+    setMotions(loadAllMotions());
+    setOverrideIds(new Set());
+  };
+
   return (
     <div
       style={{
@@ -17,76 +59,116 @@ export default function ExerciseGraphicsDemo() {
         padding: "32px 20px 60px",
       }}
     >
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        <header style={{ marginBottom: 24 }}>
-          <h1 style={{
-            fontFamily: "'Nunito', sans-serif",
-            fontSize: 20, fontWeight: 900, letterSpacing: 3,
-            textTransform: "uppercase",
-          }}>
-            Exercise Motion Graphics
-          </h1>
-          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, lineHeight: 1.6 }}>
-            Stick-figure animations rendered from pose keyframes. Tap a card to
-            pause/play. Edit poses in <code>frontend/src/data/exerciseMotions.ts</code>.
-          </p>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <header style={{ marginBottom: 24, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontSize: 20, fontWeight: 900, letterSpacing: 3,
+              textTransform: "uppercase",
+            }}>
+              Exercise Motion Graphics
+            </h1>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, lineHeight: 1.6, maxWidth: 720 }}>
+              Stick-figure animations rendered from pose keyframes. Tap a card to pause/play.
+              Click the pencil icon to open the editor and drag joints into new positions.
+              Edits are saved to this browser's localStorage and override the bundled poses.
+            </p>
+          </div>
+          {overrideIds.size > 0 && (
+            <button
+              type="button"
+              onClick={onReset}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--muted)",
+                borderRadius: 8, padding: "8px 12px",
+                fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
+                cursor: "pointer",
+              }}
+              title={`${overrideIds.size} edited motion${overrideIds.size === 1 ? "" : "s"}`}
+            >
+              <RotateCcw size={12} /> Reset all edits ({overrideIds.size})
+            </button>
+          )}
         </header>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {Object.keys(MOTIONS).map(id => (
-            <DemoCard key={id} id={id} />
-          ))}
-        </div>
+        {byCategory.map(([cat, entries]) => (
+          <section key={cat} style={{ marginBottom: 32 }}>
+            <h2 style={{
+              fontFamily: "'Nunito', sans-serif",
+              fontSize: 12, fontWeight: 800, letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "var(--muted)",
+              margin: "0 0 12px",
+            }}>
+              {cat} <span style={{ opacity: 0.6 }}>· {entries.length}</span>
+            </h2>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 16,
+              }}
+            >
+              {entries.map(([id, motion]) => (
+                <DemoCard key={id} id={id} motion={motion} edited={overrideIds.has(id)} />
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
 }
 
-function DemoCard({ id }: { id: string }) {
-  const motion = MOTIONS[id];
+function DemoCard({ id, motion, edited }: { id: string; motion: ExerciseMotion; edited: boolean }) {
   const info = EXERCISE_INFO[id];
   const [paused, setPaused] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={() => setPaused(p => !p)}
+    <div
       style={{
         position: "relative",
         background: "var(--s1)",
-        border: "1px solid var(--border)",
+        border: edited ? "1px solid var(--accent)" : "1px solid var(--border)",
         borderRadius: 10,
         padding: "16px 14px 14px",
-        cursor: "pointer",
-        textAlign: "left",
-        color: "inherit",
-        fontFamily: "inherit",
       }}
     >
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        marginBottom: 8,
+        marginBottom: 8, gap: 8,
       }}>
         <div style={{
           fontFamily: "'Nunito', sans-serif",
           fontSize: 13, fontWeight: 800, letterSpacing: 1.5,
           textTransform: "uppercase",
+          flex: 1, minWidth: 0,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {motion.name}
+          {edited && <span style={{ marginLeft: 6, fontSize: 9, color: "var(--accent)", letterSpacing: 1 }}>EDITED</span>}
         </div>
-        <span style={{
-          color: "var(--muted)",
-          display: "inline-flex", alignItems: "center", gap: 4,
-          fontSize: 10, letterSpacing: 1,
-        }}>
-          {paused ? <Play size={11} /> : <Pause size={11} />}
-        </span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <button
+            type="button"
+            onClick={() => setPaused(p => !p)}
+            title={paused ? "Play" : "Pause"}
+            style={iconBtn}
+          >
+            {paused ? <Play size={12} /> : <Pause size={12} />}
+          </button>
+          <a
+            href={`/exercise-editor?id=${encodeURIComponent(id)}`}
+            title="Edit keyframes"
+            style={{ ...iconBtn, textDecoration: "none", color: "var(--accent)" }}
+          >
+            <Pencil size={12} />
+          </a>
+        </div>
       </div>
 
       <div style={{
@@ -113,6 +195,20 @@ function DemoCard({ id }: { id: string }) {
           {info.execute}
         </div>
       )}
-    </button>
+
+      <div style={{ marginTop: 8, fontSize: 10, color: "var(--muted)", letterSpacing: 0.5 }}>
+        id <code>{id}</code> · {motion.frames.length} keyframes · {motion.duration ?? 2400}ms
+      </div>
+    </div>
   );
 }
+
+const iconBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  width: 24, height: 24,
+  background: "transparent",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--muted)",
+  cursor: "pointer",
+};
