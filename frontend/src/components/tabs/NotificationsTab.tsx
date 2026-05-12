@@ -104,7 +104,7 @@ export default function NotificationsTab({
       <div className="notif-page-hdr">
         <div>
           <div className="notif-page-title">
-            <Bell size={16} /> {t("Notifications", "Notifications", "Notifications")}
+            <Bell size={16} /> {t("Notification dashboard", "Notification dashboard", "Notification dashboard")}
           </div>
           <div className="notif-page-sub">
             {totalCount === 0
