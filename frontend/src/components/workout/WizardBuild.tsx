@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench } from "lucide-react";
 import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -7,6 +7,7 @@ import { EM, ALL_EX } from "../../data/exercises";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import BodyMap from "../BodyMap";
 import SuggCard from "../SuggCard";
+import CustomExerciseModal from "./CustomExerciseModal";
 import { useTxt } from "../../context/ToneContext";
 
 interface Props {
@@ -20,8 +21,9 @@ interface Props {
 
 export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
   const t = useTxt();
-  const [hovEx,  setHovEx]  = useState<ExerciseDef | null>(null);
-  const [search, setSearch] = useState("");
+  const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
+  const [search,          setSearch]          = useState("");
+  const [showCustomModal, setShowCustomModal] = useState(false);
 
   // Most recent prior session matching this focus (used for the auto-populate prompt)
   const lastFocusSession = history.find(s => s.focus === focus && s.exercises.length > 0) ?? null;
@@ -222,7 +224,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           <div className="search-wrap">
             <input
               className="search-input"
-              placeholder="Search exercises…"
+              placeholder={`Search ${ALL_EX.filter(e => e.type !== "cardio").length} exercises…`}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
@@ -233,6 +235,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               : <Search size={13} className="search-icon-hint" />
             }
           </div>
+
+          <button className="cx-add-card" onClick={() => setShowCustomModal(true)}>
+            <Wrench size={13} /> {t("Add Custom Exercise", "Build Your Own Lift")}
+          </button>
 
           {searchResults ? (
             searchResults.length > 0 ? (
@@ -271,6 +277,16 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           )}
         </div>
       </div>
+
+      {showCustomModal && (
+        <CustomExerciseModal
+          onClose={() => setShowCustomModal(false)}
+          onCreated={(def) => {
+            const exDef: ExerciseDef = { id: def.id, name: def.name, type: def.type, cat: def.cat };
+            setPlanned(p => p.some(e => e.id === exDef.id) ? p : [...p, exDef]);
+          }}
+        />
+      )}
 
       {showAutoPopup && (
         <div className="cf-overlay" onClick={handleSkipAutoPopulate}>
