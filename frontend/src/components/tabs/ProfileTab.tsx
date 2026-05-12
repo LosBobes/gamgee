@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
-import { User, Plus, Trash2, Wrench } from "lucide-react";
-import type { CustomExerciseDef, WorkoutSession } from "../../types";
+import { User } from "lucide-react";
+import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
-import { EM, getCustomExercises, deleteCustomExercise } from "../../data/exercises";
-import CustomExerciseModal from "../workout/CustomExerciseModal";
+import { EM } from "../../data/exercises";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 
 interface Props {
@@ -302,8 +301,6 @@ export default function ProfileTab({ username, name, email, history, token, prim
         <div className="profile-section">{t("Appearance", "Appearance")}</div>
         <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
-        <div className="profile-section"><Wrench size={11} style={{ marginRight: 5, verticalAlign: -1 }} />{t("Custom Exercises", "Custom Lifts")}</div>
-        <CustomExercisesCard />
         <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
         <Duck isAdmin={isAdmin} />
@@ -442,63 +439,10 @@ export default function ProfileTab({ username, name, email, history, token, prim
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
 
-      <div className="profile-section"><Wrench size={11} style={{ marginRight: 5, verticalAlign: -1 }} />{t("Custom Exercises", "Custom Lifts")}</div>
-      <CustomExercisesCard />
-
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
 
       <Duck isAdmin={isAdmin} />
-    </div>
-  );
-}
-
-function CustomExercisesCard() {
-  const t = useTxt();
-  const [items,    setItems]    = useState<CustomExerciseDef[]>(() => getCustomExercises());
-  const [creating, setCreating] = useState(false);
-
-  const refresh = () => setItems(getCustomExercises());
-
-  const handleDelete = (id: string) => {
-    deleteCustomExercise(id);
-    refresh();
-  };
-
-  return (
-    <div className="profile-card">
-      {items.length === 0 ? (
-        <div className="cx-mgr-empty">
-          {t("No custom exercises yet.", "No homemade lifts yet, bro.")}
-        </div>
-      ) : (
-        items.map(ex => {
-          const primaryNames = ex.primary.map(m => MI[m]?.n).filter(Boolean).join(" · ");
-          return (
-            <div key={ex.id} className="cx-mgr-row">
-              <div style={{ minWidth: 0 }}>
-                <div className="cx-mgr-name">{ex.name}</div>
-                <div className="cx-mgr-meta">
-                  {ex.type} · {ex.cat}{primaryNames ? ` · ${primaryNames}` : ""}
-                </div>
-              </div>
-              <button className="cx-mgr-del" onClick={() => handleDelete(ex.id)} title="Delete">
-                <Trash2 size={13} />
-              </button>
-            </div>
-          );
-        })
-      )}
-      <button className="cx-mgr-add" onClick={() => setCreating(true)}>
-        <Plus size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
-        {t("Add Custom Exercise", "Build a New Lift")}
-      </button>
-      {creating && (
-        <CustomExerciseModal
-          onClose={() => setCreating(false)}
-          onCreated={refresh}
-        />
-      )}
     </div>
   );
 }
@@ -539,7 +483,7 @@ function Duck({ isAdmin }: { isAdmin?: boolean }) {
 function DuckIcon({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.5"
+      stroke="var(--primary)" strokeWidth="1.5"
       strokeLinecap="round" strokeLinejoin="round">
       {/* body */}
       <path d="M2 18C2 14 6 12 11 12C16 12 20 14 20 18C20 21 16 23 11 23C6 23 2 21 2 18Z" />
@@ -550,7 +494,7 @@ function DuckIcon({ size = 22 }: { size?: number }) {
       {/* beak */}
       <path d="M20 8.5L23 9L20 10.5" />
       {/* eye */}
-      <circle cx="18.5" cy="8" r=".5" fill="currentColor" stroke="none" />
+      <circle cx="18.5" cy="8" r=".5" fill="var(--primary)" stroke="none" />
       {/* wing */}
       <path d="M6 18C9 16 13 16 16 18" />
     </svg>

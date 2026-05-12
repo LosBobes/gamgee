@@ -23,7 +23,7 @@ export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;
 export interface CoachingTip { icon: LucideIcon; title: string; body: string; bodyBro?: string; }
 export interface CustomFocusDef { id: string; name: string; iconName: string; desc: string; }
-export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; }
+export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; instructions?: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }
 export type WeekPlanDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export interface DayPlan { focus: string; exerciseIds: string[]; enabled: boolean; }
