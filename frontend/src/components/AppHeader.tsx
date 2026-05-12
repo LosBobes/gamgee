@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 
@@ -22,6 +22,7 @@ interface Props {
 
 export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell, onOpenFeedback }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
@@ -39,9 +40,51 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "profile",       Icon: User,          label: "PROFILE",     badge: null,                    inMenuOnly: false },
   ];
 
+  // Hamburger menu structure: top-level items (important) + collapsible groups.
+  type MenuItem = { key: string };
+  type MenuGroup = { id: string; label: string; items: MenuItem[] };
+  type MenuEntry = MenuItem | MenuGroup;
+  const isGroup = (e: MenuEntry): e is MenuGroup => "items" in e;
+
+  const menuStructure: MenuEntry[] = [
+    { key: "workout" },
+    { id: "activity", label: "Activity", items: [{ key: "history" }, { key: "prs" }, { key: "health" }] },
+    { id: "social",   label: "Social",   items: [{ key: "buddies" }, { key: "notifications" }] },
+    { id: "tools",    label: "Tools",    items: [{ key: "coach" }, { key: "exercises" }] },
+    { key: "profile" },
+  ];
+
+  const tabByKey = Object.fromEntries(tabs.map(t => [t.key, t]));
+
+  // Auto-expand whichever group contains the active tab so the user can see where they are.
+  const groupForTab = (key: string) =>
+    menuStructure.find((e): e is MenuGroup => isGroup(e) && e.items.some(i => i.key === key))?.id;
+
   const handleTabSelect = (key: string) => {
     setTab(key);
     setMenuOpen(false);
+  };
+
+  const toggleGroup = (id: string) =>
+    setOpenGroups(prev => ({ ...prev, [id]: !(prev[id] ?? id === groupForTab(tab)) }));
+
+  const isGroupOpen = (id: string) => openGroups[id] ?? id === groupForTab(tab);
+
+  const renderMenuItem = (key: string, nested = false) => {
+    const def = tabByKey[key];
+    if (!def) return null;
+    const { Icon, label, badge } = def;
+    return (
+      <button
+        key={key}
+        className={`mobile-nav-item${nested ? " mobile-nav-item-nested" : ""}${tab === key ? " active" : ""}`}
+        onClick={() => handleTabSelect(key)}
+      >
+        <Icon size={18} />
+        <span>{label}</span>
+        {badge !== null && <span className="tab-badge">{badge}</span>}
+      </button>
+    );
   };
 
   const activeTabDef = tabs.find(t => t.key === tab);
@@ -91,17 +134,32 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
         </div>
         {menuOpen && (
           <nav className="mobile-nav">
-            {tabs.map(({ key, Icon, label, badge }) => (
-              <button
-                key={key}
-                className={`mobile-nav-item${tab === key ? " active" : ""}`}
-                onClick={() => handleTabSelect(key)}
-              >
-                <Icon size={18} />
-                <span>{label}</span>
-                {badge !== null && <span className="tab-badge">{badge}</span>}
-              </button>
-            ))}
+            {menuStructure.map(entry => {
+              if (!isGroup(entry)) return renderMenuItem(entry.key);
+              const open = isGroupOpen(entry.id);
+              const groupBadge = entry.items.reduce((sum, i) => {
+                const b = tabByKey[i.key]?.badge;
+                return sum + (typeof b === "number" ? b : 0);
+              }, 0);
+              return (
+                <div key={entry.id} className={`mobile-nav-group${open ? " open" : ""}`}>
+                  <button
+                    className="mobile-nav-item mobile-nav-group-header"
+                    onClick={() => toggleGroup(entry.id)}
+                    aria-expanded={open}
+                  >
+                    <span className="mobile-nav-group-label">{entry.label}</span>
+                    {groupBadge > 0 && !open && <span className="tab-badge">{groupBadge}</span>}
+                    <ChevronDown size={18} className="mobile-nav-chevron" />
+                  </button>
+                  {open && (
+                    <div className="mobile-nav-group-items">
+                      {entry.items.map(i => renderMenuItem(i.key, true))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div className="mobile-nav-divider" />
             {onOpenFeedback && (
               <button
