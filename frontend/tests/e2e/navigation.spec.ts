@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 
 test("can switch between top-level tabs", async ({ page }) => {
   const tabs = page.locator(".tabs .tab");
-  await expect(tabs).toHaveCount(6);
+  await expect(tabs).toHaveCount(7);
 
   await tabs.filter({ hasText: "HISTORY" }).first().click();
   await expect(tabs.filter({ hasText: "HISTORY" }).first()).toHaveClass(/active/);
