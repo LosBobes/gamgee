@@ -12,7 +12,7 @@ ssh:
 	ssh $(HOST)
 
 # Forwards the production Postgres to localhost:5432.
-# Connect with: psql postgresql://gamgee:PASSWORD@localhost:5432/gamgee
+# Connect with: psql postgresql://gamgee:PASSWORD@localhost:5433/gamgee
 db-tunnel:
-	@echo "DB tunnel open → localhost:5432  (Ctrl-C to stop)"
-	ssh -L 5432:localhost:5432 -N $(HOST)
+	@echo "DB tunnel open at localhost:5433  (Ctrl-C to stop)"
+	ssh -L 5433:localhost:5432 -N $(HOST)
