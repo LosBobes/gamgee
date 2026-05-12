@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 
@@ -10,25 +10,32 @@ interface Props {
   historyCount: number;
   prCount:      number;
   coachCount:   number;
+  buddyCount:   number;
+  unreadNotif:  number;
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
   isAdmin?:     boolean;
+  notifBell?:   ReactNode;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout, isAdmin }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
+  // `inMenuOnly` tabs don't render in the desktop .tabs row — only in the
+  // hamburger drawer. Keeps the top row from getting overcrowded.
   const tabs = [
-    { key: "workout",   Icon: Zap,           label: workoutLabel,  badge: null },
-    { key: "history",   Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
-    { key: "prs",       Icon: Trophy,        label: "PRs",         badge: prCount || null },
-    { key: "health",    Icon: Heart,         label: "HEALTH",      badge: null },
-    { key: "coach",     Icon: Brain,         label: "COACH",       badge: coachCount || null },
-    { key: "exercises", Icon: Wrench,        label: "EXERCISES",   badge: null },
-    { key: "profile",   Icon: User,          label: "PROFILE",     badge: null },
+    { key: "workout",       Icon: Zap,           label: workoutLabel,  badge: null,                    inMenuOnly: false },
+    { key: "history",       Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null,    inMenuOnly: false },
+    { key: "prs",           Icon: Trophy,        label: "PRs",         badge: prCount || null,         inMenuOnly: false },
+    { key: "buddies",       Icon: Users,         label: "BUDDIES",     badge: buddyCount || null,      inMenuOnly: false },
+    { key: "health",        Icon: Heart,         label: "HEALTH",      badge: null,                    inMenuOnly: false },
+    { key: "coach",         Icon: Brain,         label: "COACH",       badge: coachCount || null,      inMenuOnly: false },
+    { key: "exercises",     Icon: Wrench,        label: "EXERCISES",   badge: null,                    inMenuOnly: false },
+    { key: "notifications", Icon: Bell,          label: "NOTIFICATIONS", badge: unreadNotif || null,   inMenuOnly: true  },
+    { key: "profile",       Icon: User,          label: "PROFILE",     badge: null,                    inMenuOnly: false },
   ];
 
   const handleTabSelect = (key: string) => {
@@ -53,6 +60,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
+          {notifBell}
           {isAdmin && (
             <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
               <Shield size={15} />
@@ -72,7 +80,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
           </button>
         </div>
         <div className="tabs">
-          {tabs.map(({ key, Icon, label, badge }) => (
+          {tabs.filter(t => !t.inMenuOnly).map(({ key, Icon, label, badge }) => (
             <button key={key} className={`tab ${tab === key ? "active" : ""}`} onClick={() => setTab(key)}>
               <Icon size={12} />
               <span className="tab-label">{label}</span>
