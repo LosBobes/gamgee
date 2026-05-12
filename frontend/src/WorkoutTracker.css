@@ -322,8 +322,9 @@ html, body { background: var(--bg); }
 .start-pre { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
 .start-hero {
   font-family: 'Nunito', sans-serif;
-  font-size: 72px; font-weight: 900; line-height: 0.85; text-transform: uppercase;
-  letter-spacing: 4px; color: var(--text); margin-bottom: 28px;
+  font-size: clamp(44px, 13vw, 72px); font-weight: 900; line-height: 0.85; text-transform: uppercase;
+  letter-spacing: clamp(2px, 0.6vw, 4px); color: var(--text); margin-bottom: 28px;
+  padding: 0 24px; max-width: 100%; overflow-wrap: break-word;
   animation: heroBreath 4s ease-in-out infinite;
 }
 .start-hero span { color: var(--accent); }
@@ -1300,9 +1301,10 @@ html, body { background: var(--bg); }
   color: var(--green); margin-bottom: 14px;
 }
 .complete-hero {
-  font-family: 'Nunito', sans-serif; font-size: 56px; font-weight: 900;
-  letter-spacing: 2px; line-height: 0.95; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: clamp(38px, 11vw, 56px); font-weight: 900;
+  letter-spacing: clamp(1px, 0.4vw, 2px); line-height: 0.95; color: var(--text);
   text-transform: uppercase; margin-bottom: 12px;
+  padding: 0 24px; max-width: 100%; overflow-wrap: break-word;
 }
 .complete-hero span { color: var(--accent); }
 .complete-sub {
