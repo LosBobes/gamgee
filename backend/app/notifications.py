@@ -4,19 +4,44 @@ Centralised here so any router that fires an event (a finished workout, a new
 PR, a buddy request, etc.) can call a single function instead of repeating the
 boilerplate. Buddy preference flags (notify_workout, notify_pr, ...) are
 honoured inside ``notify_buddies``.
+
+Each helper also queues a real-time event on the SSE bus; the queue is drained
+in a SQLAlchemy ``after_commit`` listener so we only push events for changes
+that actually persisted.
 """
 from __future__ import annotations
 
 import time
 from typing import Iterable
 
+from sqlalchemy import event as sa_event
 from sqlalchemy.orm import Session
 
 from . import models
+from .events import publish_one
 
 
 def now_ms() -> int:
     return int(time.time() * 1000)
+
+
+def _queue_event(db: Session, user_id: int, event_type: str, data: dict | None = None) -> None:
+    pending: list = db.info.setdefault("_pending_realtime_events", [])
+    pending.append((user_id, event_type, data or {}))
+
+
+@sa_event.listens_for(Session, "after_commit")
+def _drain_after_commit(session: Session) -> None:
+    pending = session.info.pop("_pending_realtime_events", None)
+    if not pending:
+        return
+    for user_id, event_type, data in pending:
+        publish_one(user_id, event_type, data)
+
+
+@sa_event.listens_for(Session, "after_rollback")
+def _discard_after_rollback(session: Session) -> None:
+    session.info.pop("_pending_realtime_events", None)
 
 
 def create_notification(
@@ -38,6 +63,7 @@ def create_notification(
         created_at=now_ms(),
     )
     db.add(n)
+    _queue_event(db, user_id, "notification", {"kind": kind})
     return n
 
 
@@ -88,3 +114,16 @@ def notify_buddies(
         )
         count += 1
     return count
+
+
+def publish_buddy_change(db: Session, user_ids: Iterable[int]) -> None:
+    """Tell each listed user that their buddy list / scoreboard should refresh."""
+    for uid in set(user_ids):
+        _queue_event(db, uid, "buddy", {})
+
+
+def publish_live_change(db: Session, user_ids: Iterable[int], *, session_id: str | None = None) -> None:
+    """Tell each listed user that the list of accessible live sessions changed."""
+    data = {"session_id": session_id} if session_id else {}
+    for uid in set(user_ids):
+        _queue_event(db, uid, "live", data)

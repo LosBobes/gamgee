@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
-from ..notifications import create_notification, notify_buddies, now_ms
+from ..notifications import create_notification, notify_buddies, now_ms, publish_live_change
 
 router = APIRouter(prefix="/live-sessions", tags=["live"])
 
@@ -37,6 +37,24 @@ def _serialize(db: Session, ls: models.LiveSession) -> schemas.LiveSessionOut:
             for p, u in parts
         ],
     )
+
+
+def _session_audience(db: Session, ls: models.LiveSession) -> set[int]:
+    """User ids who should see real-time changes for this live session: the
+    owner, the owner's accepted buddies, and anyone who has joined."""
+    buddy_ids = {
+        row.user_id for row in
+        db.query(models.Buddy.user_id)
+        .filter(models.Buddy.buddy_user_id == ls.owner_id, models.Buddy.status == "accepted")
+        .all()
+    }
+    participant_ids = {
+        p.user_id for p in
+        db.query(models.LiveParticipant.user_id)
+        .filter(models.LiveParticipant.session_id == ls.id)
+        .all()
+    }
+    return {ls.owner_id, *buddy_ids, *participant_ids}
 
 
 def _accessible_session_ids(db: Session, user_id: int) -> set[str]:
@@ -101,6 +119,7 @@ def start_live(
         message=f"{current_user.name or current_user.username} just started a live workout — join in!",
         payload={"session_id": body.id, "focus": body.focus},
     )
+    publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
     return _serialize(db, ls)
@@ -153,6 +172,7 @@ def join_live(
         )
     else:
         existing.last_seen = now_ms()
+    publish_live_change(db, _session_audience(db, ls) | {current_user.id}, session_id=ls.id)
     db.commit()
     db.refresh(ls)
     return _serialize(db, ls)
@@ -184,6 +204,7 @@ def update_progress(
             raise HTTPException(status_code=403, detail="Join the session first")
         part.sets_done = body.sets_done
         part.last_seen = now_ms()
+    publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
     return _serialize(db, ls)
@@ -217,6 +238,7 @@ def end_live(
             message=f"{current_user.name or current_user.username} ended the live workout",
             payload={"session_id": session_id},
         )
+    publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
     return _serialize(db, ls)
