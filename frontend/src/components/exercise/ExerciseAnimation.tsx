@@ -14,6 +14,7 @@ export interface ExerciseAnimationProps {
   paused?: boolean;
   bench?: boolean;
   floor?: boolean;
+  barLine?: number;          // y of a fixed horizontal bar (pull-up rig, etc.)
   width?: number | string;
   height?: number | string;
   color?: string;
@@ -49,6 +50,7 @@ export default function ExerciseAnimation({
   paused = false,
   bench,
   floor,
+  barLine,
   width,
   height,
   color,
@@ -79,6 +81,7 @@ export default function ExerciseAnimation({
       bar={bar}
       bench={bench}
       floor={floor}
+      barLine={barLine}
       width={width}
       height={height}
       color={color}

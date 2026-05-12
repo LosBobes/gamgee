@@ -102,6 +102,7 @@ function DemoCard({ id }: { id: string }) {
           duration={motion.duration}
           bench={motion.bench}
           floor={motion.floor}
+          barLine={motion.barLine}
           paused={paused}
           width={180}
           height={220}
