@@ -19,6 +19,7 @@ import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
 import ExercisesTab from "./components/tabs/ExercisesTab";
 import BuddiesTab from "./components/tabs/BuddiesTab";
+import NotificationsTab from "./components/tabs/NotificationsTab";
 import NotificationBell from "./components/NotificationBell";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
@@ -430,6 +431,7 @@ export default function WorkoutTracker() {
         active={active} elapsed={elapsed} wStep={wStep}
         historyCount={history.length} prCount={Object.keys(prs).length} coachCount={coachCount}
         buddyCount={buddies.filter(b => b.status === "accepted").length}
+        unreadNotif={unreadCount}
         tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
         notifBell={
           <NotificationBell
@@ -439,6 +441,7 @@ export default function WorkoutTracker() {
             onMarkAll={markAllNotifRead}
             onDelete={deleteNotif}
             onGoToBuddies={() => setTab("buddies")}
+            onViewAll={() => setTab("notifications")}
             refresh={refreshNotifications}
           />
         }
@@ -479,6 +482,18 @@ export default function WorkoutTracker() {
             startLiveSession={startLiveSession}
             endLiveSession={endLiveSession}
             joinLiveSession={joinLiveSession}
+          />
+        )}
+        {!completed && tab === "notifications" && (
+          <NotificationsTab
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkRead={markNotifRead}
+            onMarkAll={markAllNotifRead}
+            onDelete={deleteNotif}
+            onGoToBuddies={() => setTab("buddies")}
+            refresh={refreshNotifications}
+            authFetch={authFetch}
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}

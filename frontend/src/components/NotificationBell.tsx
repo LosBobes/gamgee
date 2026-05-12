@@ -9,6 +9,7 @@ interface Props {
   onMarkAll:       () => Promise<void>;
   onDelete:        (id: number) => Promise<void>;
   onGoToBuddies:   () => void;
+  onViewAll:       () => void;
   refresh:         () => Promise<void>;
 }
 
@@ -36,7 +37,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 
 export default function NotificationBell({
   notifications, unreadCount,
-  onMarkRead, onMarkAll, onDelete, onGoToBuddies, refresh,
+  onMarkRead, onMarkAll, onDelete, onGoToBuddies, onViewAll, refresh,
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -113,6 +114,12 @@ export default function NotificationBell({
               })}
             </div>
           )}
+          <button
+            className="notif-view-all"
+            onClick={() => { setOpen(false); onViewAll(); }}
+          >
+            View all notifications
+          </button>
         </div>
       )}
     </div>
