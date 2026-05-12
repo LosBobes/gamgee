@@ -1,0 +1,129 @@
+import { useState, useEffect, useRef } from "react";
+import { Bell, Check, Trophy, Zap, Send, UserPlus, Users, Dumbbell } from "lucide-react";
+import type { AppNotification, NotificationKind } from "../types";
+
+interface Props {
+  notifications:   AppNotification[];
+  unreadCount:     number;
+  onMarkRead:      (id: number) => Promise<void>;
+  onMarkAll:       () => Promise<void>;
+  onDelete:        (id: number) => Promise<void>;
+  onGoToBuddies:   () => void;
+  refresh:         () => Promise<void>;
+}
+
+const KIND_ICON: Record<NotificationKind, typeof Bell> = {
+  buddy_request:  UserPlus,
+  buddy_accepted: Users,
+  workout_done:   Dumbbell,
+  pr_set:         Trophy,
+  motivate:       Send,
+  live_started:   Zap,
+  live_joined:    Users,
+  live_ended:     Zap,
+};
+
+const KIND_LABEL: Record<NotificationKind, string> = {
+  buddy_request:  "Buddy request",
+  buddy_accepted: "Buddy accepted",
+  workout_done:   "Workout done",
+  pr_set:         "New PR",
+  motivate:       "Motivation",
+  live_started:   "Live workout",
+  live_joined:    "Joined live",
+  live_ended:     "Live ended",
+};
+
+export default function NotificationBell({
+  notifications, unreadCount,
+  onMarkRead, onMarkAll, onDelete, onGoToBuddies, refresh,
+}: Props) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    refresh();
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open, refresh]);
+
+  const handleClick = async (n: AppNotification) => {
+    if (!n.read) await onMarkRead(n.id);
+    setOpen(false);
+    if (["buddy_request", "buddy_accepted", "motivate", "live_started", "live_joined", "workout_done", "pr_set", "live_ended"].includes(n.kind)) {
+      onGoToBuddies();
+    }
+  };
+
+  return (
+    <div className="notif-wrap" ref={ref}>
+      <button
+        className={`notif-btn${unreadCount > 0 ? " has-unread" : ""}`}
+        onClick={() => setOpen(o => !o)}
+        aria-label={`Notifications (${unreadCount} unread)`}
+      >
+        <Bell size={15} />
+        {unreadCount > 0 && (
+          <span className="notif-badge">{unreadCount > 9 ? "9+" : unreadCount}</span>
+        )}
+      </button>
+      {open && (
+        <div className="notif-panel">
+          <div className="notif-hdr">
+            <span>Notifications</span>
+            {unreadCount > 0 && (
+              <button className="auth-toggle" onClick={() => onMarkAll()}>
+                <Check size={11} /> Mark all read
+              </button>
+            )}
+          </div>
+          {notifications.length === 0 ? (
+            <div className="notif-empty">
+              <Bell size={28} style={{ opacity: 0.4 }} />
+              <div>No notifications yet</div>
+            </div>
+          ) : (
+            <div className="notif-list">
+              {notifications.map(n => {
+                const Icon = KIND_ICON[n.kind] ?? Bell;
+                return (
+                  <div
+                    key={n.id}
+                    className={`notif-item${n.read ? "" : " unread"}`}
+                    onClick={() => handleClick(n)}
+                  >
+                    <div className="notif-icon"><Icon size={14} /></div>
+                    <div className="notif-body">
+                      <div className="notif-msg">{n.message}</div>
+                      <div className="notif-meta">
+                        {KIND_LABEL[n.kind] ?? n.kind} · {fmtRelative(n.created_at)}
+                      </div>
+                    </div>
+                    <button
+                      className="notif-del"
+                      onClick={e => { e.stopPropagation(); onDelete(n.id); }}
+                      aria-label="Dismiss"
+                    >×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function fmtRelative(ms: number): string {
+  if (!ms) return "";
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "just now";
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}

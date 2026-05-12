@@ -67,6 +67,12 @@ export async function mockApi(page: Page, state: MockState = defaultState()): Pr
   await page.route("**/api/workouts", route => json(route, state.workouts));
   await page.route("**/api/prs", route => json(route, state.prs));
   await page.route("**/api/health**", route => json(route, []));
+  await page.route("**/api/buddies**", route => json(route, []));
+  await page.route("**/api/notifications**", route => {
+    if (route.request().url().includes("unread-count")) return json(route, { count: 0 });
+    return json(route, []);
+  });
+  await page.route("**/api/live-sessions**", route => json(route, []));
 
   return state;
 }

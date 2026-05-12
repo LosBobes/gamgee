@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 
@@ -10,13 +10,15 @@ interface Props {
   historyCount: number;
   prCount:      number;
   coachCount:   number;
+  buddyCount:   number;
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
   isAdmin?:     boolean;
+  notifBell?:   ReactNode;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout, isAdmin }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, tab, setTab, onLogout, isAdmin, notifBell }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
@@ -25,6 +27,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "workout",   Icon: Zap,           label: workoutLabel,  badge: null },
     { key: "history",   Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
     { key: "prs",       Icon: Trophy,        label: "PRs",         badge: prCount || null },
+    { key: "buddies",   Icon: Users,         label: "BUDDIES",     badge: buddyCount || null },
     { key: "health",    Icon: Heart,         label: "HEALTH",      badge: null },
     { key: "coach",     Icon: Brain,         label: "COACH",       badge: coachCount || null },
     { key: "exercises", Icon: Wrench,        label: "EXERCISES",   badge: null },
@@ -53,6 +56,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
+          {notifBell}
           {isAdmin && (
             <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
               <Shield size={15} />
