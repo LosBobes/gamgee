@@ -60,6 +60,10 @@ export default function AdminApp() {
   const [page,     setPage]     = useState<Page>("users");
   const [loginForm, setLoginForm] = useState({ username: "", password: "" });
   const [loginErr,  setLoginErr]  = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return true;
+    return window.matchMedia("(min-width: 768px)").matches;
+  });
 
   const authFetch = useCallback((url: string, opts: RequestInit = {}): Promise<Response> =>
     fetch(url, {
@@ -133,13 +137,33 @@ export default function AdminApp() {
     { key: "prs",       label: "PRs"       },
   ];
 
+  const currentLabel = NAV.find(n => n.key === page)?.label ?? "";
+
   return (
-    <div className="adm-layout">
+    <div className={`adm-layout${sidebarOpen ? " adm-sidebar-open" : ""}`}>
+      <header className="adm-topbar">
+        <button
+          className="adm-menu-btn"
+          aria-label={sidebarOpen ? "Close menu" : "Open menu"}
+          aria-expanded={sidebarOpen}
+          onClick={() => setSidebarOpen(o => !o)}
+        >
+          <span /><span /><span />
+        </button>
+        <div className="adm-topbar-title">{currentLabel}</div>
+      </header>
+      {sidebarOpen && (
+        <div className="adm-sidebar-backdrop" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      )}
       <aside className="adm-sidebar">
         <div className="adm-logo">GAMGEE<br /><span>ADMIN</span></div>
         <nav className="adm-nav">
           {NAV.map(n => (
-            <button key={n.key} className={`adm-nav-btn${page === n.key ? " active" : ""}`} onClick={() => setPage(n.key)}>
+            <button
+              key={n.key}
+              className={`adm-nav-btn${page === n.key ? " active" : ""}`}
+              onClick={() => { setPage(n.key); setSidebarOpen(false); }}
+            >
               {n.label}
             </button>
           ))}
