@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 
@@ -22,12 +22,13 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
   const tabs = [
-    { key: "workout", Icon: Zap,           label: workoutLabel,  badge: null },
-    { key: "history", Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
-    { key: "prs",     Icon: Trophy,        label: "PRs",         badge: prCount || null },
-    { key: "health",  Icon: Heart,         label: "HEALTH",      badge: null },
-    { key: "coach",   Icon: Brain,         label: "COACH",       badge: coachCount || null },
-    { key: "profile", Icon: User,          label: "PROFILE",     badge: null },
+    { key: "workout",   Icon: Zap,           label: workoutLabel,  badge: null },
+    { key: "history",   Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null },
+    { key: "prs",       Icon: Trophy,        label: "PRs",         badge: prCount || null },
+    { key: "health",    Icon: Heart,         label: "HEALTH",      badge: null },
+    { key: "coach",     Icon: Brain,         label: "COACH",       badge: coachCount || null },
+    { key: "exercises", Icon: Wrench,        label: "EXERCISES",   badge: null },
+    { key: "profile",   Icon: User,          label: "PROFILE",     badge: null },
   ];
 
   const handleTabSelect = (key: string) => {

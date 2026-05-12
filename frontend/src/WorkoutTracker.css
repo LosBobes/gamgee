@@ -1562,6 +1562,10 @@ html, body { background: var(--bg); }
 }
 .cx-muscle-chip.disabled,
 .cx-muscle-chip:disabled { opacity: 0.3; cursor: not-allowed; }
+.cx-instructions {
+  resize: vertical; min-height: 88px; line-height: 1.45;
+  font-size: 14px; font-weight: 500;
+}
 
 /* "+ Custom Exercise" trigger card in WizardBuild */
 .cx-add-card {
@@ -1605,6 +1609,31 @@ html, body { background: var(--bg); }
 }
 .cx-mgr-add:hover {
   border-color: var(--accent); color: var(--accent); background: var(--ad);
+}
+.cx-mgr-row-stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.cx-mgr-row-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.cx-mgr-info {
+  flex: 1; min-width: 0; text-align: left; background: transparent;
+  border: none; padding: 0; cursor: pointer; color: var(--text);
+}
+.cx-mgr-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.cx-mgr-detail {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; animation: fadeUp 0.18s ease;
+}
+.cx-mgr-detail-label {
+  font-size: 9px; color: var(--muted); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 6px; font-weight: 800;
+}
+.cx-mgr-instructions {
+  font-family: 'Nunito', sans-serif; font-size: 13px; line-height: 1.5;
+  color: var(--text); white-space: pre-wrap; word-break: break-word;
+}
+.cx-mgr-detail-empty {
+  font-family: 'Nunito', sans-serif; font-size: 12px; color: var(--muted);
+  font-style: italic;
 }
 
 /* ── REVIEW AUTO-FILL PROMPT ── */
