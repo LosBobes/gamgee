@@ -7,10 +7,11 @@ test.beforeEach(async ({ page }) => {
     window.localStorage.setItem("iron_log_token", "fake-jwt-token");
   });
   await page.goto("/");
+  // Wait past the splash before we start clicking.
+  await expect(page.locator(".tabs")).toBeVisible();
 });
 
 test("can switch between top-level tabs", async ({ page }) => {
-  // The desktop tab bar uses .tabs > .tab buttons.
   const tabs = page.locator(".tabs .tab");
   await expect(tabs).toHaveCount(6);
 
@@ -25,8 +26,8 @@ test("can switch between top-level tabs", async ({ page }) => {
 });
 
 test("clicking logout returns to the auth screen", async ({ page }) => {
-  await page.getByRole("button", { name: /Logout/ }).first().click();
-  await expect(page.getByPlaceholder("Password")).toBeVisible();
+  await page.locator(".logout-btn", { hasText: "Logout" }).first().click();
+  await expect(page.locator('input[autocomplete="username"]')).toBeVisible();
   const token = await page.evaluate(() => localStorage.getItem("iron_log_token"));
   expect(token).toBeNull();
 });

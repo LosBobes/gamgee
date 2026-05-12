@@ -72,8 +72,17 @@ def client(db_engine) -> Iterator[TestClient]:
     app.dependency_overrides.clear()
 
 
-def _register_and_login(client: TestClient, username: str, password: str = "password123") -> str:
-    client.post("/api/auth/register", json={"username": username, "password": password})
+def _register_and_login(client: TestClient, username: str, password: str = "Str0ng-Test-Pass!") -> str:
+    client.post(
+        "/api/auth/register",
+        json={
+            "username": username,
+            "password": password,
+            "name": "Test User",
+            "email": f"{username}@example.com",
+            "gender": "prefer_not_to_say",
+        },
+    )
     res = client.post(
         "/api/auth/login",
         data={"username": username, "password": password},
@@ -96,7 +105,7 @@ def auth_headers(auth_token: str) -> dict[str, str]:
 def make_user(client: TestClient):
     """Factory that creates a fresh user and returns auth headers."""
 
-    def _make(username: str | None = None, password: str = "password123") -> dict[str, str]:
+    def _make(username: str | None = None, password: str = "Str0ng-Test-Pass!") -> dict[str, str]:
         name = username or f"user_{uuid.uuid4().hex[:8]}"
         token = _register_and_login(client, name, password)
         return {"Authorization": f"Bearer {token}"}
