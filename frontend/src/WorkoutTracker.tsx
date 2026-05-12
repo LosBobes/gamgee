@@ -21,6 +21,7 @@ import ExercisesTab from "./components/tabs/ExercisesTab";
 import BuddiesTab from "./components/tabs/BuddiesTab";
 import NotificationsTab from "./components/tabs/NotificationsTab";
 import NotificationBell from "./components/NotificationBell";
+import FeedbackModal from "./components/FeedbackModal";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
@@ -67,6 +68,7 @@ export default function WorkoutTracker() {
   // Bumped whenever the user creates or deletes a custom exercise; forces the
   // wizards and tabs that read ALL_EX/EM to re-render against the mutated catalog.
   const [, setCustomExBump] = useState(0);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
 
@@ -433,6 +435,7 @@ export default function WorkoutTracker() {
         buddyCount={buddies.filter(b => b.status === "accepted").length}
         unreadNotif={unreadCount}
         tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
+        onOpenFeedback={() => setFeedbackOpen(true)}
         notifBell={
           <NotificationBell
             notifications={notifications}
@@ -501,6 +504,7 @@ export default function WorkoutTracker() {
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} />}
       </div>
+      {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
     </div>
   </ToneProvider>
   );

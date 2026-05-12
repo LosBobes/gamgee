@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import "./AdminApp.css";
 
-type Page = "users" | "exercises" | "workouts" | "prs";
+type Page = "users" | "exercises" | "workouts" | "prs" | "feedback";
 type AuthFetch = (url: string, opts?: RequestInit) => Promise<Response>;
 
 interface AdminUser {
@@ -43,6 +43,18 @@ interface PRRow {
   reps: number;
   date: string;
   is_cardio: boolean;
+}
+
+interface FeedbackRow {
+  id: number;
+  user_id: number | null;
+  username: string | null;
+  name: string | null;
+  kind: string;
+  message: string;
+  status: string;
+  created_at: number;
+  resolved_at: number | null;
 }
 
 function fmtDur(ms: number): string {
@@ -135,6 +147,7 @@ export default function AdminApp() {
     { key: "exercises", label: "Exercises" },
     { key: "workouts",  label: "Workouts"  },
     { key: "prs",       label: "PRs"       },
+    { key: "feedback",  label: "Feedback"  },
   ];
 
   const currentLabel = NAV.find(n => n.key === page)?.label ?? "";
@@ -178,6 +191,7 @@ export default function AdminApp() {
         {page === "exercises" && <ExercisesPage authFetch={authFetch} />}
         {page === "workouts"  && <WorkoutsPage  authFetch={authFetch} />}
         {page === "prs"       && <PRsPage       authFetch={authFetch} />}
+        {page === "feedback"  && <FeedbackPage  authFetch={authFetch} />}
       </main>
     </div>
   );
@@ -533,6 +547,134 @@ function PRsPage({ authFetch }: { authFetch: AuthFetch }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+
+function FeedbackPage({ authFetch }: { authFetch: AuthFetch }) {
+  const [items,   setItems]   = useState<FeedbackRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter,  setFilter]  = useState<"all" | "open" | "resolved" | "dismissed">("open");
+  const [busyId,  setBusyId]  = useState<number | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    authFetch("/api/admin/feedback")
+      .then(r => r.json()).then(setItems)
+      .finally(() => setLoading(false));
+  }, [authFetch]);
+
+  const setStatus = async (id: number, status: "open" | "resolved" | "dismissed") => {
+    setBusyId(id);
+    try {
+      const res = await authFetch(`/api/admin/feedback/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        const updated: FeedbackRow = await res.json();
+        setItems(prev => prev.map(it => it.id === id ? updated : it));
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Permanently delete this feedback?")) return;
+    await authFetch(`/api/admin/feedback/${id}`, { method: "DELETE" });
+    setItems(prev => prev.filter(it => it.id !== id));
+  };
+
+  const fmtTs = (ms: number) => {
+    if (!ms) return "—";
+    const d = new Date(ms);
+    return d.toLocaleString();
+  };
+
+  const filtered = items.filter(it => filter === "all" || it.status === filter);
+  const counts = {
+    all:       items.length,
+    open:      items.filter(it => it.status === "open").length,
+    resolved:  items.filter(it => it.status === "resolved").length,
+    dismissed: items.filter(it => it.status === "dismissed").length,
+  };
+
+  if (loading) return <div className="adm-center">Loading…</div>;
+
+  const FILTERS: { key: typeof filter; label: string }[] = [
+    { key: "open",      label: `Open (${counts.open})`           },
+    { key: "resolved",  label: `Resolved (${counts.resolved})`   },
+    { key: "dismissed", label: `Dismissed (${counts.dismissed})` },
+    { key: "all",       label: `All (${counts.all})`             },
+  ];
+
+  return (
+    <div className="adm-page">
+      <div className="adm-page-hdr">
+        <h1>Feedback <span className="adm-count">{items.length}</span></h1>
+      </div>
+      <div className="adm-fb-filters">
+        {FILTERS.map(f => (
+          <button
+            key={f.key}
+            className={`adm-fb-filter${filter === f.key ? " active" : ""}`}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {filtered.length === 0 ? (
+        <div className="adm-fb-empty">No feedback in this category.</div>
+      ) : (
+        <div className="adm-fb-list">
+          {filtered.map(it => (
+            <div key={it.id} className={`adm-fb-card adm-fb-status-${it.status}`}>
+              <div className="adm-fb-card-hdr">
+                <span className={`adm-fb-kind adm-fb-kind-${it.kind}`}>{it.kind}</span>
+                <span className={`adm-fb-status adm-fb-status-pill-${it.status}`}>{it.status}</span>
+                <span className="adm-fb-meta">
+                  {it.username ? `@${it.username}` : "anonymous"}
+                  {it.name && <span className="adm-muted"> · {it.name}</span>}
+                  <span className="adm-muted"> · {fmtTs(it.created_at)}</span>
+                </span>
+              </div>
+              <div className="adm-fb-msg">{it.message}</div>
+              <div className="adm-fb-actions">
+                {it.status !== "resolved" && (
+                  <button
+                    className="adm-btn-sm adm-btn-resolve"
+                    disabled={busyId === it.id}
+                    onClick={() => setStatus(it.id, "resolved")}
+                  >Resolve</button>
+                )}
+                {it.status !== "dismissed" && (
+                  <button
+                    className="adm-btn-sm"
+                    disabled={busyId === it.id}
+                    onClick={() => setStatus(it.id, "dismissed")}
+                  >Dismiss</button>
+                )}
+                {it.status !== "open" && (
+                  <button
+                    className="adm-btn-sm"
+                    disabled={busyId === it.id}
+                    onClick={() => setStatus(it.id, "open")}
+                  >Reopen</button>
+                )}
+                <button
+                  className="adm-btn-sm adm-btn-danger"
+                  onClick={() => del(it.id)}
+                >Delete</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

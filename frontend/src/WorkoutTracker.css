@@ -2198,3 +2198,32 @@ html, body { background: var(--bg); }
 }
 .notif-icon-btn:hover { color: var(--text); border-color: var(--muted); }
 
+/* ── Feedback modal ──────────────────────────────────────────────────── */
+.fb-modal { max-width: 520px; }
+.fb-kind-row {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.fb-kind-btn {
+  flex: 1 1 0; min-width: 90px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 8px 10px; background: var(--s2);
+  border: 1px solid var(--border); border-radius: 8px;
+  color: var(--muted); font-family: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all 0.12s;
+}
+.fb-kind-btn:hover { border-color: var(--muted); color: var(--text); }
+.fb-kind-btn.active {
+  background: var(--ad2); border-color: var(--accent); color: var(--accent);
+}
+.fb-textarea {
+  min-height: 160px; resize: vertical; line-height: 1.45;
+}
+.fb-charcount {
+  font-size: 11px; color: var(--muted); text-align: right;
+  font-family: 'Nunito', sans-serif; letter-spacing: 0.04em;
+  margin-top: -4px;
+}
+.fb-thanks {
+  font-size: 14px; color: var(--text); margin: 6px 0 0;
+  line-height: 1.45;
+}

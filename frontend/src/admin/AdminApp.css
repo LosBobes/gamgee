@@ -430,6 +430,138 @@ select.adm-input { cursor: pointer; }
   gap: 10px;
 }
 
+/* ── Feedback ───────────────────────────────────────────────────────────────── */
+
+.adm-fb-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.adm-fb-filter {
+  background: #16140f;
+  border: 1px solid #2a2822;
+  border-radius: 6px;
+  color: #888;
+  font-family: "Nunito", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.adm-fb-filter:hover { color: #e8e4df; border-color: #444; }
+.adm-fb-filter.active {
+  color: #28D1FF;
+  border-color: #28D1FF;
+  background: rgba(40,209,255,0.08);
+}
+
+.adm-fb-empty {
+  padding: 32px;
+  text-align: center;
+  color: #555;
+  font-size: 13px;
+  border: 1px dashed #222;
+  border-radius: 8px;
+}
+
+.adm-fb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-fb-card {
+  background: #111009;
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-fb-card.adm-fb-status-resolved  { opacity: 0.55; }
+.adm-fb-card.adm-fb-status-dismissed { opacity: 0.4;  }
+
+.adm-fb-card-hdr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.adm-fb-kind {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.adm-fb-kind-bug     { background: rgba(192,80,74,0.15);  color: #e08680; }
+.adm-fb-kind-feature { background: rgba(255,196,40,0.15); color: #f5c452; }
+.adm-fb-kind-general { background: rgba(40,209,255,0.12); color: #28D1FF; }
+
+.adm-fb-status {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.adm-fb-status-pill-open      { color: #c8c4bf; background: #1a1814; border-color: #2a2822; }
+.adm-fb-status-pill-resolved  { color: #5ec97c; background: rgba(94,201,124,0.1); border-color: rgba(94,201,124,0.3); }
+.adm-fb-status-pill-dismissed { color: #888;    background: #1a1814; border-color: #2a2822; }
+
+.adm-fb-meta {
+  color: #c8c4bf;
+  font-size: 11px;
+  margin-left: auto;
+  font-family: "Nunito", sans-serif;
+}
+
+.adm-fb-msg {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e8e4df;
+  background: #16140f;
+  border: 1px solid #1a1814;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.adm-fb-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.adm-btn-sm.adm-btn-resolve {
+  color: #5ec97c;
+  border-color: rgba(94,201,124,0.3);
+}
+.adm-btn-sm.adm-btn-resolve:hover {
+  color: #84d99c;
+  border-color: rgba(94,201,124,0.6);
+  background: rgba(94,201,124,0.08);
+}
+
 /* ── Mobile (<768px) ────────────────────────────────────────────────────────── */
 
 @media (max-width: 767px) {
