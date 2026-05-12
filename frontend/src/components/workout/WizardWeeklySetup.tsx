@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { ArrowLeft, Check, Moon } from "lucide-react";
+import { ArrowLeft, Check, Moon, Wrench } from "lucide-react";
 import type { WeekPlanDay, WeeklyPlan, DayPlan } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
-import { ALL_EX } from "../../data/exercises";
+import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
 
 interface Props {
@@ -32,9 +32,10 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
 
   const [activeDay, setActiveDay] = useState<WeekPlanDay>("mon");
 
-  const day      = plan[activeDay] ?? makeDayPlan(true);
-  const focusDef = getFocusDef(day.focus);
-  const focusIds = focusDef?.exIds ?? [];
+  const day        = plan[activeDay] ?? makeDayPlan(true);
+  const focusDef   = getFocusDef(day.focus);
+  const focusIds   = focusDef?.exIds ?? [];
+  const customExs  = ALL_EX.filter(e => isCustomExerciseId(e.id));
 
   const setDay = (updates: Partial<DayPlan>) =>
     setPlan(p => ({ ...p, [activeDay]: { ...(p[activeDay] ?? makeDayPlan(true)), ...updates } }));
@@ -135,6 +136,31 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
                     );
                   })}
                 </div>
+                {customExs.length > 0 && (
+                  <>
+                    <div className="ww-section-label" style={{ marginTop: 16 }}>
+                      <Wrench size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
+                      {t("Your Custom Exercises", "Your Custom Lifts")}
+                    </div>
+                    <div className="ww-exercise-list">
+                      {customExs.map(ex => {
+                        const checked = day.exerciseIds.includes(ex.id);
+                        return (
+                          <button
+                            key={ex.id}
+                            className={`ww-ex-row${checked ? " checked" : ""}`}
+                            onClick={() => toggleExercise(ex.id)}
+                          >
+                            <span className="ww-ex-check">
+                              {checked && <Check size={10} />}
+                            </span>
+                            <span className="ww-ex-name">{ex.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </>
             ) : (
               <div className="ww-auto-note">
