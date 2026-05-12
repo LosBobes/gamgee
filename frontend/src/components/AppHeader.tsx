@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield } from "lucide-react";
 import { fmtClock } from "../utils";
+import { useTxt } from "../context/ToneContext";
 
 interface Props {
   active:       boolean;
@@ -12,10 +13,12 @@ interface Props {
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
+  isAdmin?:     boolean;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, tab, setTab, onLogout, isAdmin }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
   const tabs = [
@@ -39,16 +42,22 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
       <div className="hdr">
         <div className="hdr-top">
           <div className="hdr-brand">
-            <img src="/logo.png" alt="Gamgee" className="logo-img" />
+            <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
-              <div className="logo-sub">Workout Tracker</div>
+              <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)")}</div>
             </div>
           </div>
           {active
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
+          {isAdmin && (
+            <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
+              <Shield size={15} />
+              <span className="logout-label">Admin</span>
+            </a>
+          )}
           <button className="logout-btn" onClick={onLogout} title="Logout">
             <LogOut size={15} />
             <span className="logout-label">Logout</span>

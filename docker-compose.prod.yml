@@ -8,7 +8,8 @@ services:
       POSTGRES_DB:       ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # NOT exposed to host — only reachable inside the Docker network
+    ports:
+      - "127.0.0.1:5432:5432"  # loopback only — reachable via SSH tunnel, not the internet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s

@@ -13,9 +13,14 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(models.User.username == user_in.username).first():
         raise HTTPException(status_code=400, detail="Username already taken")
+    if db.query(models.User).filter(models.User.email == user_in.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
     user = models.User(
         username=user_in.username,
         hashed_password=hash_password(user_in.password),
+        name=user_in.name,
+        email=user_in.email,
+        gender=user_in.gender,
     )
     db.add(user)
     db.commit()
@@ -49,7 +54,38 @@ def change_password(
 ):
     if not verify_password(body.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
-    if len(body.new_password) < 8:
-        raise HTTPException(status_code=400, detail="New password must be at least 8 characters")
     current_user.hashed_password = hash_password(body.new_password)
     db.commit()
+
+
+@router.patch("/preferences", response_model=schemas.UserOut)
+def update_preferences(
+    body: schemas.UserPreferences,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if body.primary_color is not None:
+        current_user.primary_color = body.primary_color
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.patch("/profile", response_model=schemas.UserOut)
+def update_profile(
+    body: schemas.UserProfileUpdate,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    current_user.name = body.name
+    if body.email is not None:
+        existing = db.query(models.User).filter(
+            models.User.email == body.email,
+            models.User.id != current_user.id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Email already in use by another account")
+    current_user.email = body.email
+    db.commit()
+    db.refresh(current_user)
+    return current_user

@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import "./WorkoutTracker.css";
-import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan } from "./types";
+import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
+import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -14,12 +16,15 @@ import ProfileTab from "./components/tabs/ProfileTab";
 import { ALL_EX } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
+import { ToneProvider, type ToneMode } from "./context/ToneContext";
+
 
 export default function WorkoutTracker() {
   // UI
   const [tab,       setTab]       = useState("workout");
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
+  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
   const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
   // logging
   const [active,    setActive]    = useState(false);
@@ -33,8 +38,23 @@ export default function WorkoutTracker() {
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
-  const [token,     setToken]     = useState<string | null>(() => localStorage.getItem("iron_log_token"));
-  const [username,  setUsername]  = useState<string | null>(null);
+  const [token,        setToken]        = useState<string | null>(() => localStorage.getItem("iron_log_token"));
+  const [username,     setUsername]     = useState<string | null>(null);
+  const [name,         setName]         = useState<string | null>(null);
+  const [email,        setEmail]        = useState<string | null>(null);
+  const [isAdmin,      setIsAdmin]      = useState(false);
+  const [primaryColor, setPrimaryColor] = useState<string>(
+    () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
+  );
+  const [toneMode, setToneMode] = useState<ToneMode>(
+    () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
+  );
+  const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
+
+  const setWeeklyPlan = (plan: WeeklyPlan) => {
+    saveWeeklyPlan(plan);
+    setWeeklyPlanState(plan);
+  };
 
   const authFetch = (url: string, opts: RequestInit = {}) =>
     fetch(url, {
@@ -44,6 +64,17 @@ export default function WorkoutTracker() {
       if (res.status === 401) { localStorage.removeItem("iron_log_token"); setToken(null); }
       return res;
     });
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--primary", primaryColor);
+    localStorage.setItem("gamgee_primary_color", primaryColor);
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = primaryColor;
+  }, [primaryColor]);
+
+  useEffect(() => {
+    localStorage.setItem("gamgee_tone", toneMode);
+  }, [toneMode]);
 
   useEffect(() => {
     if (!token) return;
@@ -56,7 +87,13 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string }) => setUsername(d.username)).catch(() => {});
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean }) => {
+        setUsername(d.username);
+        setName(d.name ?? null);
+        setEmail(d.email ?? null);
+        setIsAdmin(d.is_admin ?? false);
+        if (d.primary_color) setPrimaryColor(d.primary_color);
+      }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -70,7 +107,19 @@ export default function WorkoutTracker() {
 
   const startFromWizard = (autoFill = false) => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
-    setExercises(planned.map(ex => {
+
+    const cardioEx = (slot: CardioPlan["before"]): WorkoutExercise | null => {
+      if (!slot) return null;
+      const def = ALL_EX.find(e => e.id === slot.exId);
+      if (!def) return null;
+      return {
+        ...def,
+        uid: `${def.id}_${Date.now()}_${Math.random()}`,
+        sets: [{ weight: String(slot.minutes), reps: "", done: false }],
+      };
+    };
+
+    const mainExercises: WorkoutExercise[] = planned.map(ex => {
       let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
       if (autoFill) {
         const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
@@ -81,8 +130,17 @@ export default function WorkoutTracker() {
         }
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
-    }));
+    });
+
+    const before = cardioEx(cardio.before);
+    const after  = cardioEx(cardio.after);
+    setExercises([
+      ...(before ? [before] : []),
+      ...mainExercises,
+      ...(after ? [after] : []),
+    ]);
     setPlanned([]);
+    setCardio({ timing: "none", before: null, after: null });
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -116,6 +174,37 @@ export default function WorkoutTracker() {
     return !isNaN(w) && w > 0 && (!prs[exId] || w > prs[exId].weight);
   };
 
+  const loadTodayPlan = (dayPlan: DayPlan) => {
+    setFocus(dayPlan.focus);
+    if (dayPlan.exerciseIds.length > 0) {
+      const exs = dayPlan.exerciseIds
+        .map(id => ALL_EX.find(e => e.id === id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(exs);
+    } else {
+      const focusDef     = getFocusDef(dayPlan.focus);
+      const pool         = focusDef?.exIds ?? [];
+      const focusHistory = history.filter(s => s.focus === dayPlan.focus);
+      const avgSize      = focusHistory.length > 0
+        ? Math.round(focusHistory.reduce((sum, s) => sum + s.exercises.length, 0) / focusHistory.length)
+        : 5;
+      const target = Math.max(4, Math.min(8, avgSize));
+      const freq: Record<string, number> = {};
+      focusHistory.forEach(s => s.exercises.forEach(ex => { freq[ex.id] = (freq[ex.id] ?? 0) + 1; }));
+      const effectivePool = pool.length >= 3
+        ? pool
+        : ALL_EX.filter(e => e.type !== "cardio").map(e => e.id);
+      const picked = effectivePool
+        .map(id => ({ id, score: (freq[id] ?? 0) * 0.4 + Math.random() }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, target)
+        .map(c => ALL_EX.find(e => e.id === c.id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(picked);
+    }
+    setWStep(5);
+  };
+
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
@@ -144,6 +233,7 @@ export default function WorkoutTracker() {
     setPrs(newPrs);
     setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
     setWStep(0); setPlanned([]); setFocus(null);
+    setCardio({ timing: "none", before: null, after: null });
     setCompleted(session);
   };
 
@@ -189,18 +279,20 @@ export default function WorkoutTracker() {
     if (completed)               { setCompleted(null); setTab("history"); return true; }
     if (tab !== "workout")       { setTab("workout"); return true; }
     if (active)                  { return true; }
+    if (wStep === 6)              { setWStep(1); return true; }
     if (wStep > 0)               { setWStep(wStep - 1); return true; }
     return false;
   });
 
-  if (!token) return <AuthScreen onLogin={setToken} />;
+  if (!token) return <ToneProvider value={toneMode}><AuthScreen onLogin={setToken} /></ToneProvider>;
 
   return (
+  <ToneProvider value={toneMode}>
     <div className="app">
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
         historyCount={history.length} prCount={Object.keys(prs).length} coachCount={coachCount}
-        tab={tab} setTab={setTab} onLogout={logout}
+        tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
       <div className="content">
@@ -211,9 +303,12 @@ export default function WorkoutTracker() {
           <WorkoutTab
             active={active} wStep={wStep} setWStep={setWStep}
             focus={focus} setFocus={setFocus}
+            cardio={cardio} setCardio={setCardio}
             planned={planned} setPlanned={setPlanned}
             exercises={exercises} prs={prs} history={history}
-            doneSets={doneSets} startFromWizard={startFromWizard}
+            doneSets={doneSets}
+            weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
+            startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
@@ -223,8 +318,9 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} />}
       </div>
     </div>
+  </ToneProvider>
   );
 }

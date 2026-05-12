@@ -1,6 +1,7 @@
 import { Trash2, Trophy } from "lucide-react";
 import type { PRDict } from "../../types";
 import { fmtDate, orm1 } from "../../utils";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   prs: PRDict;
@@ -8,17 +9,18 @@ interface Props {
 }
 
 export default function PRsTab({ prs, onDelete }: Props) {
+  const t = useTxt();
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">No PRs yet</div></div>
+        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">{t("No PRs yet", "No PRs yet. Do you even lift, bro?")}</div></div>
       </div>
     );
   }
 
   return (
     <div className="tab-anim">
-      <p className="pr-header">{Object.keys(prs).length} Personal Records</p>
+      <p className="pr-header">{(() => { const n = Object.keys(prs).length; return t(`${n} Personal Record${n !== 1 ? "s" : ""}`, `${n} ${n !== 1 ? "Pages" : "Page"} of the Swoly Bible`); })()}</p>
       <div className="pr-grid">
         {Object.entries(prs)
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
@@ -39,7 +41,7 @@ export default function PRsTab({ prs, onDelete }: Props) {
                 <div className="pr-reps">{pr.isCardio ? `${pr.reps} km` : `× ${pr.reps} reps`}</div>
               )}
               {!pr.isCardio && pr.weight && pr.reps > 0 && (
-                <div className="pr-reps" style={{ color: "var(--blue)" }}>est. 1RM ~{orm1(pr.weight, pr.reps)}kg</div>
+                <div className="pr-reps" style={{ color: "var(--pr-muted)" }}>est. 1RM ~{orm1(pr.weight, pr.reps)}kg</div>
               )}
               <div className="pr-date">{fmtDate(pr.date)}</div>
             </div>

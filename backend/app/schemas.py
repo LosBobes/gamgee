@@ -1,5 +1,15 @@
-from pydantic import BaseModel
-from typing import Any
+import re
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+from .password_policy import validate_password
+
+_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
+_USERNAME_RE = re.compile(r"^[A-Za-z0-9_.\-]+$")
+_HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+Gender = Literal["female", "male", "non_binary", "other", "prefer_not_to_say"]
 
 
 class ItemBase(BaseModel):
@@ -25,15 +35,86 @@ class Item(ItemBase):
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
 class UserCreate(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=50)
     password: str
+    name: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=254)
+    gender: Gender
+
+    @field_validator("username")
+    @classmethod
+    def _username_format(cls, v: str) -> str:
+        v = v.strip()
+        if not _USERNAME_RE.match(v):
+            raise ValueError("Username may only contain letters, digits, '.', '_' or '-'")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def _name_format(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _email_format(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+    @model_validator(mode="after")
+    def _check_password(self) -> "UserCreate":
+        validate_password(self.password, username=self.username, email=self.email)
+        return self
 
 
 class UserOut(BaseModel):
     id: int
     username: str
+    name: str | None = None
+    email: str | None = None
+    gender: str | None = None
+    primary_color: str | None = None
+    is_admin: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class UserPreferences(BaseModel):
+    primary_color: str | None = None
+
+    @field_validator("primary_color")
+    @classmethod
+    def _valid_hex(cls, v: str | None) -> str | None:
+        if v is not None and not _HEX_COLOR_RE.match(v):
+            raise ValueError("primary_color must be a valid #RRGGBB hex color")
+        return v
+
+
+class UserProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    email: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def _strip_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _fmt_email(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
 
 
 class Token(BaseModel):
@@ -48,6 +129,12 @@ class TokenData(BaseModel):
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong(cls, v: str) -> str:
+        validate_password(v)
+        return v
 
 
 # ── Workout sessions ──────────────────────────────────────────────────────────
@@ -86,6 +173,77 @@ class PersonalRecord(PersonalRecordCreate):
             data["isCardio"] = data.pop("is_cardio", False)
             return cls(**data)
         return super().model_validate(obj, **kwargs)
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class UserAdminOut(BaseModel):
+    id: int
+    username: str
+    name: str | None = None
+    email: str | None = None
+    gender: str | None = None
+    primary_color: str | None = None
+    is_admin: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class UserAdminUpdate(BaseModel):
+    name: str | None = None
+    email: str | None = None
+    gender: str | None = None
+    is_admin: bool | None = None
+
+
+class ExerciseOut(BaseModel):
+    id: str
+    name: str
+    category: str
+    type: str
+    primary_muscles: list[str] = []
+    secondary_muscles: list[str] = []
+
+    model_config = {"from_attributes": True}
+
+
+class ExerciseCreate(BaseModel):
+    id: str
+    name: str
+    category: str
+    type: str = "strength"
+    primary_muscles: list[str] = []
+    secondary_muscles: list[str] = []
+
+
+class ExerciseUpdate(BaseModel):
+    name: str | None = None
+    category: str | None = None
+    type: str | None = None
+    primary_muscles: list[str] | None = None
+    secondary_muscles: list[str] | None = None
+
+
+class WorkoutAdminOut(BaseModel):
+    id: str
+    user_id: int | None = None
+    username: str | None = None
+    date: str
+    duration: int
+    focus: str | None = None
+    exercise_count: int = 0
+
+
+class PRAdminOut(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str | None = None
+    exercise_id: str
+    name: str
+    weight: float
+    reps: int
+    date: str
+    is_cardio: bool = False
 
 
 # ── Body metrics ──────────────────────────────────────────────────────────────

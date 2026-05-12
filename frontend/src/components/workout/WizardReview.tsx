@@ -1,11 +1,12 @@
-import { ArrowLeft, X, Zap, Clock } from "lucide-react";
-import type { ExerciseDef, WorkoutSession } from "../../types";
+import { ArrowLeft, X, Zap, Clock, Heart } from "lucide-react";
+import type { CardioPlan, ExerciseDef, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
 import { getFocusDef } from "../../data/focuses";
 import { analyzeEx } from "../../analysis";
 import BodyMap from "../BodyMap";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   planned:     ExerciseDef[];
@@ -14,9 +15,11 @@ interface Props {
   onBack:      () => void;
   onStart:     (autoFill: boolean) => void;
   focus:       string;
+  cardio:      CardioPlan;
 }
 
-export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus }: Props) {
+export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus, cardio }: Props) {
+  const t = useTxt();
   const finalActive = getActive(planned);
   const finalGroups = muscleGroups(finalActive);
 
@@ -76,6 +79,28 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
         )}
       </div>
 
+      {(cardio.before || cardio.after) && (
+        <div className="cardio-summary-card">
+          <div className="cardio-summary-head"><Heart size={13} /> CARDIO PLAN</div>
+          {cardio.before && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">BEFORE</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.before!.exId)?.name ?? cardio.before.exId} · {cardio.before.minutes} min
+              </span>
+            </div>
+          )}
+          {cardio.after && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">AFTER</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.after!.exId)?.name ?? cardio.after.exId} · {cardio.after.minutes} min
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {planned.map((ex, i) => {
         const m    = EM[ex.id] || { p: [], s: [] };
         const anlz = analyzeEx(ex.id, history);
@@ -116,8 +141,8 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           <div className="review-autofill-top">
             <Clock size={15} />
             <div>
-              <div className="review-autofill-title">Auto-fill from last session?</div>
-              <div className="review-autofill-sub">Pre-loads weight & reps — edit freely during the workout</div>
+              <div className="review-autofill-title">{t("Auto-fill from last session?", "Load weights from last session?")}</div>
+              <div className="review-autofill-sub">{t("Pre-loads weight and reps. Edit freely during the workout.", "Pre-fills your weight and reps. You're free to push past it.")}</div>
             </div>
           </div>
           <div className="review-autofill-btns">
@@ -125,13 +150,13 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
               Start Fresh
             </button>
             <button className="btn-start" onClick={() => onStart(true)} disabled={planned.length === 0}>
-              <Zap size={16} /> Use Last Session
+              <Zap size={16} /> {t("Use Last Session", "Load Last Session")}
             </button>
           </div>
         </div>
       ) : (
         <button className="btn-start" onClick={() => onStart(false)} disabled={planned.length === 0} style={{ marginTop: 8 }}>
-          <Zap size={18} /> START WORKOUT ({planned.length} exercises)
+          <Zap size={18} /> {t(`START WORKOUT (${planned.length} exercises)`, `LET'S GO (${planned.length} exercises)`)}
         </button>
       )}
     </>
