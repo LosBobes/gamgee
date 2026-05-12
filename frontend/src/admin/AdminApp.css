@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
+
 /* ── Base ───────────────────────────────────────────────────────────────────── */
 
 .adm-layout {
@@ -34,7 +36,7 @@
 }
 
 .adm-logo {
-  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-family: "Nunito", sans-serif;
   font-size: 20px;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -103,7 +105,7 @@
 }
 
 .adm-page-hdr h1 {
-  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-family: "Nunito", sans-serif;
   font-size: 22px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -292,7 +294,7 @@ select.adm-input { cursor: pointer; }
 }
 
 .adm-modal-title {
-  font-family: "Barlow Condensed", "Impact", sans-serif;
+  font-family: "Nunito", sans-serif;
   font-size: 18px;
   font-weight: 800;
   letter-spacing: 0.04em;
