@@ -329,6 +329,8 @@ html, body { background: var(--bg); }
   transition: opacity 0.2s; display: block;
 }
 .duck-btn:hover { opacity: 0.5; }
+.duck-btn.admin { opacity: 1; }
+.duck-btn.admin:hover { opacity: 0.85; }
 .duck-btn.bounce { animation: duck-bounce 0.5s ease; }
 @keyframes duck-bounce {
   0%   { transform: scale(1)    rotate(0deg); }
@@ -1504,6 +1506,106 @@ html, body { background: var(--bg); }
 }
 .cf-btn-save:disabled { opacity: 0.3; cursor: default; }
 .cf-btn-save:not(:disabled):hover { opacity: 0.88; }
+
+/* ── CUSTOM EXERCISE MODAL ── */
+.cx-modal {
+  max-width: 460px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.cx-type-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.cx-type-btn {
+  flex: 1; padding: 9px 6px; background: var(--s1); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--muted); cursor: pointer;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; transition: all 0.15s;
+}
+.cx-type-btn:hover { color: var(--text); border-color: var(--accent); }
+.cx-type-btn.selected {
+  background: var(--ad2); border-color: var(--accent); color: var(--accent);
+}
+.cx-cat-select {
+  margin-bottom: 14px; padding: 10px 12px; cursor: pointer;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a7570' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>");
+  background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+}
+.cx-hint {
+  display: inline-block; margin-left: 8px; font-size: 9px; color: var(--muted);
+  letter-spacing: 1px; text-transform: uppercase; font-weight: 700;
+}
+.cx-muscle-section {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; max-height: 180px; overflow-y: auto;
+}
+.cx-muscle-group + .cx-muscle-group { margin-top: 10px; }
+.cx-muscle-group-label {
+  font-size: 9px; color: var(--muted); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: 5px; font-weight: 800;
+}
+.cx-muscle-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.cx-muscle-chip {
+  padding: 4px 9px; background: transparent; border: 1px solid var(--border);
+  border-radius: 999px; color: var(--muted); cursor: pointer;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 600;
+  transition: all 0.12s; -webkit-tap-highlight-color: transparent;
+}
+.cx-muscle-chip:hover:not(:disabled) {
+  border-color: var(--accent); color: var(--text);
+}
+.cx-muscle-chip.primary {
+  background: var(--accent); border-color: var(--accent);
+  color: #0a0804; font-weight: 800;
+}
+.cx-muscle-chip.secondary {
+  background: var(--ad2); border-color: var(--accent); color: var(--accent);
+}
+.cx-muscle-chip.disabled,
+.cx-muscle-chip:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* "+ Custom Exercise" trigger card in WizardBuild */
+.cx-add-card {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 11px; margin-bottom: 10px;
+  background: transparent; border: 1.5px dashed var(--border); border-radius: 9px;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.cx-add-card:hover {
+  border-color: var(--accent); color: var(--accent); background: var(--ad);
+}
+
+/* Custom-exercise manager rows in ProfileTab */
+.cx-mgr-empty {
+  font-size: 12px; color: var(--muted); text-align: center; padding: 14px 0;
+  font-family: 'Nunito', sans-serif;
+}
+.cx-mgr-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.cx-mgr-row:last-child { border-bottom: none; }
+.cx-mgr-name { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; }
+.cx-mgr-meta {
+  font-size: 10px; color: var(--muted); letter-spacing: 1px;
+  text-transform: uppercase; margin-top: 2px;
+}
+.cx-mgr-del {
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 8px; color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.cx-mgr-del:hover { border-color: #FF6B6B; color: #FF6B6B; }
+.cx-mgr-add {
+  width: 100%; padding: 10px; margin-top: 10px;
+  background: transparent; border: 1.5px dashed var(--border); border-radius: 8px;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.cx-mgr-add:hover {
+  border-color: var(--accent); color: var(--accent); background: var(--ad);
+}
 
 /* ── REVIEW AUTO-FILL PROMPT ── */
 .review-last-hint {

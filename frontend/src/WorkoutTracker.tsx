@@ -13,7 +13,7 @@ import PRsTab from "./components/tabs/PRsTab";
 import HealthTab from "./components/tabs/HealthTab";
 import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
-import { ALL_EX } from "./data/exercises";
+import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
@@ -50,6 +50,11 @@ export default function WorkoutTracker() {
     () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
   );
   const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
+  // Bumped whenever the user creates or deletes a custom exercise; forces the
+  // wizards and tabs that read ALL_EX/EM to re-render against the mutated catalog.
+  const [, setCustomExBump] = useState(0);
+
+  useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
 
   const setWeeklyPlan = (plan: WeeklyPlan) => {
     saveWeeklyPlan(plan);
@@ -318,7 +323,7 @@ export default function WorkoutTracker() {
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} />}
+        {!completed && tab === "profile" && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} />}
       </div>
     </div>
   </ToneProvider>

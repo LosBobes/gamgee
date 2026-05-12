@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
-import { User } from "lucide-react";
-import type { WorkoutSession } from "../../types";
+import { User, Plus, Trash2, Wrench } from "lucide-react";
+import type { CustomExerciseDef, WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
-import { EM } from "../../data/exercises";
+import { EM, getCustomExercises, deleteCustomExercise } from "../../data/exercises";
+import CustomExerciseModal from "../workout/CustomExerciseModal";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
   onProfileUpdate: (name: string | null, email: string | null) => void;
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
+  isAdmin?:        boolean;
 }
 
 const PALETTE = [
@@ -288,7 +290,7 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange }: Props) {
+export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange, isAdmin }: Props) {
   const t = useTxt();
 
   if (history.length === 0) {
@@ -300,9 +302,11 @@ export default function ProfileTab({ username, name, email, history, token, prim
         <div className="profile-section">{t("Appearance", "Appearance")}</div>
         <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
+        <div className="profile-section"><Wrench size={11} style={{ marginRight: 5, verticalAlign: -1 }} />{t("Custom Exercises", "Custom Lifts")}</div>
+        <CustomExercisesCard />
         <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
-        <Duck />
+        <Duck isAdmin={isAdmin} />
       </div>
     );
   }
@@ -438,10 +442,63 @@ export default function ProfileTab({ username, name, email, history, token, prim
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
 
+      <div className="profile-section"><Wrench size={11} style={{ marginRight: 5, verticalAlign: -1 }} />{t("Custom Exercises", "Custom Lifts")}</div>
+      <CustomExercisesCard />
+
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
 
-      <Duck />
+      <Duck isAdmin={isAdmin} />
+    </div>
+  );
+}
+
+function CustomExercisesCard() {
+  const t = useTxt();
+  const [items,    setItems]    = useState<CustomExerciseDef[]>(() => getCustomExercises());
+  const [creating, setCreating] = useState(false);
+
+  const refresh = () => setItems(getCustomExercises());
+
+  const handleDelete = (id: string) => {
+    deleteCustomExercise(id);
+    refresh();
+  };
+
+  return (
+    <div className="profile-card">
+      {items.length === 0 ? (
+        <div className="cx-mgr-empty">
+          {t("No custom exercises yet.", "No homemade lifts yet, bro.")}
+        </div>
+      ) : (
+        items.map(ex => {
+          const primaryNames = ex.primary.map(m => MI[m]?.n).filter(Boolean).join(" · ");
+          return (
+            <div key={ex.id} className="cx-mgr-row">
+              <div style={{ minWidth: 0 }}>
+                <div className="cx-mgr-name">{ex.name}</div>
+                <div className="cx-mgr-meta">
+                  {ex.type} · {ex.cat}{primaryNames ? ` · ${primaryNames}` : ""}
+                </div>
+              </div>
+              <button className="cx-mgr-del" onClick={() => handleDelete(ex.id)} title="Delete">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          );
+        })
+      )}
+      <button className="cx-mgr-add" onClick={() => setCreating(true)}>
+        <Plus size={12} style={{ verticalAlign: -1, marginRight: 4 }} />
+        {t("Add Custom Exercise", "Build a New Lift")}
+      </button>
+      {creating && (
+        <CustomExerciseModal
+          onClose={() => setCreating(false)}
+          onCreated={refresh}
+        />
+      )}
     </div>
   );
 }
@@ -458,7 +515,7 @@ const DUCK_MSGS = [
   "Every rep is a quack for the person you want to be.",
 ];
 
-function Duck() {
+function Duck({ isAdmin }: { isAdmin?: boolean }) {
   const [msg, setMsg]       = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
 
@@ -472,7 +529,7 @@ function Duck() {
   return (
     <div style={{ textAlign: "center" }}>
       {msg && <div className="health-toast">{msg}</div>}
-      <button className={`duck-btn${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
+      <button className={`duck-btn${isAdmin ? " admin" : ""}${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
         <DuckIcon size={22} />
       </button>
     </div>
