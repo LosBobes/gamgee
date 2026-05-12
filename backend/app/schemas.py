@@ -79,6 +79,7 @@ class UserOut(BaseModel):
     gender: str | None = None
     primary_color: str | None = None
     is_admin: bool = False
+    is_verified: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -137,6 +138,73 @@ class ChangePassword(BaseModel):
         return v
 
 
+# ── Password reset / email verification ──────────────────────────────────────
+
+class ForgotPassword(BaseModel):
+    email: str
+
+    @field_validator("email")
+    @classmethod
+    def _fmt(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+
+class ResetPassword(BaseModel):
+    token: str = Field(min_length=8, max_length=512)
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong(cls, v: str) -> str:
+        validate_password(v)
+        return v
+
+
+class VerifyEmail(BaseModel):
+    token: str = Field(min_length=8, max_length=512)
+
+
+class ResendVerification(BaseModel):
+    email: str | None = None
+
+    @field_validator("email")
+    @classmethod
+    def _fmt(cls, v: str | None) -> str | None:
+        if not v:
+            return None
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+
+class AdminResetPassword(BaseModel):
+    """Admin-initiated password reset.
+
+    If ``new_password`` is provided the password is set directly. Otherwise
+    a reset link is emailed to the user (if they have an email on file).
+    """
+    new_password: str | None = None
+    send_email: bool = True
+
+    @field_validator("new_password")
+    @classmethod
+    def _strong(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        validate_password(v)
+        return v
+
+
+class AdminResetPasswordResult(BaseModel):
+    mode: Literal["password_set", "reset_link_sent", "reset_link_generated"]
+    temporary_password: str | None = None
+    reset_link: str | None = None
+
+
 # ── Workout sessions ──────────────────────────────────────────────────────────
 
 class WorkoutSessionCreate(BaseModel):
@@ -185,6 +253,7 @@ class UserAdminOut(BaseModel):
     gender: str | None = None
     primary_color: str | None = None
     is_admin: bool = False
+    is_verified: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -194,6 +263,7 @@ class UserAdminUpdate(BaseModel):
     email: str | None = None
     gender: str | None = None
     is_admin: bool | None = None
+    is_verified: bool | None = None
 
 
 class ExerciseOut(BaseModel):

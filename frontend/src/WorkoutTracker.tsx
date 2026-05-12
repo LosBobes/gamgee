@@ -20,7 +20,20 @@ import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
 
 
-export default function WorkoutTracker() {
+interface WorkoutTrackerProps {
+  initialAuthView?: "login" | "register" | "forgot" | "reset" | "verify";
+  initialAuthToken?: string;
+  /** Force the auth screen even when a token is in localStorage (used when
+   *  arriving via a password-reset / email-verify link so the user always sees
+   *  the relevant view first). */
+  forceAuthScreen?: boolean;
+}
+
+export default function WorkoutTracker({
+  initialAuthView,
+  initialAuthToken,
+  forceAuthScreen = false,
+}: WorkoutTrackerProps = {}) {
   // UI
   const [tab,       setTab]       = useState("workout");
   const [wStep,     setWStep]     = useState(0);
@@ -44,6 +57,9 @@ export default function WorkoutTracker() {
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
   const [isAdmin,      setIsAdmin]      = useState(false);
+  const [isVerified,   setIsVerified]   = useState(true);
+  const [verifyMsg,    setVerifyMsg]    = useState<string | null>(null);
+  const [verifyMsgKind, setVerifyMsgKind] = useState<"ok" | "warn">("ok");
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
@@ -93,11 +109,12 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean }) => {
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
         setIsAdmin(d.is_admin ?? false);
+        setIsVerified(d.is_verified ?? true);
         if (d.primary_color) setPrimaryColor(d.primary_color);
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -281,6 +298,23 @@ export default function WorkoutTracker() {
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
 
+  const resendVerification = async () => {
+    setVerifyMsg(null);
+    try {
+      const res = await authFetch("/api/auth/resend-verification-me", { method: "POST" });
+      if (res.ok) {
+        setVerifyMsgKind("ok");
+        setVerifyMsg("Verification email sent — check your inbox.");
+      } else {
+        setVerifyMsgKind("warn");
+        setVerifyMsg("Couldn't send the verification email. Try again in a moment.");
+      }
+    } catch {
+      setVerifyMsgKind("warn");
+      setVerifyMsg("Network error while requesting a verification email.");
+    }
+  };
+
   useMobileBackGesture(!!token, () => {
     if (completed)               { setCompleted(null); setTab("history"); return true; }
     if (tab !== "workout")       { setTab("workout"); return true; }
@@ -290,7 +324,16 @@ export default function WorkoutTracker() {
     return false;
   });
 
-  if (!token) return <ToneProvider value={toneMode}><AuthScreen onLogin={setToken} /></ToneProvider>;
+  if (!token || forceAuthScreen)
+    return (
+      <ToneProvider value={toneMode}>
+        <AuthScreen
+          onLogin={setToken}
+          initialView={initialAuthView}
+          initialToken={initialAuthToken}
+        />
+      </ToneProvider>
+    );
 
   return (
   <ToneProvider value={toneMode}>
@@ -301,6 +344,18 @@ export default function WorkoutTracker() {
         tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
+      {!isVerified && (
+        <div className={`verify-banner ${verifyMsgKind === "warn" ? "verify-banner-warn" : ""}`} role="status">
+          <span>
+            Your email isn't verified yet.
+            {email ? <> We sent a confirmation link to <strong>{email}</strong>.</> : null}
+          </span>
+          <button className="verify-banner-btn" onClick={resendVerification}>
+            Resend verification email
+          </button>
+          {verifyMsg && <small className={`verify-banner-msg ${verifyMsgKind === "ok" ? "ok" : "warn"}`}>{verifyMsg}</small>}
+        </div>
+      )}
       <div className="content">
         {completed && (
           <WorkoutComplete session={completed} onDone={dismissCompleted} />

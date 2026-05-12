@@ -250,6 +250,35 @@
   color: #28D1FF;
 }
 
+.adm-badge-verified {
+  background: rgba(78, 197, 109, 0.14);
+  color: #4ec56d;
+}
+
+.adm-badge-unverified {
+  background: rgba(255, 168, 80, 0.14);
+  color: #ffa850;
+}
+
+.adm-pre {
+  background: #16140f;
+  border: 1px solid #2a2822;
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: #e8e4df;
+  font-size: 13px;
+  margin: 8px 0;
+  white-space: pre-wrap;
+}
+.adm-break { word-break: break-all; }
+
+.adm-radio {
+  display: flex; align-items: flex-start; gap: 0.5rem;
+  padding: 0.4rem 0;
+  cursor: pointer;
+}
+.adm-radio input[type="radio"] { margin-top: 0.25rem; }
+
 /* ── Inputs ─────────────────────────────────────────────────────────────────── */
 
 .adm-input {

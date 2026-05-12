@@ -1158,6 +1158,27 @@ html, body { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+/* ── VERIFICATION BANNER ── */
+.verify-banner {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--ad);
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  color: var(--text); font-size: 0.875rem;
+}
+.verify-banner-warn {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--red) 35%, transparent);
+}
+.verify-banner-btn {
+  background: var(--primary); color: #04161E; border: 0; border-radius: 6px;
+  padding: 0.35rem 0.75rem; font-weight: 600; font-size: 0.8rem; cursor: pointer;
+}
+.verify-banner-btn:hover { opacity: 0.9; }
+.verify-banner-msg { flex-basis: 100%; font-size: 0.78rem; }
+.verify-banner-msg.ok { color: var(--muted); }
+.verify-banner-msg.warn { color: var(--red); }
+
 /* ── AUTH ── */
 .wt-auth-screen {
   min-height: 100vh; display: flex; align-items: center; justify-content: center;
