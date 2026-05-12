@@ -22,8 +22,10 @@ export interface Pose {
 
 export interface StickFigureProps {
   pose: Pose;
-  bar?: Point;          // small bar/dumbbell — drawn as a horizontal line at this point
-  barWidth?: number;    // visual length of the bar (viewBox units)
+  bar?: Point;          // weight-plate end — rendered as two concentric filled circles
+  plateR?: number;      // outer plate radius (viewBox units)
+  hubR?: number;        // inner bar-hub radius (viewBox units)
+  hubColor?: string;    // inner-circle fill; defaults to var(--bg) for a "hole-in-plate" look
   bench?: boolean;      // render a horizontal bench under a lying body
   floor?: boolean;      // render a dashed floor line at the bottom
   width?: number | string;
@@ -41,7 +43,9 @@ const STROKE = 2.8;
 export default function StickFigure({
   pose,
   bar,
-  barWidth = 18,
+  plateR = 5.5,
+  hubR = 2,
+  hubColor = "var(--bg)",
   bench = false,
   floor = false,
   width,
@@ -110,16 +114,16 @@ export default function StickFigure({
         {/* Foot: ankle → toe */}
         <line x1={pose.ankle[0]} y1={pose.ankle[1]} x2={pose.toe[0]} y2={pose.toe[1]} />
 
-        {bar && (
-          <line
-            x1={bar[0] - barWidth / 2}
-            y1={bar[1]}
-            x2={bar[0] + barWidth / 2}
-            y2={bar[1]}
-            strokeWidth={STROKE * 1.6}
-          />
-        )}
       </g>
+
+      {bar && (
+        <g stroke="none">
+          {/* Outer plate (side-on view of a weight disc) */}
+          <circle cx={bar[0]} cy={bar[1]} r={plateR} fill={color} />
+          {/* Inner hub — bar end visible through the plate's centre hole */}
+          <circle cx={bar[0]} cy={bar[1]} r={hubR} fill={hubColor} />
+        </g>
+      )}
     </svg>
   );
 }
