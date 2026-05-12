@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Check, Moon, Wrench } from "lucide-react";
 import type { WeekPlanDay, WeeklyPlan, DayPlan } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
@@ -7,9 +7,9 @@ import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
 
 interface Props {
-  initial: WeeklyPlan | null;
-  onSave:  (plan: WeeklyPlan) => void;
-  onBack:  () => void;
+  initial:   WeeklyPlan | null;
+  onPersist: (plan: WeeklyPlan) => void;
+  onDone:    () => void;
 }
 
 const DEFAULT_FOCUS = Object.keys(FOCUS)[0];
@@ -18,7 +18,7 @@ function makeDayPlan(enabled: boolean): DayPlan {
   return { focus: DEFAULT_FOCUS, exerciseIds: [], enabled };
 }
 
-export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
+export default function WizardWeeklySetup({ initial, onPersist, onDone }: Props) {
   const t = useTxt();
 
   const [plan, setPlan] = useState<WeeklyPlan>(() => {
@@ -29,6 +29,16 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
     });
     return p;
   });
+
+  // Persist edits to the parent on every change so back-navigation
+  // (in-app BACK button or mobile back gesture) never discards user work.
+  // Skip the initial mount — we don't want to overwrite a null parent plan
+  // until the user actually edits something.
+  const skipInitialPersist = useRef(true);
+  useEffect(() => {
+    if (skipInitialPersist.current) { skipInitialPersist.current = false; return; }
+    onPersist(plan);
+  }, [plan, onPersist]);
 
   const [activeDay, setActiveDay] = useState<WeekPlanDay>("mon");
 
@@ -49,10 +59,10 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
   return (
     <>
       <div className="wz-hdr">
-        <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
+        <button className="wz-back" onClick={onDone}><ArrowLeft size={13} /> BACK</button>
         <span className="wz-focus-label">{t("WEEKLY PLAN", "THE PROGRAM", "WEEKLY ERA")}</span>
-        <button className="wz-next" onClick={() => onSave(plan)}>
-          SAVE <Check size={13} />
+        <button className="wz-next" onClick={onDone}>
+          DONE <Check size={13} />
         </button>
       </div>
 
