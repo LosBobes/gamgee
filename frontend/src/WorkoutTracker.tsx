@@ -25,6 +25,7 @@ import FeedbackModal from "./components/FeedbackModal";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
+import { useEventStream } from "./hooks/useEventStream";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
 
 
@@ -164,12 +165,26 @@ export default function WorkoutTracker() {
     refreshBuddies();
     refreshNotifications();
     refreshLive();
+    // The SSE stream pushes changes the moment they happen; this longer
+    // interval is just a safety net in case the EventSource is disconnected
+    // (proxy timeout, sleeping tab waking up, etc.).
     const id = setInterval(() => {
       refreshNotifications();
       refreshLive();
-    }, 20_000);
+      refreshBuddies();
+    }, 90_000);
     return () => clearInterval(id);
   }, [token, refreshBuddies, refreshNotifications, refreshLive]);
+
+  useEventStream(token, useCallback((ev) => {
+    if (ev.type === "notification") {
+      refreshNotifications();
+    } else if (ev.type === "buddy") {
+      refreshBuddies();
+    } else if (ev.type === "live") {
+      refreshLive();
+    }
+  }, [refreshNotifications, refreshBuddies, refreshLive]));
 
   // Sync owner_sets_done with active workout's completed sets in real time
   useEffect(() => {
