@@ -70,10 +70,10 @@ export default function WorkoutTracker() {
 
   useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
 
-  const setWeeklyPlan = (plan: WeeklyPlan) => {
+  const setWeeklyPlan = useCallback((plan: WeeklyPlan) => {
     saveWeeklyPlan(plan);
     setWeeklyPlanState(plan);
-  };
+  }, []);
 
   const tokenRef = useRef(token);
   useEffect(() => { tokenRef.current = token; }, [token]);

@@ -129,8 +129,8 @@ export default function WorkoutTab({
         <div key="wstep-6" className={stepAnim}>
           <WizardWeeklySetup
             initial={weeklyPlan}
-            onSave={plan => { setWeeklyPlan(plan); setWStep(1); }}
-            onBack={() => setWStep(1)}
+            onPersist={setWeeklyPlan}
+            onDone={() => setWStep(1)}
           />
         </div>
       )}

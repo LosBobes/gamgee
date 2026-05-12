@@ -1825,6 +1825,16 @@ html, body { background: var(--bg); }
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4); z-index: 200;
   animation: fadeUp 0.15s ease both;
 }
+/* On mobile the bell sits left of the hamburger, so an absolute right:0
+   panel can extend past the viewport's left edge. Pin to both sides instead. */
+@media (max-width: 480px) {
+  .notif-panel {
+    position: fixed;
+    top: calc(var(--hdr-h) - 4px);
+    left: 12px; right: 12px;
+    width: auto;
+  }
+}
 .notif-hdr {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 14px; border-bottom: 1px solid var(--border);
