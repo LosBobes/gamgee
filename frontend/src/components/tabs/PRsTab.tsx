@@ -13,14 +13,14 @@ export default function PRsTab({ prs, onDelete }: Props) {
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">{t("No PRs yet", "No PRs yet. Do you even lift, bro?")}</div></div>
+        <div className="empty"><div className="empty-icon"><Trophy size={40} /></div><div className="empty-label">{t("No PRs yet", "No PRs yet. Do you even lift, bro?", "No PRs yet. Your first one is loading, bestie.")}</div></div>
       </div>
     );
   }
 
   return (
     <div className="tab-anim">
-      <p className="pr-header">{(() => { const n = Object.keys(prs).length; return t(`${n} Personal Record${n !== 1 ? "s" : ""}`, `${n} ${n !== 1 ? "Pages" : "Page"} of the Swoly Bible`); })()}</p>
+      <p className="pr-header">{(() => { const n = Object.keys(prs).length; return t(`${n} Personal Record${n !== 1 ? "s" : ""}`, `${n} ${n !== 1 ? "Pages" : "Page"} of the Swoly Bible`, `${n} Iconic ${n !== 1 ? "Moments" : "Moment"}`); })()}</p>
       <div className="pr-grid">
         {Object.entries(prs)
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())

@@ -14,11 +14,11 @@ const CARDIO_EX = EX.Cardio;
 const DEFAULT_MIN = 10;
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60];
 
-const TIMING_OPTIONS: { id: CardioTiming; label: string; desc: string; descBro: string; Icon: typeof Heart }[] = [
-  { id: "none",   label: "Skip Cardio",    desc: "Skip and go straight to lifting",      descBro: "Straight to the iron, no detours",           Icon: Ban },
-  { id: "before", label: "Before",         desc: "Warm up with cardio",                  descBro: "Fire up the engine first",                    Icon: Sunrise },
-  { id: "after",  label: "After",          desc: "Cool down with cardio",                descBro: "Bring it home with some steady state",        Icon: Sunset },
-  { id: "both",   label: "Before & After", desc: "Bookend the workout",                  descBro: "Full cardio sandwich. You absolute unit.",    Icon: ArrowLeftRight },
+const TIMING_OPTIONS: { id: CardioTiming; label: string; desc: string; descBro: string; descGrl: string; Icon: typeof Heart }[] = [
+  { id: "none",   label: "Skip Cardio",    desc: "Skip and go straight to lifting",      descBro: "Straight to the iron, no detours",           descGrl: "Straight to the iron, no detours",    Icon: Ban },
+  { id: "before", label: "Before",         desc: "Warm up with cardio",                  descBro: "Fire up the engine first",                    descGrl: "Warm up the era first",                Icon: Sunrise },
+  { id: "after",  label: "After",          desc: "Cool down with cardio",                descBro: "Bring it home with some steady state",        descGrl: "Cool down with a hot girl walk",       Icon: Sunset },
+  { id: "both",   label: "Before & After", desc: "Bookend the workout",                  descBro: "Full cardio sandwich. You absolute unit.",    descGrl: "Bookend the era. Iconic.",             Icon: ArrowLeftRight },
 ];
 
 function defaultSlot(): CardioSlot {
@@ -96,8 +96,8 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
         <button className="wz-next" onClick={onNext} disabled={!slotsValid}>BUILD <ChevronRight size={13} /></button>
       </div>
 
-      <div className="wizard-title">{t("Cardio today?", "Getting your cardio in?")}</div>
-      <div className="wizard-sub">{t("Add a warm-up, cool-down, or both before we pick exercises", "Bookend the session or skip it. No judgment. (We're judging a little.)")}</div>
+      <div className="wizard-title">{t("Cardio today?", "Getting your cardio in?", "Cardio era today?")}</div>
+      <div className="wizard-sub">{t("Add a warm-up, cool-down, or both before we pick exercises", "Bookend the session or skip it. No judgment. (We're judging a little.)", "Slot in some cardio or skip it, bestie. No notes either way.")}</div>
 
       <div className="cardio-timing-grid">
         {TIMING_OPTIONS.map(opt => {
@@ -111,7 +111,7 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
             >
               <div className="focus-icon"><Icon size={22} /></div>
               <div className="focus-name">{opt.label}</div>
-              <div className="focus-desc">{t(opt.desc, opt.descBro)}</div>
+              <div className="focus-desc">{t(opt.desc, opt.descBro, opt.descGrl)}</div>
             </div>
           );
         })}

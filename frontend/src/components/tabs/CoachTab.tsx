@@ -85,7 +85,7 @@ export default function CoachTab({ history }: Props) {
                     )}
                   </div>
                   <div className="rec-box">
-                    <div className="rec-box-label"><ChevronRight size={11} /> {t("Next Session Target", "Next Session: Go For It")}</div>
+                    <div className="rec-box-label"><ChevronRight size={11} /> {t("Next Session Target", "Next Session: Go For It", "Next Session: Manifest It")}</div>
                     <div className="rec-target">
                       {nextWeight}kg<span className="rec-target-unit"> × {nextReps} reps</span>
                     </div>
@@ -99,16 +99,16 @@ export default function CoachTab({ history }: Props) {
       ) : (
         <div className="empty" style={{ paddingBottom: 16 }}>
           <div className="empty-icon"><Brain size={40} /></div>
-          <div className="empty-label">{t("Log sessions to unlock coaching", "Log some sessions and the coach wakes up")}</div>
+          <div className="empty-label">{t("Log sessions to unlock coaching", "Log some sessions and the coach wakes up", "Log a few sessions and the coach pulls up")}</div>
         </div>
       )}
-      <div className="coach-section-title">{t("General Principles", "Disciples of the Swoly Bible")}</div>
+      <div className="coach-section-title">{t("General Principles", "Disciples of the Swoly Bible", "Sisterhood of Strength")}</div>
       <div className="tips-grid">
         {TIPS.map(tip => (
           <div key={tip.title} className="tip-card">
             <div className="tip-icon"><tip.icon size={20} /></div>
             <div className="tip-title">{tip.title}</div>
-            <div className="tip-body">{t(tip.body, tip.bodyBro ?? tip.body)}</div>
+            <div className="tip-body">{t(tip.body, tip.bodyBro ?? tip.body, tip.bodyGrl ?? tip.bodyBro ?? tip.body)}</div>
           </div>
         ))}
       </div>

@@ -141,8 +141,8 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           <div className="review-autofill-top">
             <Clock size={15} />
             <div>
-              <div className="review-autofill-title">{t("Auto-fill from last session?", "Load weights from last session?")}</div>
-              <div className="review-autofill-sub">{t("Pre-loads weight and reps. Edit freely during the workout.", "Pre-fills your weight and reps. You're free to push past it.")}</div>
+              <div className="review-autofill-title">{t("Auto-fill from last session?", "Load weights from last session?", "Run last session's weights?")}</div>
+              <div className="review-autofill-sub">{t("Pre-loads weight and reps. Edit freely during the workout.", "Pre-fills your weight and reps. You're free to push past it.", "Pre-fills your numbers, bestie. Beat them or edit them.")}</div>
             </div>
           </div>
           <div className="review-autofill-btns">
@@ -150,13 +150,13 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
               Start Fresh
             </button>
             <button className="btn-start" onClick={() => onStart(true)} disabled={planned.length === 0}>
-              <Zap size={16} /> {t("Use Last Session", "Load Last Session")}
+              <Zap size={16} /> {t("Use Last Session", "Load Last Session", "Run It Back")}
             </button>
           </div>
         </div>
       ) : (
         <button className="btn-start" onClick={() => onStart(false)} disabled={planned.length === 0} style={{ marginTop: 8 }}>
-          <Zap size={18} /> {t(`START WORKOUT (${planned.length} exercises)`, `LET'S GO (${planned.length} exercises)`)}
+          <Zap size={18} /> {t(`START WORKOUT (${planned.length} exercises)`, `LET'S GO (${planned.length} exercises)`, `LET'S GO BESTIE (${planned.length} exercises)`)}
         </button>
       )}
     </>

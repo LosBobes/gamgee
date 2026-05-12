@@ -46,7 +46,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
-              <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)")}</div>
+              <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)", "She's Built That Way")}</div>
             </div>
           </div>
           {active

@@ -114,6 +114,72 @@ export const PRO_QUOTES: Array<{ text: string; source: string }> = [
   { source: "Lou Ferrigno", text: "The competition is not with others. It's with yourself." },
 ];
 
+export const GRL_QUOTES: string[] = [
+  // Girl math
+  "Girl math: every PR cancels out the previous one, so I'm always at zero.",
+  "Girl math: pre-workout was free because I paid in cash three weeks ago.",
+  "Girl math: every set under 5 reps is basically a warm-up, so I owe myself more.",
+  "Girl math: if the protein shake has fewer calories than the workout burned, it's negative calories.",
+  "Girl math: I lifted heavy yesterday so today's heavy is medium, which means today is a deload.",
+  "Girl math: the bar weighs 20kg but I'm tired, so emotionally it's 80kg.",
+  "Girl math: every gym day is a rest day for someone who didn't go.",
+  "Girl math: a Stanley cup of water counts as one set because the lid is heavy.",
+  "Girl math: if the gym is on the way to coffee, the coffee is the workout reward AND a pre-workout.",
+  "Girl math: 9 reps means 10. The bar can't count.",
+
+  // Girlbossing too close to the sun
+  "Girlbossing too close to the sun: pulled up to leg day in heels and a green juice.",
+  "Girlbossing too close to the sun: PR'd the squat then cried in the parking lot. Worth it.",
+  "Girlbossing too close to the sun: deadlifted my body weight, also forgot to eat breakfast.",
+  "Girlbossing too close to the sun: told my therapist about my squat numbers, unprompted.",
+  "Girlbossing too close to the sun: scheduled my workout, my journaling, AND my 8-hour sleep — all between 6 and 7am.",
+  "Girlbossing too close to the sun: tried to bench press, manifest, and cry — at the same time.",
+  "Girlbossing too close to the sun: hit a PR, posted nothing about it, and let the algorithm starve.",
+  "Girlbossing too close to the sun: drove 45 minutes for a 12-minute deadlift session. No notes.",
+  "Girlbossing too close to the sun: I scheduled rest day on my calendar and color-coded it.",
+
+  // Empowerment / bestie energy
+  "She's not 'just lifting.' She's funding her future self.",
+  "You didn't roll out of bed at 6am to do bad sets. Pull yourself together, bestie.",
+  "Last week's you didn't think you'd be here. Look at her now.",
+  "Every rep is a love letter to the woman you're becoming.",
+  "Discipline is the loudest form of self-love. Lift quietly. Glow obnoxiously.",
+  "The bar is heavy but so is the weight of underestimating yourself. Pick the lighter one.",
+  "Confidence is just lifting heavy things and refusing to apologize for it.",
+  "Cardio is great, but spite is better fuel.",
+  "Rest is also girlbossing. The recovery is the strategy.",
+  "She's soft. She's strong. She's also benching her bodyweight. The duality is iconic.",
+  "Glow up loading… patience, bestie.",
+  "Slay the set, snack, slay another set. The cycle is the magic.",
+  "Manifesting heavier weights and lighter days.",
+  "Plot twist: she was the protagonist all along.",
+  "Out-train the algorithm. It can't recommend self-respect, but the gym can.",
+  "Cute fits, heavy lifts, no notes.",
+  "Make the bar your accessory.",
+  "Eras change. The dedication doesn't.",
+  "If she can lift it, she will. If she can't, she's about to.",
+  "She's not lifting heavy things. She's putting her doubts down.",
+  "Romanticize the reps. Glamorize the grind.",
+  "Power is quiet. So are heavy singles done correctly.",
+  "Soft launch the comeback. Hard launch the PR.",
+  "She didn't drive to the gym in traffic to half-rep. Full range or full retreat.",
+  "Hot girls hydrate. Hot girls also deadlift. The Venn diagram is a circle.",
+  "Self-care is a 6am squat session and a vanilla latte after.",
+  "Your aura is on the leaderboard, bestie. Earn it.",
+  "Hype woman of your own life. Loud at every rep.",
+  "She's not a 'gym girl.' She's a woman with goals and a barbell.",
+  "Strong women aren't born. They're forged. With chalk on their hands.",
+  "Outwork the doubt. Out-lift the excuses.",
+
+  // Originals — Gamgee voice
+  "Champions and main characters both train hard. You can be both, bestie.",
+  "Today's max is next month's warm-up. The math is mathing.",
+  "Sleep is the original glow serum. Get yours.",
+  "Discipline is unsexy. Results are not. Trade accepted.",
+  "Show up ugly, leave glowing, come back stronger.",
+  "Every rep is a vote for the woman you're becoming. Vote often.",
+];
+
 // [line1 = gray, line2 = accent]
 export const HERO_CALLS: Array<[string, string]> = [
   // Standard
@@ -144,6 +210,30 @@ export const HERO_CALLS: Array<[string, string]> = [
   ["NOTHING BUT", "A PEANUT"],
   ["LIGHT", "WEIGHT"],
   ["YEAH", "BUDDY"],
+];
+
+export const GRL_HERO_CALLS: Array<[string, string]> = [
+  // Bestie hype
+  ["LET'S GO", "BESTIE"],
+  ["TIME TO", "SLAY"],
+  ["GLOW", "UP"],
+  ["MAIN", "CHARACTER"],
+  ["SOFT", "LAUNCH"],
+  ["MANIFEST", "IT"],
+  ["HEAVY", "ERA"],
+  ["VILLAIN", "ORIGIN"],
+  ["GIRL", "BOSS"],
+  ["EAT", "THAT"],
+  ["HYPE", "WOMAN"],
+  ["LIFT", "PRETTY"],
+  ["SHOW", "OUT"],
+  ["IT GIRL", "ERA"],
+  ["RUN", "THE WORLD"],
+  ["NO BAD", "SETS"],
+  ["ATE", "AND LEFT"],
+  ["BUILT", "DIFFERENT"],
+  ["IRON", "GLOW"],
+  ["POWER", "MOVES"],
 ];
 
 // Legacy exports

@@ -50,17 +50,18 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
     <>
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
-        <span className="wz-focus-label">{t("WEEKLY PLAN", "THE PROGRAM")}</span>
+        <span className="wz-focus-label">{t("WEEKLY PLAN", "THE PROGRAM", "WEEKLY ERA")}</span>
         <button className="wz-next" onClick={() => onSave(plan)}>
           SAVE <Check size={13} />
         </button>
       </div>
 
-      <div className="wizard-title">{t("Your Weekly Routine", "The Weekly Program")}</div>
+      <div className="wizard-title">{t("Your Weekly Routine", "The Weekly Program", "Your Weekly Era")}</div>
       <div className="wizard-sub">
         {t(
           "Set a focus and optional exercises for each day. Leave exercises blank for auto-selection.",
-          "Lock in each day. Leave exercises empty and the app picks for you, or control every rep."
+          "Lock in each day. Leave exercises empty and the app picks for you, or control every rep.",
+          "Lock in each day, bestie. Leave it blank to let us cook, or curate every move yourself."
         )}
       </div>
 
@@ -140,7 +141,7 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
                   <>
                     <div className="ww-section-label" style={{ marginTop: 16 }}>
                       <Wrench size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
-                      {t("Your Custom Exercises", "Your Custom Lifts")}
+                      {t("Your Custom Exercises", "Your Custom Lifts", "Your Custom Moves")}
                     </div>
                     <div className="ww-exercise-list">
                       {customExs.map(ex => {
@@ -166,7 +167,8 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
               <div className="ww-auto-note">
                 {t(
                   "Exercises will be auto-selected on workout start.",
-                  "Auto-pick mode. Exercises chosen on the fly."
+                  "Auto-pick mode. Exercises chosen on the fly.",
+                  "Auto-pick mode. Let us cook on the fly."
                 )}
               </div>
             )}
@@ -176,7 +178,7 @@ export default function WizardWeeklySetup({ initial, onSave, onBack }: Props) {
         {!day.enabled && (
           <div className="ww-rest-msg">
             <Moon size={24} style={{ opacity: 0.35, marginBottom: 8 }} />
-            <div>{t("Rest day. Recover and come back stronger.", "Rest day. The Swoly Bible demands it. You'll thank yourself tomorrow.")}</div>
+            <div>{t("Rest day. Recover and come back stronger.", "Rest day. The Swoly Bible demands it. You'll thank yourself tomorrow.", "Rest day. Rest is also girlbossing. You'll thank yourself tomorrow.")}</div>
           </div>
         )}
       </div>

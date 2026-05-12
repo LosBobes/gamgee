@@ -16,7 +16,7 @@ export default function StatsBar({ exercises, doneSets }: Props) {
     { v: exercises.length,                              l: "Exercises"           },
     { v: doneSets,                                      l: "Sets Done"           },
     { v: volume > 0 ? `${Math.round(volume)}` : "—",   l: "Vol (kg)"            },
-    { v: reps || "—",                                   l: t("Reps", "Reps Fired") },
+    { v: reps || "—",                                   l: t("Reps", "Reps Fired", "Reps Served") },
   ];
 
   return (

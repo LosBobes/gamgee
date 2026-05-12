@@ -4,7 +4,7 @@ import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
-import { useTxt, type ToneMode } from "../../context/ToneContext";
+import { useTxt, useToneMode, type ToneMode } from "../../context/ToneContext";
 
 interface Props {
   username:        string | null;
@@ -32,36 +32,38 @@ const PALETTE = [
 ];
 
 function ToneToggle({ toneMode, onToneChange }: { toneMode: ToneMode; onToneChange: (m: ToneMode) => void }) {
+  const proLabel = toneMode === "pro" ? "Professional"
+                 : toneMode === "bro" ? "Boring Mode"
+                 :                       "Neutral";
+  const tones: Array<{ id: ToneMode; label: string }> = [
+    { id: "pro", label: proLabel },
+    { id: "bro", label: "BroScience" },
+    { id: "grl", label: "Grl Pwr"  },
+  ];
   return (
     <div className="profile-card" style={{ marginBottom: 12 }}>
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
         App Tone
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button
-          onClick={() => onToneChange("pro")}
-          style={{
-            flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
-            background: toneMode === "pro" ? "var(--primary)" : "transparent",
-            color: toneMode === "pro" ? "#000" : "var(--muted)",
-            border: toneMode === "pro" ? "none" : "1px solid var(--border)",
-            cursor: "pointer", transition: "all 0.15s",
-          }}
-        >
-          {toneMode === "bro" ? "Boring Mode" : "Professional"}
-        </button>
-        <button
-          onClick={() => onToneChange("bro")}
-          style={{
-            flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 700, letterSpacing: "0.04em",
-            background: toneMode === "bro" ? "var(--primary)" : "transparent",
-            color: toneMode === "bro" ? "#000" : "var(--muted)",
-            border: toneMode === "bro" ? "none" : "1px solid var(--border)",
-            cursor: "pointer", transition: "all 0.15s",
-          }}
-        >
-          BroScience
-        </button>
+        {tones.map(({ id, label }) => {
+          const active = toneMode === id;
+          return (
+            <button
+              key={id}
+              onClick={() => onToneChange(id)}
+              style={{
+                flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", whiteSpace: "nowrap",
+                background: active ? "var(--primary)" : "transparent",
+                color: active ? "#000" : "var(--muted)",
+                border: active ? "none" : "1px solid var(--border)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -88,7 +90,7 @@ function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: 
   return (
     <div className="profile-card">
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-        {saving ? "Saving…" : t("Accent color", "Your vibe")}
+        {saving ? "Saving…" : t("Accent color", "Your vibe", "Your aura")}
       </div>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
         {PALETTE.map(c => (
@@ -295,7 +297,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">{t("Log your first workout to build your profile", "Drop your first session and this page goes hard")}</div></div>
+        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">{t("Log your first workout to build your profile", "Drop your first session and this page goes hard", "Log your first session, bestie. This page goes off.")}</div></div>
         <div className="profile-section">{t("Profile", "Profile")}</div>
         <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
         <div className="profile-section">{t("Appearance", "Appearance")}</div>
@@ -374,10 +376,10 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       <div className="profile-stats-grid">
         {[
-          { v: history.length,             l: t("Workouts",    "Sessions")    },
-          { v: fmtVol(totalVolume),         l: t("Vol Lifted",  "Iron Moved")  },
-          { v: fmtDur(totalTime),           l: t("Time Logged", "Time In")     },
-          { v: totalSets.toLocaleString(),  l: t("Total Sets",  "Sets Fired")  },
+          { v: history.length,             l: t("Workouts",    "Sessions",    "Sessions Served") },
+          { v: fmtVol(totalVolume),         l: t("Vol Lifted",  "Iron Moved",  "Volume Slayed")   },
+          { v: fmtDur(totalTime),           l: t("Time Logged", "Time In",     "Time Thriving")   },
+          { v: totalSets.toLocaleString(),  l: t("Total Sets",  "Sets Fired",  "Sets Served")     },
         ].map(({ v, l }) => (
           <div key={l} className="profile-stat">
             <div className="profile-stat-val">{v}</div>
@@ -386,7 +388,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
         ))}
       </div>
 
-      <div className="profile-section">{t("Activity: Last 16 Weeks", "Grind Log: Last 16 Weeks")}</div>
+      <div className="profile-section">{t("Activity: Last 16 Weeks", "Grind Log: Last 16 Weeks", "Glow-Up Log: Last 16 Weeks")}</div>
       <div className="profile-card">
         <div className="heatmap-grid">
           {weeks.map((count, i) => {
@@ -403,7 +405,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       {topExercises.length > 0 && (
         <>
-          <div className="profile-section">{t("Most Logged Exercises", "Your Go-To Moves")}</div>
+          <div className="profile-section">{t("Most Logged Exercises", "Your Go-To Moves", "Your Signature Moves")}</div>
           <div className="profile-card">
             {topExercises.map(([name, count]) => (
               <div key={name} className="top-ex-row">
@@ -417,7 +419,7 @@ export default function ProfileTab({ username, name, email, history, token, prim
 
       {topGroups.length > 0 && (
         <>
-          <div className="profile-section">{t("Muscle Group Focus", "Where You Put In Work")}</div>
+          <div className="profile-section">{t("Muscle Group Focus", "Where You Put In Work", "Where the Gains Live")}</div>
           <div className="profile-card">
             {topGroups.map(([group, count]) => (
               <div key={group} className="muscle-bar-row">
@@ -459,16 +461,30 @@ const DUCK_MSGS = [
   "Every rep is a quack for the person you want to be.",
 ];
 
+const GRL_DUCK_MSGS = [
+  "QUACK, bestie.",
+  "You found the duck. Her aura just went up.",
+  "Duck math: every quack = +1 PR.",
+  "The duck girlbossed too close to the sun. Now she's here.",
+  "Iconic duck behavior. Carry on.",
+  "She's not just a duck. She's the moment.",
+  "Manifesting heavier lifts and softer rest days.",
+  "Duck says: hydrate, lift, glow.",
+  "Plot twist: the duck was the main character.",
+];
+
 function Duck({ isAdmin }: { isAdmin?: boolean }) {
+  const mode = useToneMode();
   const [msg, setMsg]       = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
 
   const handleDuck = useCallback(() => {
-    setMsg(DUCK_MSGS[Math.floor(Math.random() * DUCK_MSGS.length)]);
+    const pool = mode === "grl" ? GRL_DUCK_MSGS : DUCK_MSGS;
+    setMsg(pool[Math.floor(Math.random() * pool.length)]);
     setBounce(true);
     setTimeout(() => setBounce(false), 500);
     setTimeout(() => setMsg(null), 2800);
-  }, []);
+  }, [mode]);
 
   return (
     <div style={{ textAlign: "center" }}>

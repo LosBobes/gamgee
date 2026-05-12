@@ -25,15 +25,16 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
     <>
       <div className="wz-hdr">
         <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
-        <span className="wz-focus-label">{t("WORKOUT TYPE", "HOW WE ROLLING")}</span>
+        <span className="wz-focus-label">{t("WORKOUT TYPE", "HOW WE ROLLING", "WHAT'S THE VIBE")}</span>
         <div style={{ width: 72 }} />
       </div>
 
-      <div className="wizard-title">{t("How do you want to train?", "What's the plan, bro?")}</div>
+      <div className="wizard-title">{t("How do you want to train?", "What's the plan, bro?", "What's the move, bestie?")}</div>
       <div className="wizard-sub">
         {t(
           "Follow your weekly routine or build a one-off workout.",
-          "Stick to the program or go rogue. Either way, we lift."
+          "Stick to the program or go rogue. Either way, we lift.",
+          "Stick to the program or go off-script. Either way, we serve."
         )}
       </div>
 
@@ -61,7 +62,8 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
             <div className="wm-today-auto">
               {t(
                 "Exercises auto-selected from your focus history.",
-                "Auto-picking exercises. Trust the process."
+                "Auto-picking exercises. Trust the process.",
+                "Auto-picking your moves. Manifest the rest."
               )}
             </div>
           )}
@@ -74,7 +76,8 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
             <Zap size={14} />
             {t(
               `Start ${todayMeta.label}'s Workout`,
-              `It's ${todayMeta.short} time. Let's go.`
+              `It's ${todayMeta.short} time. Let's go.`,
+              `It's ${todayMeta.short} time, bestie. Let's serve.`
             )}
           </button>
         </div>
@@ -84,10 +87,10 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
       {todayPlan && !todayPlan.enabled && (
         <div className="wm-rest-card">
           <div className="wm-rest-label">
-            {t(`${todayMeta.label} is a rest day.`, `${todayMeta.label} is rest day per the Swoly Bible.`)}
+            {t(`${todayMeta.label} is a rest day.`, `${todayMeta.label} is rest day per the Swoly Bible.`, `${todayMeta.label} is rest day — rest is also girlbossing.`)}
           </div>
           <div className="wm-rest-sub">
-            {t("Going rogue? Build a one-off workout below.", "Going off-script? Respect. Pick your own workout below.")}
+            {t("Going rogue? Build a one-off workout below.", "Going off-script? Respect. Pick your own workout below.", "Going off-script? Iconic. Pick your own workout below.")}
           </div>
         </div>
       )}
@@ -96,21 +99,21 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
       <div className="wm-options">
         <div className="focus-card" onClick={onSingle}>
           <div className="focus-icon"><Zap size={24} /></div>
-          <div className="focus-name">{t("One-Off", "Go Rogue")}</div>
+          <div className="focus-name">{t("One-Off", "Go Rogue", "Off-Script")}</div>
           <div className="focus-desc">
-            {t("Build a custom workout for today.", "Ignore the plan. Pick your own exercises.")}
+            {t("Build a custom workout for today.", "Ignore the plan. Pick your own exercises.", "Ignore the plan. Manifest your own.")}
           </div>
         </div>
 
         <div className="focus-card" onClick={onSetupPlan}>
           <div className="focus-icon"><Calendar size={24} /></div>
           <div className="focus-name">
-            {hasAnyPlan ? t("Edit Plan", "Edit The Program") : t("Weekly Plan", "Build The Program")}
+            {hasAnyPlan ? t("Edit Plan", "Edit The Program", "Edit The Era") : t("Weekly Plan", "Build The Program", "Map The Era")}
           </div>
           <div className="focus-desc">
             {hasAnyPlan
-              ? t("Edit your weekly routine.", "Tweak your weekly program.")
-              : t("Set up a repeating weekly routine.", "Build your weekly program. Show up. Grow.")}
+              ? t("Edit your weekly routine.", "Tweak your weekly program.", "Tweak your weekly era.")
+              : t("Set up a repeating weekly routine.", "Build your weekly program. Show up. Grow.", "Map your week, bestie. Show up. Glow up.")}
           </div>
         </div>
       </div>

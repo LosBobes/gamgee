@@ -237,7 +237,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           </div>
 
           <button className="cx-add-card" onClick={() => setShowCustomModal(true)}>
-            <Wrench size={13} /> {t("Add Custom Exercise", "Build Your Own Lift")}
+            <Wrench size={13} /> {t("Add Custom Exercise", "Build Your Own Lift", "Cook Your Own Move")}
           </button>
 
           {searchResults ? (
@@ -299,11 +299,13 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                   {lastExercises.length > 0
                     ? t(
                         `Pre-load exercises from your last ${focusDef.name.toLowerCase()} session, or get a randomized pick. You can edit before starting.`,
-                        `Repeat last time or throw the dice for a fresh mix. Swap things out before you start.`
+                        `Repeat last time or throw the dice for a fresh mix. Swap things out before you start.`,
+                        `Run it back from last time, or roll the dice for a fresh remix. Swap before you start, bestie.`
                       )
                     : t(
                         `New to ${focusDef.name.toLowerCase()}? Get a smart randomized selection to start from.`,
-                        `First time with this focus? We'll throw a smart pick at you. Tweak it from there, bro.`
+                        `First time with this focus? We'll throw a smart pick at you. Tweak it from there, bro.`,
+                        `New to this focus? We'll line up a smart pick. Make it yours from there, bestie.`
                       )
                   }
                 </div>
@@ -326,17 +328,17 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               <div style={{ display: "flex", gap: 8, width: "100%" }}>
                 <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleRandomize}>
                   <Shuffle size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
-                  {t("Randomize", "Mix It Up")}
+                  {t("Randomize", "Mix It Up", "Roll the Dice")}
                 </button>
                 {lastExercises.length > 0 && (
                   <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleAutoPopulate}>
                     <Zap size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
-                    {t("Repeat Last", "Same as Last")}
+                    {t("Repeat Last", "Same as Last", "Run It Back")}
                   </button>
                 )}
               </div>
               <button className="cf-btn-cancel" style={{ flex: "none" }} onClick={handleSkipAutoPopulate}>
-                {t("Start Blank", "Start Fresh")}
+                {t("Start Blank", "Start Fresh", "Soft Launch It")}
               </button>
             </div>
           </div>

@@ -165,7 +165,7 @@ export default function AuthScreen({ onLogin }: Props) {
     <div className="wt-auth-screen tab-anim">
       <div className="auth-card">
         <div className="auth-logo" role="img" aria-label="Gamgee" />
-        <h2>{view === "login" ? t("Welcome back", "Welcome back, beast!") : t("Create your account", "Join the Church of Iron")}</h2>
+        <h2>{view === "login" ? t("Welcome back", "Welcome back, beast!", "Welcome back, bestie") : t("Create your account", "Join the Church of Iron", "Join the Sisterhood of Iron")}</h2>
         <form onSubmit={handleSubmit} noValidate>
           <label className="auth-field">
             <span>Username</span>
@@ -292,14 +292,14 @@ export default function AuthScreen({ onLogin }: Props) {
             className="auth-submit"
             disabled={busy || registerInvalid}
           >
-            {busy ? t("Please wait…", "Hang tight…") : view === "login" ? t("Sign In", "LET'S GO") : t("Create account", "BUILD MY ACCOUNT")}
+            {busy ? t("Please wait…", "Hang tight…", "One sec, bestie…") : view === "login" ? t("Sign In", "LET'S GO", "LET'S GO, BESTIE") : t("Create account", "BUILD MY ACCOUNT", "MAKE IT OFFICIAL")}
           </button>
         </form>
         <button
           className="auth-toggle"
           onClick={() => reset(view === "login" ? "register" : "login")}
         >
-          {view === "login" ? t("Need an account? Register", "New here? Join the Church of Iron") : t("Have an account? Sign In", "Already a Disciple? Sign in")}
+          {view === "login" ? t("Need an account? Register", "New here? Join the Church of Iron", "New here? Join the Sisterhood") : t("Have an account? Sign In", "Already a Disciple? Sign in", "Already in the group chat? Sign in")}
         </button>
       </div>
     </div>

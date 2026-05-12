@@ -52,8 +52,8 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
         <span className="wz-focus-label">STEP 1: FOCUS</span>
         <button className="wz-next" onClick={onNext} disabled={!focus}>CARDIO <ChevronRight size={13} /></button>
       </div>
-      <div className="wizard-title">{t("What are we training?", "What are we DESTROYING today?")}</div>
-      <div className="wizard-sub">{t("Pick a focus to get smart exercise suggestions", "Pick your battleground and we'll arm you with the right exercises")}</div>
+      <div className="wizard-title">{t("What are we training?", "What are we DESTROYING today?", "What are we SERVING today?")}</div>
+      <div className="wizard-sub">{t("Pick a focus to get smart exercise suggestions", "Pick your battleground and we'll arm you with the right exercises", "Pick your vibe and we'll line up the right moves")}</div>
 
       <div className="focus-grid">
         {Object.entries(FOCUS).map(([k, f]) => (
@@ -86,7 +86,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
       {creating && (
         <div className="cf-overlay" onClick={() => setCreating(false)}>
           <div className="cf-modal" onClick={e => e.stopPropagation()}>
-            <div className="cf-modal-title">{t("New Custom Workout", "New Custom Grind")}</div>
+            <div className="cf-modal-title">{t("New Custom Workout", "New Custom Grind", "New Custom Era")}</div>
             <input
               className="cf-modal-input"
               placeholder="Name (e.g. Mobility, Swim, Rehab…)"
