@@ -381,3 +381,48 @@ class BodyMetricOut(BodyMetricCreate):
 
     model_config = {"from_attributes": True}
 
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+FeedbackKind   = Literal["bug", "feature", "general"]
+FeedbackStatus = Literal["open", "resolved", "dismissed"]
+
+
+class FeedbackCreate(BaseModel):
+    kind: FeedbackKind = "general"
+    message: str = Field(min_length=1, max_length=5000)
+
+    @field_validator("message")
+    @classmethod
+    def _strip_message(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        return v
+
+
+class FeedbackOut(BaseModel):
+    id: int
+    kind: str
+    message: str
+    status: str
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class FeedbackAdminOut(BaseModel):
+    id: int
+    user_id: int | None = None
+    username: str | None = None
+    name: str | None = None
+    kind: str
+    message: str
+    status: str
+    created_at: int = 0
+    resolved_at: int | None = None
+
+
+class FeedbackStatusUpdate(BaseModel):
+    status: FeedbackStatus
+

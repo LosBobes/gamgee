@@ -142,3 +142,24 @@ class LiveParticipant(Base):
     sets_done = Column(Integer, nullable=False, default=0)
     joined_at = Column(BigInteger, nullable=False, default=0)
     last_seen = Column(BigInteger, nullable=False, default=0)
+
+
+# ── Feedback ──────────────────────────────────────────────────────────────────
+
+class Feedback(Base):
+    """User-submitted feedback, bug reports, or feature requests.
+    Visible only to admins via /api/admin/feedback."""
+    __tablename__ = "feedback"
+    __table_args__ = (
+        Index("ix_feedback_status_created", "status", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    # "bug" | "feature" | "general"
+    kind = Column(String(20), nullable=False, default="general")
+    message = Column(Text, nullable=False)
+    # "open" | "resolved" | "dismissed"
+    status = Column(String(20), nullable=False, default="open", index=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+    resolved_at = Column(BigInteger, nullable=True)

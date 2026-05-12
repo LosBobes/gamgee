@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 
@@ -17,9 +17,10 @@ interface Props {
   onLogout:     () => void;
   isAdmin?:     boolean;
   notifBell?:   ReactNode;
+  onOpenFeedback?: () => void;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell, onOpenFeedback }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const t = useTxt();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
@@ -102,6 +103,15 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
               </button>
             ))}
             <div className="mobile-nav-divider" />
+            {onOpenFeedback && (
+              <button
+                className="mobile-nav-item"
+                onClick={() => { setMenuOpen(false); onOpenFeedback(); }}
+              >
+                <MessageSquare size={18} />
+                <span>Send Feedback</span>
+              </button>
+            )}
             {isAdmin && (
               <a
                 href="/admin"
