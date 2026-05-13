@@ -32,9 +32,12 @@ export async function mockApi(page: Page, state: MockState = defaultState()): Pr
   // `prefers-reduced-motion` and drops to ~350ms.
   await page.emulateMedia({ reducedMotion: "reduce" });
 
-  // Pin the UI tone so button text and copy are stable across tests.
+  // Pin the UI tone so button text and copy are stable across tests, and
+  // pre-dismiss the first-launch welcome modal so its overlay doesn't
+  // intercept clicks on the underlying tabs/buttons.
   await page.addInitScript(() => {
     window.localStorage.setItem("gamgee_tone", "pro");
+    window.localStorage.setItem("gamgee_welcome_seen", "1");
   });
 
   const json = (route: Route, body: unknown, status = 200) =>
