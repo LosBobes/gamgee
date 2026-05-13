@@ -70,8 +70,11 @@ test("register form validates and submits a full payload", async ({ page }) => {
 
   const submit = page.getByRole("button", { name: "Create account" });
 
-  // Button stays disabled until the full payload is valid.
-  await expect(submit).toBeDisabled();
+  // The submit button stays enabled so an empty submit surfaces a specific
+  // error rather than a silent dead button.
+  await expect(submit).toBeEnabled();
+  await submit.click();
+  await expect(page.locator(".auth-err")).toContainText(/Username is required/);
 
   await usernameInput(page).fill("newbie");
   await nameInput(page).fill("New Bie");
@@ -80,7 +83,6 @@ test("register form validates and submits a full payload", async ({ page }) => {
   await passwordInput(page).fill(STRONG_PASSWORD);
   await repeatPasswordInput(page).fill(STRONG_PASSWORD);
 
-  await expect(submit).toBeEnabled();
   await submit.click();
 
   await expect(page.locator(".logo-name")).toHaveText("GAMGEE");
