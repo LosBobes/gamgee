@@ -141,7 +141,7 @@ export default function CoachingTab({
             .filter(a => a.trainee_username && a.regime)
             .map(a => (
               <div key={a.id} className="card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "space-between", flexWrap: "wrap" }}>
                   <strong>{a.regime.name}</strong>
                   <span style={{ fontSize: 11, color: "var(--muted)" }}>
                     from {a.trainer_name || a.trainer_username}
