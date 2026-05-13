@@ -248,7 +248,7 @@ export default function AuthScreen({ onLogin }: Props) {
               maxLength={50}
               required
             />
-            {view === "register" && user.length > 0 && user.trim().length < 3 && (
+            {view === "register" && user.trim().length < 3 && (
               <small className="auth-hint auth-hint-warn">Username must be at least 3 characters</small>
             )}
             {view === "register" && user.trim().length >= 3 && !USERNAME_RE.test(user.trim()) && (
