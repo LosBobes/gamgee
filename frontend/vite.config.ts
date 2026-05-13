@@ -29,7 +29,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
+          {
+            // Never cache the SSE stream — it's a long-lived response and
+            // Workbox would otherwise try to read/clone the body.
+            urlPattern: /^\/api\/events\//,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^\/api\//,
             handler: 'NetworkFirst',

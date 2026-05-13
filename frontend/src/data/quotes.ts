@@ -197,7 +197,7 @@ export const HERO_CALLS: Array<[string, string]> = [
   ["PUT IN", "THE WORK"],
   // Bro
   ["FEEL THE", "GAINS"],
-  ["SWOLE", "SZEASON"],
+  ["SWOLE", "SEASON"],
   ["THE IRON", "AWAITS"],
   ["HOLY", "GAINZ"],
   ["CHAPEL", "OF IRON"],

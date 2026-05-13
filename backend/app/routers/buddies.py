@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
-from ..notifications import create_notification, notify_buddies, now_ms
+from ..notifications import create_notification, notify_buddies, now_ms, publish_buddy_change
 
 router = APIRouter(prefix="/buddies", tags=["buddies"])
 
@@ -135,6 +135,7 @@ def send_request(
         message=f"{current_user.name or current_user.username} wants to be your buddy",
         payload={"username": current_user.username},
     )
+    publish_buddy_change(db, [current_user.id, target.id])
     db.commit()
     db.refresh(out_row)
     return _row_to_out(out_row, target)
@@ -158,6 +159,7 @@ def _accept(db: Session, current_user: models.User, in_row: models.Buddy) -> sch
         sender_user_id=current_user.id,
         message=f"{current_user.name or current_user.username} accepted your buddy request",
     )
+    publish_buddy_change(db, [current_user.id, in_row.buddy_user_id])
     db.commit()
     db.refresh(in_row)
     return _row_to_out(in_row, other)
@@ -194,6 +196,7 @@ def remove_or_decline(
     )
     if not row:
         raise HTTPException(status_code=404, detail="Buddy not found")
+    affected = [row.user_id, row.buddy_user_id]
     # Delete both sides of the pair so it's gone for the other user too.
     db.query(models.Buddy).filter(
         or_(
@@ -201,6 +204,7 @@ def remove_or_decline(
             (models.Buddy.user_id == row.buddy_user_id) & (models.Buddy.buddy_user_id == row.user_id),
         )
     ).delete(synchronize_session=False)
+    publish_buddy_change(db, affected)
     db.commit()
 
 
@@ -221,6 +225,7 @@ def update_prefs(
     data = body.model_dump(exclude_unset=True)
     for k, v in data.items():
         setattr(row, k, v)
+    publish_buddy_change(db, [current_user.id])
     db.commit()
     db.refresh(row)
     other = db.query(models.User).filter(models.User.id == row.buddy_user_id).first()

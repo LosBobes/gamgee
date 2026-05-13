@@ -2,7 +2,8 @@ import { useState } from "react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { BRO_QUOTES, GRL_QUOTES, PRO_QUOTES, HERO_CALLS, GRL_HERO_CALLS } from "../../data/quotes";
-import { useToneMode } from "../../context/ToneContext";
+import { useToneMode, useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   lastSession: WorkoutSession | null;
@@ -11,6 +12,7 @@ interface Props {
 
 export default function WizardStart({ lastSession, onStart }: Props) {
   const mode = useToneMode();
+  const t = useTxt();
   const [broQuote]  = useState(() => BRO_QUOTES[Math.floor(Math.random() * BRO_QUOTES.length)]);
   const [grlQuote]  = useState(() => GRL_QUOTES[Math.floor(Math.random() * GRL_QUOTES.length)]);
   const [proQuote]  = useState(() => PRO_QUOTES[Math.floor(Math.random() * PRO_QUOTES.length)]);
@@ -23,6 +25,13 @@ export default function WizardStart({ lastSession, onStart }: Props) {
 
   return (
     <div className="start-screen">
+      <OnboardingHint hintKey="start" step="START" title={t("Build your first workout", "Build your first session", "Build your first era")}>
+        {t(
+          "Tap the button below to start. We'll walk through picking a focus, optional cardio, and your exercises.",
+          "Hit the button below. We'll guide you through focus, cardio, and your lifts.",
+          "Tap the button below, bestie. We'll guide you through focus, cardio, and your moves."
+        )}
+      </OnboardingHint>
       <h1 className="start-hero">{hero[0]}<br /><span>{hero[1]}</span></h1>
       <div className="start-quote">
         &ldquo;{quoteText}&rdquo;

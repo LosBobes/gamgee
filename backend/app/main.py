@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import Base, engine
-from .routers import items, workouts, prs, auth, health, admin, buddies, notifications, live, feedback
+from .routers import items, workouts, prs, auth, health, admin, buddies, notifications, live, feedback, events
 
 Base.metadata.create_all(bind=engine)
 
@@ -60,6 +60,7 @@ app.include_router(notifications.router, prefix="/api")
 app.include_router(live.router, prefix="/api")
 app.include_router(feedback.router, prefix="/api")
 app.include_router(feedback.admin_router, prefix="/api")
+app.include_router(events.router, prefix="/api")
 
 
 @app.get("/health")
