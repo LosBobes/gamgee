@@ -181,6 +181,26 @@ The site will be live at `https://yourdomain.com`. Caddy provisions the TLS cert
 
 ---
 
+## Web push notifications (optional)
+
+Push notifications use VAPID keys configured via three env vars
+(`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). If they're
+unset the app falls back to the SSE-only in-app bell. To turn push on:
+
+```bash
+# Mint a fresh keypair (run on the server)
+docker compose -f docker-compose.prod.yml exec backend python -m app.gen_vapid
+
+# Paste the output into /opt/gamgee/.env, then restart the backend
+docker compose -f docker-compose.prod.yml up -d --no-deps --build backend
+```
+
+The full primer — what VAPID is, how the keys flow through browser/push
+service/backend, and how to rotate them safely — is in
+[`docs/web-push-vapid.md`](web-push-vapid.md).
+
+---
+
 ## Updating after code changes
 
 ```bash
