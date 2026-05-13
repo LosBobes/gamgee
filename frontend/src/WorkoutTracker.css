@@ -2784,6 +2784,14 @@ html, body { background: var(--bg); }
 .chat-composer-input { flex: 1; }
 .chat-send-btn { padding: 8px 14px; }
 
+/* Drag handle for the fullscreen thread on mobile (hidden on desktop) */
+.chat-thread-handle { display: none; }
+
+@keyframes chatThreadSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
 @media (max-width: 480px) {
   /* ── CHAT TAB ── */
   .chat-bubble { max-width: 85%; }
@@ -2806,6 +2814,42 @@ html, body { background: var(--bg); }
   .chat-kind-tag { font-size: 8px; padding: 2px 5px; }
   .chat-composer { padding: 8px; gap: 6px; }
   .chat-send-btn { padding: 0 14px; min-width: 44px; min-height: 38px; }
+
+  /* Fullscreen thread: covers viewport, slides up, can be pulled down */
+  .chat-thread-fullscreen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: var(--bg);
+    overflow: hidden;
+    animation: chatThreadSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+    will-change: transform;
+    touch-action: pan-y;
+  }
+  .chat-thread-fullscreen.is-dragging { animation: none; }
+  .chat-thread-fullscreen .chat-thread-header {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .chat-thread-fullscreen .chat-thread-body {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+  }
+  .chat-thread-fullscreen .chat-composer {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .chat-thread-fullscreen .chat-thread-handle {
+    display: block;
+    width: 38px; height: 4px;
+    background: var(--muted);
+    border-radius: 999px;
+    margin: 6px auto 2px;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
 
   /* ── BUTTONS — keep touch targets usable ── */
   .btn-pri, .btn-sec {
