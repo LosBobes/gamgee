@@ -16,7 +16,18 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // PLAYWRIGHT_CHROMIUM_EXECUTABLE lets CI reuse a pre-installed chromium
+        // binary instead of having Playwright try to download a perfectly-matching
+        // headless shell at test time.
+        launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+          ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE }
+          : undefined,
+      },
+    },
   ],
   webServer: {
     // Vite proxies /api/* to BACKEND_URL — point it at a port no one is on

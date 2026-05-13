@@ -64,7 +64,10 @@ export async function mockApi(page: Page, state: MockState = defaultState()): Pr
   });
 
   await page.route("**/api/auth/me", route =>
-    json(route, { id: 1, username: state.username, name: "Tester", email: "tester@example.com", is_admin: false }),
+    json(route, {
+      id: 1, username: state.username, name: "Tester", email: "tester@example.com",
+      is_admin: false, is_verified: true, is_trainer: false,
+    }),
   );
 
   await page.route("**/api/workouts", route => json(route, state.workouts));
@@ -76,6 +79,13 @@ export async function mockApi(page: Page, state: MockState = defaultState()): Pr
     return json(route, []);
   });
   await page.route("**/api/live-sessions**", route => json(route, []));
+  // New endpoints added with trainers/regimes/chat — empty defaults keep
+  // freshly-logged-in test users on clean tabs.
+  await page.route("**/api/trainers/links/mine", route => json(route, []));
+  await page.route("**/api/trainers**", route => json(route, []));
+  await page.route("**/api/assignments/mine", route => json(route, []));
+  await page.route("**/api/regimes**", route => json(route, []));
+  await page.route("**/api/chat/conversations**", route => json(route, []));
 
   return state;
 }

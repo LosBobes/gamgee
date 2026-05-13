@@ -16,11 +16,11 @@ interface Props {
   planned:    ExerciseDef[];
   setPlanned: (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
   onBack:     () => void;
-  onNext:     () => void;
+  onStart:    (autoFill: boolean) => void;
   history:    WorkoutSession[];
 }
 
-export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
+export default function WizardBuild({ focus, planned, setPlanned, onBack, onStart, history }: Props) {
   const t = useTxt();
   const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
   const [search,          setSearch]          = useState("");
@@ -147,7 +147,13 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
         <span className="wz-focus-label">
           <FocusIcon size={13} /> {focusDef.name.toUpperCase()}
         </span>
-        <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW <ChevronRight size={13} /></button>
+        <button
+          className="wz-next"
+          onClick={() => onStart(lastFocusSession != null)}
+          disabled={planned.length === 0}
+        >
+          START <ChevronRight size={13} />
+        </button>
       </div>
 
       <OnboardingHint hintKey="build" step="STEP 3" title={t("Stack your exercises", "Stack your lifts", "Stack your moves")}>
@@ -220,10 +226,19 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
               <button
                 className="wz-next"
                 style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}
-                onClick={onNext}
+                onClick={() => onStart(lastFocusSession != null)}
               >
-                REVIEW WORKOUT <ChevronRight size={13} />
+                {lastFocusSession ? <>START WITH LAST WEIGHTS <ChevronRight size={13} /></> : <>START WORKOUT <ChevronRight size={13} /></>}
               </button>
+              {lastFocusSession && (
+                <button
+                  className="wz-back"
+                  style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                  onClick={() => onStart(false)}
+                >
+                  Start fresh (no auto-fill)
+                </button>
+              )}
             </div>
           )}
         </div>

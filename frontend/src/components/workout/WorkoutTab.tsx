@@ -5,7 +5,6 @@ import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
 import WizardCardio from "./WizardCardio";
 import WizardBuild from "./WizardBuild";
-import WizardReview from "./WizardReview";
 import WizardWeeklySetup from "./WizardWeeklySetup";
 import ActiveWorkout from "./ActiveWorkout";
 
@@ -95,7 +94,7 @@ export default function WorkoutTab({
         </div>
       )}
 
-      {/* Step 4 — build */}
+      {/* Step 4 — build (also starts the workout, no separate review screen) */}
       {!active && wStep === 4 && focus && (
         <div key="wstep-4" className={stepAnim}>
           <WizardBuild
@@ -103,23 +102,8 @@ export default function WorkoutTab({
             planned={planned}
             setPlanned={setPlanned}
             onBack={() => setWStep(3)}
-            onNext={() => setWStep(5)}
-            history={history}
-          />
-        </div>
-      )}
-
-      {/* Step 5 — review */}
-      {!active && wStep === 5 && focus && (
-        <div key="wstep-5" className={stepAnim}>
-          <WizardReview
-            planned={planned}
-            setPlanned={setPlanned}
-            history={history}
-            onBack={() => setWStep(4)}
             onStart={startFromWizard}
-            focus={focus}
-            cardio={cardio}
+            history={history}
           />
         </div>
       )}

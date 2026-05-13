@@ -74,6 +74,12 @@ export default function WorkoutTracker({
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
   const [token,        setToken]        = useState<string | null>(() => localStorage.getItem("iron_log_token"));
+  // When the page is opened via a password-reset / email-verify link, App
+  // passes `forceAuthScreen` so we show that flow before the workout UI. Once
+  // the user actually signs in, the token transitions from null to a value —
+  // at that point we want to bypass the force flag so they don't get stuck
+  // looking at the auth screen until a manual refresh.
+  const [bypassForceAuth, setBypassForceAuth] = useState(false);
   const [username,     setUsername]     = useState<string | null>(null);
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
@@ -499,7 +505,7 @@ export default function WorkoutTracker({
         .filter((e): e is ExerciseDef => !!e);
       setPlanned(picked);
     }
-    setWStep(5);
+    setWStep(4);
   };
 
   const finishWorkout = () => {
@@ -604,11 +610,11 @@ export default function WorkoutTracker({
     return false;
   });
 
-  if (!token || forceAuthScreen)
+  if (!token || (forceAuthScreen && !bypassForceAuth))
     return (
       <ToneProvider value={toneMode}>
         <AuthScreen
-          onLogin={setToken}
+          onLogin={(t) => { setBypassForceAuth(true); setToken(t); }}
           initialView={initialAuthView}
           initialToken={initialAuthToken}
         />
