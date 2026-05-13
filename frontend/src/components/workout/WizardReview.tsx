@@ -7,6 +7,7 @@ import { getFocusDef } from "../../data/focuses";
 import { analyzeEx } from "../../analysis";
 import BodyMap from "../BodyMap";
 import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   planned:     ExerciseDef[];
@@ -42,6 +43,14 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
         <span className="wz-focus-label">REVIEW WORKOUT</span>
         <div style={{ width: 72 }} />
       </div>
+
+      <OnboardingHint hintKey="review" step="REVIEW" title={t("Last look before lift-off", "Last check before lift-off", "Last check before lift-off")}>
+        {t(
+          "This is your final workout. Tap a card's X to drop an exercise, or hit EDIT to add more. When you're ready, press START to begin logging sets.",
+          "Final lineup. Tap the X to drop a lift, EDIT to add more. Hit START when you're ready to log sets.",
+          "Final lineup, bestie. Tap the X to drop a move, EDIT to add more. Hit START when you're ready to log sets."
+        )}
+      </OnboardingHint>
 
       <BodyMap active={finalActive} preview={{}} focusMuscles={focusMuscles} />
 

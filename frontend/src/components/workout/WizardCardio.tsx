@@ -2,6 +2,7 @@ import { ArrowLeft, ChevronRight, Heart, Sunrise, Sunset, ArrowLeftRight, Ban } 
 import type { CardioPlan, CardioSlot, CardioTiming } from "../../types";
 import { EX } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   plan:    CardioPlan;
@@ -98,6 +99,14 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
 
       <div className="wizard-title">{t("Cardio today?", "Getting your cardio in?", "Cardio era today?")}</div>
       <div className="wizard-sub">{t("Add a warm-up, cool-down, or both before we pick exercises", "Bookend the session or skip it. No judgment. (We're judging a little.)", "Slot in some cardio or skip it, bestie. No notes either way.")}</div>
+
+      <OnboardingHint hintKey="cardio" step="STEP 2" title={t("Optional", "Optional", "Optional")}>
+        {t(
+          "Cardio is fully optional — pick \"Skip Cardio\" and head straight to the lifts. You can always add it later.",
+          "Cardio's optional. Hit \"Skip\" and go straight to the iron if you want.",
+          "Cardio's optional, bestie. Hit \"Skip\" and head straight to the lifts if you're not feeling it."
+        )}
+      </OnboardingHint>
 
       <div className="cardio-timing-grid">
         {TIMING_OPTIONS.map(opt => {

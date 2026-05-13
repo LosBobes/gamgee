@@ -22,11 +22,13 @@ import BuddiesTab from "./components/tabs/BuddiesTab";
 import NotificationsTab from "./components/tabs/NotificationsTab";
 import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
+import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
+import { OnboardingProvider } from "./context/OnboardingContext";
 
 
 export default function WorkoutTracker() {
@@ -443,6 +445,8 @@ export default function WorkoutTracker() {
 
   return (
   <ToneProvider value={toneMode}>
+    <OnboardingProvider historyLen={history.length}>
+    <OnboardingWelcome />
     <div className="app">
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
@@ -521,6 +525,7 @@ export default function WorkoutTracker() {
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
     </div>
+    </OnboardingProvider>
   </ToneProvider>
   );
 }
