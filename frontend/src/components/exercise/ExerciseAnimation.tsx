@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import StickFigure, { lerpPose, lerpPt } from "./StickFigure";
-import type { Pose, Point } from "./StickFigure";
+import type { Pose, Point, RigConfig } from "./StickFigure";
 
 export interface Frame {
   t: number;         // 0..1 — position within a single cycle
@@ -14,6 +14,7 @@ export interface ExerciseAnimationProps {
   paused?: boolean;
   bench?: boolean;
   floor?: boolean;
+  rig?: RigConfig;
   width?: number | string;
   height?: number | string;
   color?: string;
@@ -49,6 +50,7 @@ export default function ExerciseAnimation({
   paused = false,
   bench,
   floor,
+  rig,
   width,
   height,
   color,
@@ -79,6 +81,7 @@ export default function ExerciseAnimation({
       bar={bar}
       bench={bench}
       floor={floor}
+      rig={rig}
       width={width}
       height={height}
       color={color}

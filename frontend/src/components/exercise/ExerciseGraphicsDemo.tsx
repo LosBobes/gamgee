@@ -4,9 +4,10 @@ import ExerciseAnimation from "./ExerciseAnimation";
 import type { ExerciseMotion } from "../../data/exerciseMotions";
 import { EXERCISE_INFO } from "../../data/exerciseInfo";
 import {
-  clearAllOverrides,
+  resetCache,
   loadAllMotions,
   loadOverrides,
+  refreshMotions,
 } from "../../data/motionStorage";
 
 // Standalone evaluation page for the exercise motion graphics.
@@ -16,18 +17,18 @@ export default function ExerciseGraphicsDemo() {
   const [motions, setMotions] = useState<Record<string, ExerciseMotion>>(() => loadAllMotions());
   const [overrideIds, setOverrideIds] = useState<Set<string>>(() => new Set(Object.keys(loadOverrides())));
 
-  // Reload on focus so changes saved in the editor (other tab) show up here.
+  // Pull from the backend on mount and on tab refocus so edits saved by the
+  // editor show up here without a full page reload.
   useEffect(() => {
     const refresh = () => {
-      setMotions(loadAllMotions());
-      setOverrideIds(new Set(Object.keys(loadOverrides())));
+      void refreshMotions().then(() => {
+        setMotions(loadAllMotions());
+        setOverrideIds(new Set(Object.keys(loadOverrides())));
+      });
     };
+    refresh();
     window.addEventListener("focus", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      window.removeEventListener("storage", refresh);
-    };
+    return () => { window.removeEventListener("focus", refresh); };
   }, []);
 
   const byCategory = useMemo(() => {
@@ -44,10 +45,12 @@ export default function ExerciseGraphicsDemo() {
   }, [motions]);
 
   const onReset = () => {
-    if (!confirm("Discard all locally-saved keyframe edits and restore the bundled motions?")) return;
-    clearAllOverrides();
-    setMotions(loadAllMotions());
-    setOverrideIds(new Set());
+    if (!confirm("Clear the local cache and re-fetch motions from the server?")) return;
+    resetCache();
+    void refreshMotions().then(() => {
+      setMotions(loadAllMotions());
+      setOverrideIds(new Set(Object.keys(loadOverrides())));
+    });
   };
 
   return (
@@ -75,24 +78,22 @@ export default function ExerciseGraphicsDemo() {
               Edits are saved to this browser's localStorage and override the bundled poses.
             </p>
           </div>
-          {overrideIds.size > 0 && (
-            <button
-              type="button"
-              onClick={onReset}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                background: "transparent",
-                border: "1px solid var(--border)",
-                color: "var(--muted)",
-                borderRadius: 8, padding: "8px 12px",
-                fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
-                cursor: "pointer",
-              }}
-              title={`${overrideIds.size} edited motion${overrideIds.size === 1 ? "" : "s"}`}
-            >
-              <RotateCcw size={12} /> Reset all edits ({overrideIds.size})
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onReset}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "transparent",
+              border: "1px solid var(--border)",
+              color: "var(--muted)",
+              borderRadius: 8, padding: "8px 12px",
+              fontSize: 11, letterSpacing: 1, textTransform: "uppercase",
+              cursor: "pointer",
+            }}
+            title="Clear local cache and re-fetch from the server"
+          >
+            <RotateCcw size={12} /> Refresh from server ({overrideIds.size} server-edited)
+          </button>
         </header>
 
         {byCategory.map(([cat, entries]) => (
@@ -184,6 +185,7 @@ function DemoCard({ id, motion, edited }: { id: string; motion: ExerciseMotion; 
           duration={motion.duration}
           bench={motion.bench}
           floor={motion.floor}
+          rig={motion.rig}
           paused={paused}
           width={180}
           height={220}

@@ -1,7 +1,7 @@
 import { Brain, ChevronRight } from "lucide-react";
 import type { ExerciseDef, WorkoutSession } from "../../types";
 import { ALL_EX } from "../../data/exercises";
-import { TIPS } from "../../data/tips";
+import { useTips } from "../../hooks/useContentLibrary";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
 import { useTxt } from "../../context/ToneContext";
 
@@ -16,6 +16,7 @@ const STATUS_ORDER: Record<string, number> = {
 
 export default function CoachTab({ history }: Props) {
   const t = useTxt();
+  const tips = useTips();
   const coachData = ALL_EX
     .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
@@ -104,7 +105,7 @@ export default function CoachTab({ history }: Props) {
       )}
       <div className="coach-section-title">{t("General Principles", "Disciples of the Swoly Bible", "Sisterhood of Strength")}</div>
       <div className="tips-grid">
-        {TIPS.map(tip => (
+        {tips.map(tip => (
           <div key={tip.title} className="tip-card">
             <div className="tip-icon"><tip.icon size={20} /></div>
             <div className="tip-title">{tip.title}</div>

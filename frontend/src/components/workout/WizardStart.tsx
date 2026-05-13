@@ -1,8 +1,11 @@
 import { useState } from "react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
-import { BRO_QUOTES, GRL_QUOTES, PRO_QUOTES, HERO_CALLS, GRL_HERO_CALLS } from "../../data/quotes";
 import { useToneMode, useTxt } from "../../context/ToneContext";
+import {
+  useBroQuotes, useGrlQuotes, useProQuotes,
+  useHeroCallsBro, useHeroCallsGrl,
+} from "../../hooks/useContentLibrary";
 import OnboardingHint from "../OnboardingHint";
 
 interface Props {
@@ -13,11 +16,17 @@ interface Props {
 export default function WizardStart({ lastSession, onStart }: Props) {
   const mode = useToneMode();
   const t = useTxt();
-  const [broQuote]  = useState(() => BRO_QUOTES[Math.floor(Math.random() * BRO_QUOTES.length)]);
-  const [grlQuote]  = useState(() => GRL_QUOTES[Math.floor(Math.random() * GRL_QUOTES.length)]);
-  const [proQuote]  = useState(() => PRO_QUOTES[Math.floor(Math.random() * PRO_QUOTES.length)]);
-  const [broHero]   = useState(() => HERO_CALLS[Math.floor(Math.random() * HERO_CALLS.length)]);
-  const [grlHero]   = useState(() => GRL_HERO_CALLS[Math.floor(Math.random() * GRL_HERO_CALLS.length)]);
+  const broQuotes = useBroQuotes();
+  const grlQuotes = useGrlQuotes();
+  const proQuotes = useProQuotes();
+  const heroBro   = useHeroCallsBro();
+  const heroGrl   = useHeroCallsGrl();
+  // Pick once on mount so a later refetch doesn't reshuffle what's on screen.
+  const [broQuote] = useState(() => broQuotes[Math.floor(Math.random() * broQuotes.length)]);
+  const [grlQuote] = useState(() => grlQuotes[Math.floor(Math.random() * grlQuotes.length)]);
+  const [proQuote] = useState(() => proQuotes[Math.floor(Math.random() * proQuotes.length)]);
+  const [broHero]  = useState(() => heroBro[Math.floor(Math.random() * heroBro.length)]);
+  const [grlHero]  = useState(() => heroGrl[Math.floor(Math.random() * heroGrl.length)]);
 
   const hero      = mode === "grl" ? grlHero : broHero;
   const quoteText = mode === "grl" ? grlQuote : mode === "bro" ? broQuote : proQuote.text;
