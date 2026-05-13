@@ -20,7 +20,7 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        orientation: 'portrait',
+        orientation: 'any',
         icons: [
           { src: 'icon-192.png',          sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png',          sizes: '512x512', type: 'image/png' },
@@ -29,7 +29,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
+          {
+            // Never cache the SSE stream — it's a long-lived response and
+            // Workbox would otherwise try to read/clone the body.
+            urlPattern: /^\/api\/events\//,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^\/api\//,
             handler: 'NetworkFirst',

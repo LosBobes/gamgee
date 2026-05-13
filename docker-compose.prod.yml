@@ -8,7 +8,8 @@ services:
       POSTGRES_DB:       ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # NOT exposed to host — only reachable inside the Docker network
+    ports:
+      - "127.0.0.1:5432:5432"  # loopback only — reachable via SSH tunnel, not the internet
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
@@ -22,9 +23,13 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL:    postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-      JWT_SECRET:      ${JWT_SECRET}
-      PASSWORD_PEPPER: ${PASSWORD_PEPPER}
+      DATABASE_URL:      postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      JWT_SECRET:        ${JWT_SECRET}
+      PASSWORD_PEPPER:   ${PASSWORD_PEPPER}
+      SENDGRID_API_KEY:  ${SENDGRID_API_KEY}
+      EMAIL_FROM:        ${EMAIL_FROM}
+      EMAIL_FROM_NAME:   ${EMAIL_FROM_NAME:-Gamgee}
+      APP_BASE_URL:      ${APP_BASE_URL}
     # No --reload, no volume mount — code is baked into the image
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     # NOT exposed to host — nginx inside the frontend container proxies /api/* to here

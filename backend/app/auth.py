@@ -39,14 +39,20 @@ def hash_password(password: str) -> str:
     return pwd_context.hash(_apply_pepper(password))
 
 
-def verify_password(plain: str, hashed: str) -> tuple[bool, bool]:
-    """Return (verified, needs_rehash). needs_rehash is True when the stored
-    hash was produced without the current pepper and should be upgraded."""
+def verify_password(plain: str, hashed: str) -> bool:
     if pwd_context.verify(_apply_pepper(plain), hashed):
-        return True, False
+        return True
     if PEPPER and pwd_context.verify(plain, hashed):
-        return True, True
-    return False, False
+        return True
+    return False
+
+
+def password_needs_rehash(plain: str, hashed: str) -> bool:
+    """True when verify_password succeeded only via the un-peppered fallback —
+    the stored hash predates the pepper and should be upgraded on next login."""
+    if not PEPPER:
+        return False
+    return not pwd_context.verify(_apply_pepper(plain), hashed)
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -76,4 +82,14 @@ def get_current_user(
     user = db.query(models.User).filter(models.User.username == username).first()
     if user is None:
         raise credentials_exc
+    return user
+
+
+def get_admin_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> models.User:
+    user = get_current_user(token=token, db=db)
+    if not user.is_admin:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user

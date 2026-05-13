@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import "./WorkoutTracker.css";
-import type { ExerciseDef, WorkoutExercise, WorkoutSession, PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric } from "./types";
+import type {
+  CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession,
+  PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
+  Buddy, AppNotification, LiveSession,
+} from "./types";
+import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
+import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
 import StatsBar from "./components/StatsBar";
@@ -11,15 +17,43 @@ import PRsTab from "./components/tabs/PRsTab";
 import HealthTab from "./components/tabs/HealthTab";
 import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
-import { ALL_EX } from "./data/exercises";
+import ExercisesTab from "./components/tabs/ExercisesTab";
+import BuddiesTab from "./components/tabs/BuddiesTab";
+import NotificationsTab from "./components/tabs/NotificationsTab";
+import NotificationBell from "./components/NotificationBell";
+import FeedbackModal from "./components/FeedbackModal";
+import OnboardingWelcome from "./components/Onboarding";
+import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
+import { useEventStream } from "./hooks/useEventStream";
+import { ToneProvider, type ToneMode } from "./context/ToneContext";
+import { OnboardingProvider } from "./context/OnboardingContext";
 
-export default function WorkoutTracker() {
+
+interface WorkoutTrackerProps {
+  initialAuthView?: "login" | "register" | "forgot" | "reset" | "verify";
+  initialAuthToken?: string;
+  /** Force the auth screen even when a token is in localStorage (used when
+   *  arriving via a password-reset / email-verify link so the user always sees
+   *  the relevant view first). */
+  forceAuthScreen?: boolean;
+}
+
+export default function WorkoutTracker({
+  initialAuthView,
+  initialAuthToken,
+  forceAuthScreen = false,
+}: WorkoutTrackerProps = {}) {
   // UI
-  const [tab,       setTab]       = useState("workout");
+  const [tab,       setTab]       = useState<string>(() => {
+    const stored = sessionStorage.getItem("gamgee_active_tab");
+    const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile"];
+    return stored && valid.includes(stored) ? stored : "workout";
+  });
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
+  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
   const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
   // logging
   const [active,    setActive]    = useState(false);
@@ -33,17 +67,65 @@ export default function WorkoutTracker() {
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
-  const [token,     setToken]     = useState<string | null>(() => localStorage.getItem("iron_log_token"));
-  const [username,  setUsername]  = useState<string | null>(null);
+  const [token,        setToken]        = useState<string | null>(() => localStorage.getItem("iron_log_token"));
+  const [username,     setUsername]     = useState<string | null>(null);
+  const [name,         setName]         = useState<string | null>(null);
+  const [email,        setEmail]        = useState<string | null>(null);
+  const [isAdmin,      setIsAdmin]      = useState(false);
+  const [isVerified,   setIsVerified]   = useState(true);
+  const [verifyMsg,    setVerifyMsg]    = useState<string | null>(null);
+  const [verifyMsgKind, setVerifyMsgKind] = useState<"ok" | "warn">("ok");
+  const [primaryColor, setPrimaryColor] = useState<string>(
+    () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
+  );
+  const [toneMode, setToneMode] = useState<ToneMode>(
+    () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
+  );
+  const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
+  // buddy/notif/live state
+  const [buddies,        setBuddies]        = useState<Buddy[]>([]);
+  const [notifications,  setNotifications]  = useState<AppNotification[]>([]);
+  const [unreadCount,    setUnreadCount]    = useState(0);
+  const [liveSessions,   setLiveSessions]   = useState<LiveSession[]>([]);
+  const [myLiveSession,  setMyLiveSession]  = useState<LiveSession | null>(null);
+  // Bumped whenever the user creates or deletes a custom exercise; forces the
+  // wizards and tabs that read ALL_EX/EM to re-render against the mutated catalog.
+  const [, setCustomExBump] = useState(0);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
-  const authFetch = (url: string, opts: RequestInit = {}) =>
+  useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
+
+  const setWeeklyPlan = useCallback((plan: WeeklyPlan) => {
+    saveWeeklyPlan(plan);
+    setWeeklyPlanState(plan);
+  }, []);
+
+  const tokenRef = useRef(token);
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
+  const authFetch = useCallback((url: string, opts: RequestInit = {}) =>
     fetch(url, {
       ...opts,
-      headers: { Authorization: `Bearer ${token ?? ""}`, ...(opts.headers as Record<string, string> ?? {}) },
+      headers: { Authorization: `Bearer ${tokenRef.current ?? ""}`, ...(opts.headers as Record<string, string> ?? {}) },
     }).then(res => {
       if (res.status === 401) { localStorage.removeItem("iron_log_token"); setToken(null); }
       return res;
-    });
+    }), []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--primary", primaryColor);
+    localStorage.setItem("gamgee_primary_color", primaryColor);
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    if (meta) meta.content = primaryColor;
+  }, [primaryColor]);
+
+  useEffect(() => {
+    localStorage.setItem("gamgee_tone", toneMode);
+  }, [toneMode]);
+
+  useEffect(() => {
+    sessionStorage.setItem("gamgee_active_tab", tab);
+  }, [tab]);
 
   useEffect(() => {
     if (!token) return;
@@ -56,7 +138,14 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string }) => setUsername(d.username)).catch(() => {});
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean }) => {
+        setUsername(d.username);
+        setName(d.name ?? null);
+        setEmail(d.email ?? null);
+        setIsAdmin(d.is_admin ?? false);
+        setIsVerified(d.is_verified ?? true);
+        if (d.primary_color) setPrimaryColor(d.primary_color);
+      }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -66,11 +155,147 @@ export default function WorkoutTracker() {
     return () => clearInterval(id);
   }, [active, startTs]);
 
+  // ── Buddy / notifications / live polling ──
+
+  const refreshBuddies = useCallback(async () => {
+    try {
+      const r = await authFetch("/api/buddies");
+      if (r.ok) setBuddies(await r.json());
+    } catch { /* ignore */ }
+  }, [authFetch]);
+
+  const refreshNotifications = useCallback(async () => {
+    try {
+      const [listRes, countRes] = await Promise.all([
+        authFetch("/api/notifications?limit=30"),
+        authFetch("/api/notifications/unread-count"),
+      ]);
+      if (listRes.ok) setNotifications(await listRes.json());
+      if (countRes.ok) setUnreadCount((await countRes.json()).count ?? 0);
+    } catch { /* ignore */ }
+  }, [authFetch]);
+
+  const refreshLive = useCallback(async () => {
+    try {
+      const r = await authFetch("/api/live-sessions");
+      if (!r.ok) return;
+      const sessions: LiveSession[] = await r.json();
+      setLiveSessions(sessions);
+      // Identify my session by owner_username match
+      const mine = sessions.find(s => s.owner_username === username) ?? null;
+      setMyLiveSession(mine);
+    } catch { /* ignore */ }
+  }, [authFetch, username]);
+
+  useEffect(() => {
+    if (!token) return;
+    refreshBuddies();
+    refreshNotifications();
+    refreshLive();
+    // The SSE stream pushes changes the moment they happen; this longer
+    // interval is just a safety net in case the EventSource is disconnected
+    // (proxy timeout, sleeping tab waking up, etc.).
+    const id = setInterval(() => {
+      refreshNotifications();
+      refreshLive();
+      refreshBuddies();
+    }, 90_000);
+    return () => clearInterval(id);
+  }, [token, refreshBuddies, refreshNotifications, refreshLive]);
+
+  useEventStream(token, useCallback((ev) => {
+    if (ev.type === "notification") {
+      refreshNotifications();
+    } else if (ev.type === "buddy") {
+      refreshBuddies();
+    } else if (ev.type === "live") {
+      refreshLive();
+    }
+  }, [refreshNotifications, refreshBuddies, refreshLive]));
+
+  // Sync owner_sets_done with active workout's completed sets in real time
+  useEffect(() => {
+    if (!myLiveSession || myLiveSession.status !== "active") return;
+    if (!active) return;
+    const doneSetsNow = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
+    if (doneSetsNow === myLiveSession.owner_sets_done) return;
+    const handle = setTimeout(() => {
+      authFetch(`/api/live-sessions/${myLiveSession.id}/progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sets_done: doneSetsNow }),
+      }).then(r => r.ok ? r.json() : null).then((s: LiveSession | null) => {
+        if (s) {
+          setMyLiveSession(s);
+          setLiveSessions(prev => prev.map(p => p.id === s.id ? s : p));
+        }
+      }).catch(() => {});
+    }, 1200);
+    return () => clearTimeout(handle);
+  }, [exercises, active, myLiveSession, authFetch]);
+
+  const startLiveSession = useCallback(async (note: string) => {
+    const r = await authFetch("/api/live-sessions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: crypto.randomUUID(), focus, note: note || null }),
+    });
+    if (r.ok) {
+      const session: LiveSession = await r.json();
+      setMyLiveSession(session);
+      await refreshLive();
+    }
+  }, [authFetch, focus, refreshLive]);
+
+  const endLiveSession = useCallback(async () => {
+    if (!myLiveSession) return;
+    const r = await authFetch(`/api/live-sessions/${myLiveSession.id}/end`, { method: "POST" });
+    if (r.ok) {
+      setMyLiveSession(null);
+      await refreshLive();
+    }
+  }, [authFetch, myLiveSession, refreshLive]);
+
+  const joinLiveSession = useCallback(async (id: string) => {
+    const r = await authFetch(`/api/live-sessions/${id}/join`, { method: "POST" });
+    if (r.ok) await refreshLive();
+  }, [authFetch, refreshLive]);
+
+  const markNotifRead = useCallback(async (id: number) => {
+    await authFetch(`/api/notifications/${id}/read`, { method: "POST" });
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    setUnreadCount(c => Math.max(0, c - 1));
+  }, [authFetch]);
+
+  const markAllNotifRead = useCallback(async () => {
+    await authFetch("/api/notifications/read-all", { method: "POST" });
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+  }, [authFetch]);
+
+  const deleteNotif = useCallback(async (id: number) => {
+    await authFetch(`/api/notifications/${id}`, { method: "DELETE" });
+    setNotifications(prev => prev.filter(n => n.id !== id));
+    await refreshNotifications();
+  }, [authFetch, refreshNotifications]);
+
   // ── Workout handlers ──
 
   const startFromWizard = (autoFill = false) => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
-    setExercises(planned.map(ex => {
+
+    const cardioEx = (slot: CardioPlan["before"]): WorkoutExercise | null => {
+      if (!slot) return null;
+      const def = ALL_EX.find(e => e.id === slot.exId);
+      if (!def) return null;
+      return {
+        ...def,
+        uid: `${def.id}_${Date.now()}_${Math.random()}`,
+        sets: [{ weight: String(slot.minutes), reps: "", done: false }],
+      };
+    };
+
+    const mainExercises: WorkoutExercise[] = planned.map(ex => {
       let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
       if (autoFill) {
         const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
@@ -81,8 +306,17 @@ export default function WorkoutTracker() {
         }
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
-    }));
+    });
+
+    const before = cardioEx(cardio.before);
+    const after  = cardioEx(cardio.after);
+    setExercises([
+      ...(before ? [before] : []),
+      ...mainExercises,
+      ...(after ? [after] : []),
+    ]);
     setPlanned([]);
+    setCardio({ timing: "none", before: null, after: null });
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -116,6 +350,37 @@ export default function WorkoutTracker() {
     return !isNaN(w) && w > 0 && (!prs[exId] || w > prs[exId].weight);
   };
 
+  const loadTodayPlan = (dayPlan: DayPlan) => {
+    setFocus(dayPlan.focus);
+    if (dayPlan.exerciseIds.length > 0) {
+      const exs = dayPlan.exerciseIds
+        .map(id => ALL_EX.find(e => e.id === id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(exs);
+    } else {
+      const focusDef     = getFocusDef(dayPlan.focus);
+      const pool         = focusDef?.exIds ?? [];
+      const focusHistory = history.filter(s => s.focus === dayPlan.focus);
+      const avgSize      = focusHistory.length > 0
+        ? Math.round(focusHistory.reduce((sum, s) => sum + s.exercises.length, 0) / focusHistory.length)
+        : 5;
+      const target = Math.max(4, Math.min(8, avgSize));
+      const freq: Record<string, number> = {};
+      focusHistory.forEach(s => s.exercises.forEach(ex => { freq[ex.id] = (freq[ex.id] ?? 0) + 1; }));
+      const effectivePool = pool.length >= 3
+        ? pool
+        : ALL_EX.filter(e => e.type !== "cardio").map(e => e.id);
+      const picked = effectivePool
+        .map(id => ({ id, score: (freq[id] ?? 0) * 0.4 + Math.random() }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, target)
+        .map(c => ALL_EX.find(e => e.id === c.id))
+        .filter((e): e is ExerciseDef => !!e);
+      setPlanned(picked);
+    }
+    setWStep(5);
+  };
+
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
@@ -135,15 +400,22 @@ export default function WorkoutTracker() {
       }
     }));
 
-    authFetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) }).catch(() => {});
+    authFetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) })
+      .then(() => refreshNotifications()).catch(() => {});
     Object.entries(newPrs).forEach(([exercise_id, pr]) => {
       authFetch(`/api/prs/${exercise_id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...pr, exercise_id }) }).catch(() => {});
     });
+    // If broadcasting live, auto-end the live session when workout finishes.
+    if (myLiveSession && myLiveSession.status === "active") {
+      authFetch(`/api/live-sessions/${myLiveSession.id}/end`, { method: "POST" })
+        .then(() => { setMyLiveSession(null); refreshLive(); }).catch(() => {});
+    }
 
     setHistory([session, ...history].slice(0, 60));
     setPrs(newPrs);
     setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
     setWStep(0); setPlanned([]); setFocus(null);
+    setCardio({ timing: "none", before: null, after: null });
     setCompleted(session);
   };
 
@@ -185,24 +457,82 @@ export default function WorkoutTracker() {
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
 
+  const resendVerification = async () => {
+    setVerifyMsg(null);
+    try {
+      const res = await authFetch("/api/auth/resend-verification-me", { method: "POST" });
+      if (res.ok) {
+        setVerifyMsgKind("ok");
+        setVerifyMsg("Verification email sent — check your inbox.");
+      } else {
+        setVerifyMsgKind("warn");
+        setVerifyMsg("Couldn't send the verification email. Try again in a moment.");
+      }
+    } catch {
+      setVerifyMsgKind("warn");
+      setVerifyMsg("Network error while requesting a verification email.");
+    }
+  };
+
   useMobileBackGesture(!!token, () => {
     if (completed)               { setCompleted(null); setTab("history"); return true; }
     if (tab !== "workout")       { setTab("workout"); return true; }
     if (active)                  { return true; }
+    if (wStep === 6)              { setWStep(1); return true; }
     if (wStep > 0)               { setWStep(wStep - 1); return true; }
     return false;
   });
 
-  if (!token) return <AuthScreen onLogin={setToken} />;
+  if (!token || forceAuthScreen)
+    return (
+      <ToneProvider value={toneMode}>
+        <AuthScreen
+          onLogin={setToken}
+          initialView={initialAuthView}
+          initialToken={initialAuthToken}
+        />
+      </ToneProvider>
+    );
 
   return (
+  <ToneProvider value={toneMode}>
+    <OnboardingProvider historyLen={history.length}>
+    <OnboardingWelcome />
     <div className="app">
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
         historyCount={history.length} prCount={Object.keys(prs).length} coachCount={coachCount}
-        tab={tab} setTab={setTab} onLogout={logout}
+        buddyCount={buddies.filter(b => b.status === "accepted").length}
+        unreadNotif={unreadCount}
+        tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
+        onLogoClick={() => { setTab("workout"); setWStep(0); }}
+        onOpenFeedback={() => setFeedbackOpen(true)}
+        notifBell={
+          <NotificationBell
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkRead={markNotifRead}
+            onMarkAll={markAllNotifRead}
+            onDelete={deleteNotif}
+            onGoToBuddies={() => setTab("buddies")}
+            onViewAll={() => setTab("notifications")}
+            refresh={refreshNotifications}
+          />
+        }
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
+      {!isVerified && (
+        <div className={`verify-banner ${verifyMsgKind === "warn" ? "verify-banner-warn" : ""}`} role="status">
+          <span>
+            Your email isn't verified yet.
+            {email ? <> We sent a confirmation link to <strong>{email}</strong>.</> : null}
+          </span>
+          <button className="verify-banner-btn" onClick={resendVerification}>
+            Resend verification email
+          </button>
+          {verifyMsg && <small className={`verify-banner-msg ${verifyMsgKind === "ok" ? "ok" : "warn"}`}>{verifyMsg}</small>}
+        </div>
+      )}
       <div className="content">
         {completed && (
           <WorkoutComplete session={completed} onDone={dismissCompleted} />
@@ -211,9 +541,12 @@ export default function WorkoutTracker() {
           <WorkoutTab
             active={active} wStep={wStep} setWStep={setWStep}
             focus={focus} setFocus={setFocus}
+            cardio={cardio} setCardio={setCardio}
             planned={planned} setPlanned={setPlanned}
             exercises={exercises} prs={prs} history={history}
-            doneSets={doneSets} startFromWizard={startFromWizard}
+            doneSets={doneSets}
+            weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
+            startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
@@ -221,10 +554,42 @@ export default function WorkoutTracker() {
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
         {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
+        {!completed && tab === "buddies" && (
+          <BuddiesTab
+            authFetch={authFetch}
+            buddies={buddies}
+            liveSessions={liveSessions}
+            myLiveSession={myLiveSession}
+            workoutActive={active}
+            workoutFocus={focus}
+            workoutDoneSets={doneSets}
+            refreshBuddies={refreshBuddies}
+            refreshLive={refreshLive}
+            startLiveSession={startLiveSession}
+            endLiveSession={endLiveSession}
+            joinLiveSession={joinLiveSession}
+          />
+        )}
+        {!completed && tab === "notifications" && (
+          <NotificationsTab
+            notifications={notifications}
+            unreadCount={unreadCount}
+            onMarkRead={markNotifRead}
+            onMarkAll={markAllNotifRead}
+            onDelete={deleteNotif}
+            onGoToBuddies={() => setTab("buddies")}
+            refresh={refreshNotifications}
+            authFetch={authFetch}
+          />
+        )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"   && <CoachTab history={history} />}
-        {!completed && tab === "profile" && <ProfileTab username={username} history={history} token={token} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} />}
+        {!completed && tab === "exercises" && <ExercisesTab />}
+        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} />}
       </div>
+      {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
     </div>
+    </OnboardingProvider>
+  </ToneProvider>
   );
 }

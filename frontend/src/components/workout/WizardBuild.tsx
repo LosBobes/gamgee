@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench } from "lucide-react";
 import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -7,6 +7,9 @@ import { EM, ALL_EX } from "../../data/exercises";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import BodyMap from "../BodyMap";
 import SuggCard from "../SuggCard";
+import CustomExerciseModal from "./CustomExerciseModal";
+import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   focus:      string;
@@ -18,8 +21,10 @@ interface Props {
 }
 
 export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext, history }: Props) {
-  const [hovEx,  setHovEx]  = useState<ExerciseDef | null>(null);
-  const [search, setSearch] = useState("");
+  const t = useTxt();
+  const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
+  const [search,          setSearch]          = useState("");
+  const [showCustomModal, setShowCustomModal] = useState(false);
 
   // Most recent prior session matching this focus (used for the auto-populate prompt)
   const lastFocusSession = history.find(s => s.focus === focus && s.exercises.length > 0) ?? null;
@@ -31,12 +36,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
 
   // Show the popup once per wizard build entry, only when there's something to populate
   // and the user hasn't already added exercises.
-  const [showAutoPopup, setShowAutoPopup] = useState(
-    () => lastExercises.length > 0 && planned.length === 0
-  );
-  // Re-trigger the prompt if the focus changes mid-session
+  const [showAutoPopup, setShowAutoPopup] = useState(() => planned.length === 0);
+  // Re-trigger whenever the focus changes (user went back and picked a different one)
   useEffect(() => {
-    setShowAutoPopup(lastExercises.length > 0 && planned.length === 0);
+    setShowAutoPopup(planned.length === 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
@@ -45,6 +48,34 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
     setShowAutoPopup(false);
   };
   const handleSkipAutoPopulate = () => setShowAutoPopup(false);
+
+  const handleRandomize = () => {
+    const focusHistory = history.filter(s => s.focus === focus);
+    const avgSize = focusHistory.length > 0
+      ? Math.round(focusHistory.reduce((sum, s) => sum + s.exercises.length, 0) / focusHistory.length)
+      : 5;
+    const target = Math.max(4, Math.min(8, avgSize));
+
+    // Frequency weight: exercises you've done in this focus are slightly preferred
+    const freq: Record<string, number> = {};
+    focusHistory.forEach(s =>
+      s.exercises.forEach(ex => { freq[ex.id] = (freq[ex.id] ?? 0) + 1; })
+    );
+
+    const pool = focusDef.exIds.length >= 3
+      ? focusDef.exIds
+      : ALL_EX.filter(e => e.type !== "cardio").map(e => e.id);
+
+    const picked = [...pool]
+      .map(id => ({ id, score: (freq[id] ?? 0) * 0.4 + Math.random() }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, target)
+      .map(c => ALL_EX.find(e => e.id === c.id))
+      .filter((e): e is ExerciseDef => !!e);
+
+    setPlanned(() => picked);
+    setShowAutoPopup(false);
+  };
 
   const activeMuscles  = getActive(planned);
   const previewMuscles = hovEx ? getActive([hovEx]) : {};
@@ -118,6 +149,14 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
         </span>
         <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW <ChevronRight size={13} /></button>
       </div>
+
+      <OnboardingHint hintKey="build" step="STEP 3" title={t("Stack your exercises", "Stack your lifts", "Stack your moves")}>
+        {t(
+          "Tap any exercise on the right to add it. The body map on the left fills in as muscles get covered — grey chips show what your focus still hasn't trained.",
+          "Tap a lift on the right to add it. Body map on the left fills in as muscles get hit. Grey chips = still need work.",
+          "Tap any move on the right to add it. Body map on the left fills in as muscles get hit. Grey chips = still need work, bestie."
+        )}
+      </OnboardingHint>
 
       <div className="build-layout">
 
@@ -194,7 +233,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
           <div className="search-wrap">
             <input
               className="search-input"
-              placeholder="Search exercises…"
+              placeholder={`Search ${ALL_EX.filter(e => e.type !== "cardio").length} exercises…`}
               value={search}
               onChange={e => setSearch(e.target.value)}
               autoComplete="off"
@@ -206,6 +245,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
             }
           </div>
 
+          <button className="cx-add-card" onClick={() => setShowCustomModal(true)}>
+            <Wrench size={13} /> {t("Add Custom Exercise", "Build Your Own Lift", "Cook Your Own Move")}
+          </button>
+
           {searchResults ? (
             searchResults.length > 0 ? (
               <>
@@ -215,7 +258,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
                 {searchResults.map(renderCard)}
               </>
             ) : (
-              <p className="search-empty">No exercises match "{search}"</p>
+              <p className="search-empty">{t(`No exercises match "${search}"`, `Nothing matches "${search}". Try a different name.`)}</p>
             )
           ) : (
             <>
@@ -244,32 +287,67 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
         </div>
       </div>
 
-      {showAutoPopup && lastFocusSession && (
+      {showCustomModal && (
+        <CustomExerciseModal
+          onClose={() => setShowCustomModal(false)}
+          onCreated={(def) => {
+            const exDef: ExerciseDef = { id: def.id, name: def.name, type: def.type, cat: def.cat };
+            setPlanned(p => p.some(e => e.id === exDef.id) ? p : [...p, exDef]);
+          }}
+        />
+      )}
+
+      {showAutoPopup && (
         <div className="cf-overlay" onClick={handleSkipAutoPopulate}>
           <div className="cf-modal autopop-modal" onClick={e => e.stopPropagation()}>
             <div className="autopop-top">
               <Clock size={16} />
               <div>
-                <div className="cf-modal-title" style={{ marginBottom: 4 }}>Auto-populate?</div>
+                <div className="cf-modal-title" style={{ marginBottom: 4 }}>{t("Quick Start", "Quick Start")}</div>
                 <div className="autopop-sub">
-                  Load the {lastExercises.length} exercise{lastExercises.length !== 1 ? "s" : ""} from
-                  your last {focusDef.name.toLowerCase()} workout. You can edit before starting.
+                  {lastExercises.length > 0
+                    ? t(
+                        `Pre-load exercises from your last ${focusDef.name.toLowerCase()} session, or get a randomized pick. You can edit before starting.`,
+                        `Repeat last time or throw the dice for a fresh mix. Swap things out before you start.`,
+                        `Run it back from last time, or roll the dice for a fresh remix. Swap before you start, bestie.`
+                      )
+                    : t(
+                        `New to ${focusDef.name.toLowerCase()}? Get a smart randomized selection to start from.`,
+                        `First time with this focus? We'll throw a smart pick at you. Tweak it from there, bro.`,
+                        `New to this focus? We'll line up a smart pick. Make it yours from there, bestie.`
+                      )
+                  }
                 </div>
               </div>
             </div>
-            <div className="autopop-list">
-              {lastExercises.map((ex, i) => (
-                <div key={ex.id} className="autopop-row">
-                  <span className="autopop-num">{i + 1}</span>
-                  <span className="autopop-name">{ex.name}</span>
+            {lastExercises.length > 0 && (
+              <div className="autopop-list">
+                <div style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 6, textTransform: "uppercase" }}>
+                  Last Session
                 </div>
-              ))}
-            </div>
-            <div className="cf-modal-actions">
-              <button className="cf-btn-cancel" onClick={handleSkipAutoPopulate}>Start Blank</button>
-              <button className="cf-btn-save" onClick={handleAutoPopulate}>
-                <Zap size={13} style={{ marginRight: 6, verticalAlign: -2 }} />
-                Auto-populate
+                {lastExercises.map((ex, i) => (
+                  <div key={ex.id} className="autopop-row">
+                    <span className="autopop-num">{i + 1}</span>
+                    <span className="autopop-name">{ex.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="cf-modal-actions" style={{ flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, width: "100%" }}>
+                <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleRandomize}>
+                  <Shuffle size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+                  {t("Randomize", "Mix It Up", "Roll the Dice")}
+                </button>
+                {lastExercises.length > 0 && (
+                  <button className="cf-btn-save" style={{ flex: 1 }} onClick={handleAutoPopulate}>
+                    <Zap size={13} style={{ marginRight: 5, verticalAlign: -2 }} />
+                    {t("Repeat Last", "Same as Last", "Run It Back")}
+                  </button>
+                )}
+              </div>
+              <button className="cf-btn-cancel" style={{ flex: "none" }} onClick={handleSkipAutoPopulate}>
+                {t("Start Blank", "Start Fresh", "Soft Launch It")}
               </button>
             </div>
           </div>

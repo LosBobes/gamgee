@@ -1,11 +1,13 @@
-import { ArrowLeft, X, Zap, Clock } from "lucide-react";
-import type { ExerciseDef, WorkoutSession } from "../../types";
+import { ArrowLeft, X, Zap, Clock, Heart } from "lucide-react";
+import type { CardioPlan, ExerciseDef, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
 import { getFocusDef } from "../../data/focuses";
 import { analyzeEx } from "../../analysis";
 import BodyMap from "../BodyMap";
+import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   planned:     ExerciseDef[];
@@ -14,9 +16,11 @@ interface Props {
   onBack:      () => void;
   onStart:     (autoFill: boolean) => void;
   focus:       string;
+  cardio:      CardioPlan;
 }
 
-export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus }: Props) {
+export default function WizardReview({ planned, setPlanned, history, onBack, onStart, focus, cardio }: Props) {
+  const t = useTxt();
   const finalActive = getActive(planned);
   const finalGroups = muscleGroups(finalActive);
 
@@ -39,6 +43,14 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
         <span className="wz-focus-label">REVIEW WORKOUT</span>
         <div style={{ width: 72 }} />
       </div>
+
+      <OnboardingHint hintKey="review" step="REVIEW" title={t("Last look before lift-off", "Last check before lift-off", "Last check before lift-off")}>
+        {t(
+          "This is your final workout. Tap a card's X to drop an exercise, or hit EDIT to add more. When you're ready, press START to begin logging sets.",
+          "Final lineup. Tap the X to drop a lift, EDIT to add more. Hit START when you're ready to log sets.",
+          "Final lineup, bestie. Tap the X to drop a move, EDIT to add more. Hit START when you're ready to log sets."
+        )}
+      </OnboardingHint>
 
       <BodyMap active={finalActive} preview={{}} focusMuscles={focusMuscles} />
 
@@ -75,6 +87,28 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           </div>
         )}
       </div>
+
+      {(cardio.before || cardio.after) && (
+        <div className="cardio-summary-card">
+          <div className="cardio-summary-head"><Heart size={13} /> CARDIO PLAN</div>
+          {cardio.before && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">BEFORE</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.before!.exId)?.name ?? cardio.before.exId} · {cardio.before.minutes} min
+              </span>
+            </div>
+          )}
+          {cardio.after && (
+            <div className="cardio-summary-row">
+              <span className="cardio-summary-tag">AFTER</span>
+              <span className="cardio-summary-text">
+                {ALL_EX.find(e => e.id === cardio.after!.exId)?.name ?? cardio.after.exId} · {cardio.after.minutes} min
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {planned.map((ex, i) => {
         const m    = EM[ex.id] || { p: [], s: [] };
@@ -116,8 +150,8 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
           <div className="review-autofill-top">
             <Clock size={15} />
             <div>
-              <div className="review-autofill-title">Auto-fill from last session?</div>
-              <div className="review-autofill-sub">Pre-loads weight & reps — edit freely during the workout</div>
+              <div className="review-autofill-title">{t("Auto-fill from last session?", "Load weights from last session?", "Run last session's weights?")}</div>
+              <div className="review-autofill-sub">{t("Pre-loads weight and reps. Edit freely during the workout.", "Pre-fills your weight and reps. You're free to push past it.", "Pre-fills your numbers, bestie. Beat them or edit them.")}</div>
             </div>
           </div>
           <div className="review-autofill-btns">
@@ -125,13 +159,13 @@ export default function WizardReview({ planned, setPlanned, history, onBack, onS
               Start Fresh
             </button>
             <button className="btn-start" onClick={() => onStart(true)} disabled={planned.length === 0}>
-              <Zap size={16} /> Use Last Session
+              <Zap size={16} /> {t("Use Last Session", "Load Last Session", "Run It Back")}
             </button>
           </div>
         </div>
       ) : (
         <button className="btn-start" onClick={() => onStart(false)} disabled={planned.length === 0} style={{ marginTop: 8 }}>
-          <Zap size={18} /> START WORKOUT ({planned.length} exercises)
+          <Zap size={18} /> {t(`START WORKOUT (${planned.length} exercises)`, `LET'S GO (${planned.length} exercises)`, `LET'S GO BESTIE (${planned.length} exercises)`)}
         </button>
       )}
     </>

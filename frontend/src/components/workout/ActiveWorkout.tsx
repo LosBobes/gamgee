@@ -4,6 +4,8 @@ import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession }
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
+import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   exercises:      WorkoutExercise[];
@@ -22,6 +24,7 @@ interface Props {
 
 export default function ActiveWorkout({ exercises, prs, history, doneSets, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [showPick, setShowPick] = useState(false);
+  const t = useTxt();
 
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
@@ -30,6 +33,14 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
 
   return (
     <>
+      <OnboardingHint hintKey="active" step="GO TIME" title={t("Log each set as you go", "Log each set as you go", "Log each set as you serve")}>
+        {t(
+          "For every set: type weight + reps, then check the box. The timer at the top tracks your session. Hit FINISH when you're done — at least one set has to be checked off.",
+          "Punch in weight + reps, tap the checkbox. Timer up top tracks the session. Hit FINISH when you're cooked — needs at least one set checked.",
+          "Punch in weight + reps, tap the checkbox. Timer up top tracks the session. Hit FINISH when you're cooked — needs at least one set checked, bestie."
+        )}
+      </OnboardingHint>
+
       <div className="wx-actions">
         <button className="btn-add-ex" onClick={() => setShowPick(true)}>+ ADD EXERCISE</button>
         <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
@@ -38,7 +49,7 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
       {exercises.length === 0 && (
         <div className="empty">
           <div className="empty-icon"><Dumbbell size={40} /></div>
-          <div className="empty-label">No exercises yet</div>
+          <div className="empty-label">{t("No exercises yet", "Add something. The bar isn't going to lift itself.", "Add something, bestie. The bar isn't lifting itself.")}</div>
         </div>
       )}
 

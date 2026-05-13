@@ -49,7 +49,7 @@ export const STRETCH_LIB: Record<string, Stretch[]> = {
   ],
   Quads: [
     { group: "Quads", name: "Standing Quad Stretch", duration: 30, perSide: true, cue: "Pull heel to glute, knees together, hips slightly forward." },
-    { group: "Quads", name: "Couch Stretch",         duration: 45, perSide: true, cue: "Back foot up on bench, kneel, hips forward — heavy stretch." },
+    { group: "Quads", name: "Couch Stretch",         duration: 45, perSide: true, cue: "Back foot up on bench, kneel, hips forward. Heavy stretch." },
   ],
   Hamstrings: [
     { group: "Hamstrings", name: "Seated Forward Fold", duration: 45, perSide: false, cue: "Legs straight, hinge at hips, reach toward toes." },
@@ -60,8 +60,8 @@ export const STRETCH_LIB: Record<string, Stretch[]> = {
     { group: "Glutes", name: "Figure-4 Stretch",     duration: 30, perSide: true, cue: "Lying on back, ankle on opposite knee, pull thigh toward chest." },
   ],
   Calves: [
-    { group: "Calves", name: "Wall Calf Stretch",    duration: 30, perSide: true, cue: "Hands on wall, back leg straight, heel down — gastroc." },
-    { group: "Calves", name: "Bent-Knee Wall Calf",  duration: 30, perSide: true, cue: "Same setup but bend the back knee — targets soleus." },
+    { group: "Calves", name: "Wall Calf Stretch",    duration: 30, perSide: true, cue: "Hands on wall, back leg straight, heel down. Gastroc stretch." },
+    { group: "Calves", name: "Bent-Knee Wall Calf",  duration: 30, perSide: true, cue: "Same setup but bend the back knee. Targets the soleus." },
   ],
   Legs: [
     { group: "Legs", name: "Adductor Stretch",       duration: 30, perSide: true, cue: "Wide stance, shift weight to one side, sit into the hip." },

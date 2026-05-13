@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
@@ -117,6 +117,16 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
     setDeloadDone(true);
   };
 
+  const wStep = ex.type === "cardio" ? 5    : 2.5;
+  const rStep = ex.type === "cardio" ? 0.5  : 1;
+  const stepField = (idx: number, field: "weight" | "reps", delta: number) => {
+    const step = field === "weight" ? wStep : rStep;
+    const cur  = parseFloat(ex.sets[idx][field]);
+    const base = Number.isFinite(cur) ? cur : 0;
+    const next = Math.max(0, Math.round((base + delta * step) * 100) / 100);
+    updateSet(idx, field, String(next));
+  };
+
   return (
     <div className="ex-card">
       <div className="ex-hdr">
@@ -188,32 +198,62 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             return (
               <div key={idx} className="set-row">
                 <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
-                <div className="inp-wrap">
+                <div className="stepper inp-wrap">
+                  <button
+                    type="button" className="step-btn step-minus"
+                    aria-label={`decrease ${wL}`}
+                    onClick={() => stepField(idx, "weight", -1)}
+                  >
+                    <Minus size={18} strokeWidth={3} />
+                  </button>
                   <input
-                    className={`set-inp ${set.done ? "done" : ""}`}
-                    type="number" min="0" step="0.5"
+                    className={`set-inp step-inp ${set.done ? "done" : ""}`}
+                    type="number" inputMode="decimal" min="0" step={wStep}
                     placeholder={ex.type === "cardio" ? "30" : "0"}
                     value={set.weight}
                     onChange={e => updateSet(idx, "weight", e.target.value)}
                   />
+                  <button
+                    type="button" className="step-btn step-plus"
+                    aria-label={`increase ${wL}`}
+                    onClick={() => stepField(idx, "weight", +1)}
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
                   {showPrTag && <span className="new-pr-tag">NEW PR!</span>}
                 </div>
-                <input
-                  className={`set-inp ${set.done ? "done" : ""}`}
-                  type="number" min="0" step="1"
-                  placeholder={ex.type === "cardio" ? "5.0" : "0"}
-                  value={set.reps}
-                  onChange={e => updateSet(idx, "reps", e.target.value)}
-                />
+                <div className="stepper">
+                  <button
+                    type="button" className="step-btn step-minus"
+                    aria-label={`decrease ${rL}`}
+                    onClick={() => stepField(idx, "reps", -1)}
+                  >
+                    <Minus size={18} strokeWidth={3} />
+                  </button>
+                  <input
+                    className={`set-inp step-inp ${set.done ? "done" : ""}`}
+                    type="number" inputMode="decimal" min="0" step={rStep}
+                    placeholder={ex.type === "cardio" ? "5.0" : "0"}
+                    value={set.reps}
+                    onChange={e => updateSet(idx, "reps", e.target.value)}
+                  />
+                  <button
+                    type="button" className="step-btn step-plus"
+                    aria-label={`increase ${rL}`}
+                    onClick={() => stepField(idx, "reps", +1)}
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
+                </div>
                 <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
-                  {set.done ? <Check size={13} /> : <Circle size={13} />}
+                  {set.done ? <Check size={18} strokeWidth={3} /> : <Circle size={18} strokeWidth={2.5} />}
                 </button>
                 <button
                   className="rm-set-btn"
                   onClick={() => removeSet(idx)}
                   disabled={ex.sets.length <= 1}
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
             );

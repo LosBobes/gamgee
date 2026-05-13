@@ -48,27 +48,31 @@ cd backend && python -m app.init_db
 ## Architecture
 
 ### Backend (`backend/app/`)
-- `main.py` — FastAPI app; registers all routers, sets up CORS (allows `localhost:5173`), auto-creates tables on startup
+- `main.py` — FastAPI app; registers all routers, sets up CORS (allows `localhost:5173`), auto-creates tables on startup; runs lightweight in-place migrations (ALTER TABLE IF NOT EXISTS) for new columns so existing dev DBs don't need a full reset
 - `database.py` — SQLAlchemy engine, `SessionLocal`, `get_db()` dependency
-- `models.py` — ORM models: `User`, `WorkoutSession`, `PersonalRecord`, `Exercise`, `Item`
+- `models.py` — ORM models: `User`, `WorkoutSession`, `PersonalRecord`, `Exercise`, `Item`, `BodyMetric`
 - `schemas.py` — Pydantic request/response schemas
 - `auth.py` — JWT (HS256, 7-day expiry), bcrypt hashing, `get_current_user` dependency; secret from `JWT_SECRET` env var
+- `password_policy.py` — OWASP/NIST 800-63B password validation (12–128 chars, complexity rules, username/email similarity check, common-password blocklist)
 - `init_db.py` / `seed.py` — DB setup and exercise seeding (~93 exercises)
-- `routers/auth.py` (`/api/auth`) — register, login (OAuth2 password flow), `/api/auth/me`
-- `routers/workouts.py` (`/api/workouts`) — list (GET) and create (POST); client generates UUID for session `id`
-- `routers/prs.py` (`/api/prs`) — list (GET) and upsert (PUT `/api/prs/{exercise_id}`)
+- `routers/auth.py` (`/api/auth`) — register, login (OAuth2 password flow), `GET /api/auth/me`, `POST /api/auth/change-password`, `PATCH /api/auth/preferences` (updates `primary_color`; validates `#RRGGBB` format)
+- `routers/workouts.py` (`/api/workouts`) — list (GET), create (POST), update (PUT `/{session_id}`), delete (DELETE `/{session_id}`); client generates UUID for session `id`
+- `routers/prs.py` (`/api/prs`) — list (GET), upsert (PUT `/api/prs/{exercise_id}`), delete (DELETE `/api/prs/{exercise_id}`)
+- `routers/health.py` (`/api/health`) — body metric CRUD: list (GET, filterable by `metric_type`, `from`, `to`), create (POST), delete (DELETE `/{metric_id}`)
 - `routers/items.py` (`/api/items`) — generic CRUD (scaffold, mostly unused)
 
 **Key data model notes:**
 - `WorkoutSession.id` is a client-generated UUID string (not DB autoincrement); POST returns 409 on duplicate
 - `WorkoutSession.exercises` is a JSONB array column — no join table; full exercise+sets data embedded
 - `WorkoutSession.duration` is stored in **milliseconds**
-- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — always upsert via `PUT /api/prs/{exercise_id}`
+- `PersonalRecord` has a unique constraint on `(user_id, exercise_id)` — always upsert via `PUT /api/prs/{exercise_id}`; has `is_cardio` boolean field
 - `Exercise.id` is a short human-readable key (e.g. `"bench"`, `"ohp"`) matching the frontend's `EM` map
+- `User` has `name`, `email` (unique), `gender`, and `primary_color` (nullable `VARCHAR(7)`, e.g. `"#28D1FF"`) — all added via in-place migration in `main.py`
+- `BodyMetric` stores time-series health data: `metric_type`, `value`, `unit`, `date` (ISO string), optional `note`
 
 ### Frontend (`frontend/src/`)
 
-**State and orchestration** — `WorkoutTracker.tsx` is the single stateful root. It owns all app state (auth token, history, PRs, wizard steps, active workout), performs all `authFetch` calls, and passes data/callbacks down. `App.tsx` just renders `<WorkoutTracker />`.
+**State and orchestration** — `WorkoutTracker.tsx` is the single stateful root. It owns all app state (auth token, history, PRs, wizard steps, active workout, `primaryColor`), performs all `authFetch` calls, and passes data/callbacks down. `App.tsx` renders `<SplashScreen />` alongside `<WorkoutTracker />`; both are mounted immediately so the color `useEffect` fires before the splash finishes.
 
 **Wizard flow** (`components/workout/`) — workout creation is a 4-step wizard:
 1. `WizardStart` — show last session summary, prompt to start
@@ -95,6 +99,17 @@ cd backend && python -m app.init_db
 - `types.ts` — all shared TypeScript interfaces
 
 **API calls** are proxied through Vite (`/api` → `http://localhost:8000`) configured in `vite.config.ts`. The `BACKEND_URL` env var overrides the proxy target. Auth token stored in `localStorage` as `"iron_log_token"`; 401 response auto-clears it.
+
+**Theming system** — the entire app is driven by a single CSS custom property `--primary` (default `#28D1FF`). All accent colours, tints, and the PR highlight colour derive from it in CSS:
+- `--accent` = `var(--primary)` — used for interactive elements
+- `--ad` / `--ad2` = `color-mix(in srgb, var(--primary) 11%/22%, transparent)` — tinted backgrounds
+- `--pr` = `var(--primary)` — PR card weight values and badges; used to share the same accent
+- `--pr-muted` = `color-mix(in srgb, var(--primary) 65%, var(--muted))` — secondary PR info (1RM estimates)
+- `--logo-hue-shift` — CSS `hue-rotate` value for the PNG logo; computed as `selectedHue − 193°` (193° is the original cyan hue)
+
+`WorkoutTracker.tsx` manages `primaryColor` state (initialised from `localStorage` key `gamgee_primary_color`) and applies all three variables to `document.documentElement` via a `useEffect`. A small inline `<script>` in `index.html` applies the same variables synchronously from `localStorage` before the first paint, preventing any colour flash during the splash screen.
+
+`ProfileTab.tsx` contains a `ColorPicker` component with 8 preset swatches and a native `<input type="color">` for arbitrary hex values. Selecting a colour calls `PATCH /api/auth/preferences` to persist it, and updates the parent `primaryColor` state immediately (optimistic). The `hexToHue(hex)` utility in `WorkoutTracker.tsx` converts a hex colour to its HSL hue (0–360°).
 
 ### Configuration
 - `.env.example` — default credentials (`gamgee`/`gamgee`/`gamgee` for DB user/password/db)

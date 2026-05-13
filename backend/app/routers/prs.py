@@ -5,6 +5,7 @@ from typing import List
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
+from .buddies import notify_buddy_pr
 
 router = APIRouter(prefix="/prs", tags=["prs"])
 
@@ -70,6 +71,7 @@ def upsert_pr(
         )
         .first()
     )
+    is_new_pr = False
     if db_pr is None:
         db_pr = models.PersonalRecord(
             user_id=current_user.id,
@@ -81,12 +83,19 @@ def upsert_pr(
             is_cardio=pr.isCardio,
         )
         db.add(db_pr)
+        is_new_pr = True
     else:
+        # Only treat as a notable PR when weight/reps actually improved.
+        if pr.weight > db_pr.weight or (pr.weight == db_pr.weight and pr.reps > db_pr.reps):
+            is_new_pr = True
         db_pr.name = pr.name
         db_pr.weight = pr.weight
         db_pr.reps = pr.reps
         db_pr.date = pr.date
         db_pr.is_cardio = pr.isCardio
+    db.flush()
+    if is_new_pr:
+        notify_buddy_pr(db, current_user, db_pr)
     db.commit()
     db.refresh(db_pr)
     return _to_schema(db_pr)
