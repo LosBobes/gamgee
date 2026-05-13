@@ -213,23 +213,15 @@ exactly what `cloudflared` needs.
 
 ## 4. Wiring secrets into Gamgee
 
-### 4.1 The `.env` file on Hetzner
+### 4.1 Where the secrets live
 
-Create `/opt/gamgee/.env` (or wherever your compose project lives) and
-populate it from `.env.example`:
+The production stack reads four SendGrid-related env vars at container
+startup:
 
-```ini
-POSTGRES_USER=gamgee
-POSTGRES_PASSWORD=<long-random-string>
-POSTGRES_DB=gamgee
-
-JWT_SECRET=<64-hex-chars; openssl rand -hex 32>
-
-SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-EMAIL_FROM=no-reply@gamgee.example.com
-EMAIL_FROM_NAME=Gamgee
-APP_BASE_URL=https://gamgee.example.com
-```
+- `SENDGRID_API_KEY`
+- `EMAIL_FROM`
+- `EMAIL_FROM_NAME`
+- `APP_BASE_URL`
 
 `APP_BASE_URL` is **critical** — the backend uses it to build the links it
 puts inside emails. If it points at `localhost` in production, your users
@@ -237,9 +229,51 @@ will click reset links that go nowhere. The domain you set here must match
 the one served by the Cloudflare Tunnel.
 
 The same value is also automatically allowed as a CORS origin (see
-`backend/app/main.py`), so you don't need to maintain a second list. If you
-need additional origins (e.g. a staging domain) set `CORS_EXTRA_ORIGINS=`
-to a comma-separated list.
+`backend/app/main.py`); set `CORS_EXTRA_ORIGINS=` to a comma-separated list
+if you need additional origins.
+
+We use **two layers** of configuration so neither dev secrets nor org
+secrets end up in the wrong place:
+
+| Layer | Source of truth | Used for |
+|---|---|---|
+| `/opt/gamgee/.env` on the Hetzner box | Hand-edited on the server | `POSTGRES_PASSWORD`, `POSTGRES_USER`, `POSTGRES_DB`, `JWT_SECRET` — values that should never leave the host |
+| GitHub **organization secrets** | UI: `Settings → Secrets and variables → Actions → New organization secret` | `SENDGRID_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `APP_BASE_URL` — values the deploy workflow rotates without an SSH session |
+
+`.github/workflows/deploy.yml` forwards the four GitHub secrets through to
+the remote shell via the `appleboy/ssh-action` `envs:` parameter, then
+exports them before running `docker compose up`. Shell env beats compose's
+auto-loaded `.env` for variable substitution, so the secrets land in the
+backend container without ever being written to disk on the box.
+
+If any of the four GitHub secrets is unset, the workflow unsets the
+matching shell var on the box, so compose falls back to whatever the box
+`.env` has (or empty, which puts the backend in log-only email mode).
+
+### 4.2 First-time setup
+
+On the Hetzner box, create `/opt/gamgee/.env` with the values that should
+**not** live in GitHub:
+
+```ini
+POSTGRES_USER=gamgee
+POSTGRES_PASSWORD=<long-random-string>
+POSTGRES_DB=gamgee
+JWT_SECRET=<64-hex-chars; openssl rand -hex 32>
+```
+
+Then add these to your GitHub organization secrets:
+
+```
+SENDGRID_API_KEY  = SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+EMAIL_FROM        = no-reply@gamgee.example.com
+EMAIL_FROM_NAME   = Gamgee
+APP_BASE_URL      = https://gamgee.example.com
+```
+
+Trigger a deploy (push to `main` or **Actions → Deploy to Hetzner → Run
+workflow**). To rotate the API key later, update only the GitHub secret
+and re-run the workflow — no SSH needed.
 
 ### 4.2 Bring up the stack
 
@@ -318,14 +352,19 @@ user's mailbox is dead.
 ## 7. Rotating the API key
 
 1. In SendGrid → API Keys → **Create API Key** with the same `Mail Send` scope.
-2. Update `SENDGRID_API_KEY` in `/opt/gamgee/.env`.
-3. `docker compose -f docker-compose.prod.yml restart backend`.
+2. In GitHub → org **Settings → Secrets and variables → Actions** → update
+   `SENDGRID_API_KEY` to the new value.
+3. **Actions → Deploy to Hetzner → Run workflow** (or push to `main`). The
+   workflow forwards the new secret into the compose call and the backend
+   container picks it up automatically.
 4. Verify by sending one of the test emails above.
 5. **Then** delete the old key in SendGrid.
 
 Doing the order above means there's no window where the backend has no
 valid key — important if you're rotating because the old one leaked, not
-on a fixed cadence.
+on a fixed cadence. The old container only stops once the new one passes
+its health check, so a bad rotation can be rolled back with `git revert`
+of the deploy commit + a fresh workflow run.
 
 ---
 
