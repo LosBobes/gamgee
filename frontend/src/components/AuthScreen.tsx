@@ -290,7 +290,6 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
     <div className="wt-auth-screen tab-anim">
       <div className="auth-shell">
         <section className="auth-hero" aria-labelledby="auth-hero-title">
-          <div className="auth-hero-logo" role="img" aria-label="Gamgee" />
           <h1 id="auth-hero-title" className="auth-hero-title">GAMGEE</h1>
           <p className="auth-hero-tagline">
             Your strength training companion — log workouts, track personal records,
