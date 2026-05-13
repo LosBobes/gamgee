@@ -120,28 +120,30 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
-          {notifBell}
-          <button className="logout-btn hdr-help-btn" onClick={openHelp} title={t("Help & tour", "Help & tour", "Help & tour")}>
-            <HelpCircle size={15} />
-            <span className="logout-label">Help</span>
-          </button>
-          {isAdmin && (
-            <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
-              <Shield size={15} />
-              <span className="logout-label">Admin</span>
-            </a>
-          )}
-          <button className="logout-btn" onClick={onLogout} title="Logout">
-            <LogOut size={15} />
-            <span className="logout-label">Logout</span>
-          </button>
-          <button
-            className={`hamburger-btn${menuOpen ? " open" : ""}`}
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="hdr-actions">
+            {notifBell}
+            <button className="logout-btn hdr-help-btn" onClick={openHelp} title={t("Help & tour", "Help & tour", "Help & tour")}>
+              <HelpCircle size={15} />
+              <span className="logout-label">Help</span>
+            </button>
+            {isAdmin && (
+              <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
+                <Shield size={15} />
+                <span className="logout-label">Admin</span>
+              </a>
+            )}
+            <button className="logout-btn" onClick={onLogout} title="Logout">
+              <LogOut size={15} />
+              <span className="logout-label">Logout</span>
+            </button>
+            <button
+              className={`hamburger-btn${menuOpen ? " open" : ""}`}
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
         <div className="tabs">
           {tabs.filter(t => !t.inMenuOnly).map(({ key, Icon, label, badge }) => (
