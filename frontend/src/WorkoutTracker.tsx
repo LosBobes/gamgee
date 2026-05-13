@@ -688,7 +688,9 @@ export default function WorkoutTracker({
           {verifyMsg && <small className={`verify-banner-msg ${verifyMsgKind === "ok" ? "ok" : "warn"}`}>{verifyMsg}</small>}
         </div>
       )}
-      <div className="content">
+      <div className={`content${
+        ["chat", "coaching", "trainees", "regimes"].includes(tab) ? " content-wide" : ""
+      }`}>
         {completed && (
           <WorkoutComplete session={completed} onDone={dismissCompleted} />
         )}
@@ -745,6 +747,8 @@ export default function WorkoutTracker({
             activeConvId={activeConvId}
             setActiveConvId={setActiveConvId}
             currentUserId={currentUserId}
+            buddies={buddies}
+            trainerLinks={trainerLinks}
           />
         )}
         {!completed && tab === "coaching" && (

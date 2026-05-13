@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Send, MessageSquarePlus, GraduationCap, Users, ArrowLeft } from "lucide-react";
-import type { ChatMessage, Conversation } from "../../types";
+import type { ChatMessage, Conversation, Buddy, TrainerLink } from "../../types";
 import { fmtDate } from "../../utils";
 
 interface Props {
@@ -10,24 +10,74 @@ interface Props {
   activeConvId: number | null;
   setActiveConvId: (id: number | null) => void;
   currentUserId: number | null;
+  buddies: Buddy[];
+  trainerLinks: TrainerLink[];
+}
+
+type ContactKind = "buddy" | "coach" | "trainee";
+interface Contact {
+  username: string;
+  name: string | null;
+  primary_color: string | null;
+  kind: ContactKind;
 }
 
 export default function ChatTab({
   authFetch, conversations, refreshConversations,
   activeConvId, setActiveConvId, currentUserId,
+  buddies, trainerLinks,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [newConvOpen, setNewConvOpen] = useState(false);
-  const [newConvName, setNewConvName] = useState("");
+  const [newConvQuery, setNewConvQuery] = useState("");
   const [newConvErr, setNewConvErr] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   const activeConv = useMemo(
     () => conversations.find(c => c.id === activeConvId) ?? null,
     [conversations, activeConvId]
   );
+
+  // Build a deduped, sorted list of chat-able contacts: accepted buddies + accepted coaches/trainees.
+  const contacts = useMemo<Contact[]>(() => {
+    const map = new Map<string, Contact>();
+    for (const b of buddies) {
+      if (b.status !== "accepted") continue;
+      map.set(b.username, {
+        username: b.username,
+        name: b.name,
+        primary_color: b.primary_color,
+        kind: "buddy",
+      });
+    }
+    for (const l of trainerLinks) {
+      if (l.status !== "accepted") continue;
+      // role "trainee" = this user is the trainee; the other side is the coach
+      const kind: ContactKind = l.role === "trainee" ? "coach" : "trainee";
+      // Coach/trainee labelling wins over buddy if both apply
+      map.set(l.other_username, {
+        username: l.other_username,
+        name: l.other_name,
+        primary_color: l.other_primary_color,
+        kind,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      (a.name || a.username).localeCompare(b.name || b.username)
+    );
+  }, [buddies, trainerLinks]);
+
+  const filteredContacts = useMemo(() => {
+    const q = newConvQuery.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter(c =>
+      c.username.toLowerCase().includes(q) ||
+      (c.name || "").toLowerCase().includes(q)
+    );
+  }, [contacts, newConvQuery]);
 
   // Load thread when activeConv changes
   useEffect(() => {
@@ -39,7 +89,6 @@ export default function ChatTab({
         if (!r.ok) return;
         const data: ChatMessage[] = await r.json();
         if (!cancelled) setMessages(data);
-        // Mark read after loading
         authFetch(`/api/chat/conversations/${activeConvId}/read`, { method: "POST" })
           .then(() => refreshConversations()).catch(() => {});
       } catch { /* ignore */ }
@@ -47,20 +96,15 @@ export default function ChatTab({
     return () => { cancelled = true; };
   }, [activeConvId, authFetch, refreshConversations]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     const el = scrollerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
-  // Listen for inbound messages — refetch when the conversation list changes
-  // (the parent updates conversations on every chat SSE event).
   useEffect(() => {
     if (!activeConvId) return;
     const conv = conversations.find(c => c.id === activeConvId);
     if (!conv) return;
-    // Refetch messages whenever last_message_at moves forward beyond the last
-    // message we know about.
     const lastKnown = messages[messages.length - 1]?.created_at ?? 0;
     if (conv.last_message_at > lastKnown) {
       authFetch(`/api/chat/conversations/${activeConvId}/messages?limit=80`)
@@ -97,15 +141,15 @@ export default function ChatTab({
     }
   };
 
-  const openConversation = async () => {
+  const openConversationWith = async (username: string) => {
+    if (!username.trim() || opening) return;
+    setOpening(true);
     setNewConvErr(null);
-    const username = newConvName.trim();
-    if (!username) return;
     try {
       const r = await authFetch("/api/chat/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({ username: username.trim() }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
@@ -116,50 +160,101 @@ export default function ChatTab({
       await refreshConversations();
       setActiveConvId(conv.id);
       setNewConvOpen(false);
-      setNewConvName("");
+      setNewConvQuery("");
     } catch {
       setNewConvErr("Network error");
+    } finally {
+      setOpening(false);
     }
   };
 
-  // Layout: split list/thread. On mobile, when activeConvId is set, show only thread.
   const showList = activeConvId == null;
+  const kindLabel: Record<ContactKind, string> = {
+    buddy: "Buddy",
+    coach: "Coach",
+    trainee: "Trainee",
+  };
 
   return (
-    <div className="chat-tab" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
-      <div className="chat-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1 }}>CHAT</h2>
-        <button className="btn-sec" onClick={() => setNewConvOpen(true)}>
+    <div className="chat-tab tab-anim">
+      <div className="chat-header">
+        <h2 className="chat-title">CHAT</h2>
+        <button className="btn-sec" onClick={() => setNewConvOpen(v => !v)}>
           <MessageSquarePlus size={14} /> New chat
         </button>
       </div>
 
       {newConvOpen && (
-        <div className="card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            Open a chat with a buddy or trainer/trainee by their username.
+        <div className="card chat-newconv">
+          <div className="chat-newconv-hint">
+            Pick a buddy or coach below, or type any username.
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="chat-newconv-input-row">
             <input
               autoFocus
-              value={newConvName}
-              onChange={e => setNewConvName(e.target.value)}
-              placeholder="username"
-              onKeyDown={e => { if (e.key === "Enter") openConversation(); }}
-              style={{ flex: 1 }}
+              value={newConvQuery}
+              onChange={e => setNewConvQuery(e.target.value)}
+              placeholder="Search by name or username…"
+              onKeyDown={e => {
+                if (e.key === "Enter") {
+                  // If exactly one filtered result, open them. Else use raw text.
+                  if (filteredContacts.length === 1) openConversationWith(filteredContacts[0].username);
+                  else openConversationWith(newConvQuery);
+                }
+                if (e.key === "Escape") setNewConvOpen(false);
+              }}
             />
-            <button className="btn-pri" onClick={openConversation} disabled={!newConvName.trim()}>Open</button>
-            <button className="btn-sec" onClick={() => { setNewConvOpen(false); setNewConvErr(null); }}>Cancel</button>
+            <button
+              className="btn-pri"
+              onClick={() => openConversationWith(newConvQuery)}
+              disabled={!newConvQuery.trim() || opening}
+            >
+              Open
+            </button>
           </div>
-          {newConvErr && <div style={{ color: "var(--red)", fontSize: 12 }}>{newConvErr}</div>}
+          <div className="chat-suggestions">
+            {filteredContacts.length === 0 && (
+              <div className="chat-suggestions-empty">
+                {contacts.length === 0
+                  ? "No buddies or coaches yet. Add buddies from the Buddies tab, or type a username above."
+                  : "No matches. Press Enter to open by username anyway."}
+              </div>
+            )}
+            {filteredContacts.map(c => (
+              <button
+                key={c.username}
+                className="chat-suggestion"
+                onClick={() => openConversationWith(c.username)}
+                disabled={opening}
+              >
+                <span
+                  className="chat-avatar chat-avatar-sm"
+                  style={{ background: c.primary_color || "var(--accent)" }}
+                >
+                  {(c.name || c.username).slice(0, 1).toUpperCase()}
+                </span>
+                <span className="chat-suggestion-main">
+                  <span className="chat-suggestion-name">{c.name || c.username}</span>
+                  <span className="chat-suggestion-meta">@{c.username}</span>
+                </span>
+                <span className={`chat-kind-tag chat-kind-${c.kind}`}>
+                  {c.kind === "coach" || c.kind === "trainee"
+                    ? <GraduationCap size={11} />
+                    : <Users size={11} />}
+                  {kindLabel[c.kind]}
+                </span>
+              </button>
+            ))}
+          </div>
+          {newConvErr && <div className="chat-err">{newConvErr}</div>}
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: showList ? "1fr" : "minmax(0, 1fr)", gap: 12, minHeight: 360 }}>
+      <div className={`chat-shell ${showList ? "chat-shell-list" : "chat-shell-thread"}`}>
         {showList ? (
-          <div className="card" style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="card chat-list">
             {conversations.length === 0 && (
-              <div style={{ padding: 16, color: "var(--muted)", textAlign: "center" }}>
+              <div className="chat-list-empty">
                 No chats yet. Tap “New chat” to message a buddy or your coach.
               </div>
             )}
@@ -168,104 +263,74 @@ export default function ChatTab({
                 key={c.id}
                 className="chat-row"
                 onClick={() => setActiveConvId(c.id)}
-                style={{
-                  display: "flex", alignItems: "center", gap: 10, padding: "10px 12px",
-                  background: "transparent", border: "1px solid var(--ad)", borderRadius: 10,
-                  textAlign: "left", cursor: "pointer", color: "inherit",
-                }}
               >
-                <div
-                  style={{
-                    width: 36, height: 36, borderRadius: "50%",
-                    background: c.other_primary_color || "var(--accent)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "#000", fontWeight: 700,
-                  }}
+                <span
+                  className="chat-avatar"
+                  style={{ background: c.other_primary_color || "var(--accent)" }}
                 >
                   {(c.other_name || c.other_username || "?").slice(0, 1).toUpperCase()}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {c.other_name || c.other_username}
-                    </strong>
+                </span>
+                <span className="chat-row-main">
+                  <span className="chat-row-name">
+                    <strong>{c.other_name || c.other_username}</strong>
                     {c.kind === "coach" && (
-                      <span title="Coaching channel" style={{ color: "var(--accent)" }}>
+                      <span className="chat-row-icon" title="Coaching channel">
                         <GraduationCap size={12} />
                       </span>
                     )}
                     {c.kind === "dm" && (
-                      <span title="Peer DM" style={{ color: "var(--muted)" }}>
+                      <span className="chat-row-icon chat-row-icon-muted" title="Peer DM">
                         <Users size={12} />
                       </span>
                     )}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  </span>
+                  <span className="chat-row-preview">
                     {c.last_message_preview || <em>No messages yet</em>}
-                  </div>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  </span>
+                </span>
+                <span className="chat-row-meta">
                   {c.last_message_at > 0 && (
-                    <small style={{ color: "var(--muted)" }}>{fmtDate(new Date(c.last_message_at).toISOString())}</small>
+                    <small className="chat-row-time">
+                      {fmtDate(new Date(c.last_message_at).toISOString())}
+                    </small>
                   )}
                   {c.unread_count > 0 && (
-                    <span className="tab-badge" style={{ background: "var(--accent)", color: "#000" }}>
-                      {c.unread_count}
-                    </span>
+                    <span className="chat-row-unread">{c.unread_count}</span>
                   )}
-                </div>
+                </span>
               </button>
             ))}
           </div>
         ) : (
-          <div className="card" style={{ padding: 0, display: "flex", flexDirection: "column", minHeight: 480 }}>
-            <div style={{ padding: "10px 12px", borderBottom: "1px solid var(--ad)", display: "flex", alignItems: "center", gap: 8 }}>
-              <button className="btn-sec" onClick={() => setActiveConvId(null)} aria-label="Back">
-                <ArrowLeft size={14} />
+          <div className="card chat-thread">
+            <div className="chat-thread-header">
+              <button className="chat-back-btn" onClick={() => setActiveConvId(null)} aria-label="Back">
+                <ArrowLeft size={16} />
               </button>
-              <div
-                style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: activeConv?.other_primary_color || "var(--accent)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color: "#000", fontWeight: 700, fontSize: 12,
-                }}
+              <span
+                className="chat-avatar chat-avatar-sm"
+                style={{ background: activeConv?.other_primary_color || "var(--accent)" }}
               >
                 {(activeConv?.other_name || activeConv?.other_username || "?").slice(0, 1).toUpperCase()}
-              </div>
-              <strong>{activeConv?.other_name || activeConv?.other_username}</strong>
+              </span>
+              <strong className="chat-thread-name">{activeConv?.other_name || activeConv?.other_username}</strong>
               {activeConv?.kind === "coach" && (
-                <span title="Coaching channel" style={{ color: "var(--accent)" }}>
+                <span className="chat-row-icon" title="Coaching channel">
                   <GraduationCap size={14} />
                 </span>
               )}
             </div>
-            <div
-              ref={scrollerRef}
-              style={{ flex: 1, padding: "12px 14px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 6, minHeight: 320 }}
-            >
+            <div ref={scrollerRef} className="chat-thread-body">
               {messages.length === 0 && (
-                <div style={{ color: "var(--muted)", textAlign: "center", padding: 16 }}>
-                  Say hi.
-                </div>
+                <div className="chat-thread-empty">Say hi.</div>
               )}
               {messages.map(m => {
                 const mine = currentUserId != null && m.sender_id === currentUserId;
                 return (
-                  <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-                    <div
-                      style={{
-                        maxWidth: "80%",
-                        padding: "8px 10px",
-                        borderRadius: 12,
-                        background: mine ? "var(--accent)" : "var(--ad)",
-                        color: mine ? "#000" : "inherit",
-                        whiteSpace: "pre-wrap",
-                        wordBreak: "break-word",
-                      }}
-                    >
-                      <div style={{ fontSize: 14 }}>{m.body}</div>
-                      <div style={{ fontSize: 10, opacity: 0.7, marginTop: 2 }}>
+                  <div key={m.id} className={`chat-msg-row ${mine ? "mine" : "theirs"}`}>
+                    <div className={`chat-bubble ${mine ? "mine" : "theirs"}`}>
+                      <div className="chat-bubble-body">{m.body}</div>
+                      <div className="chat-bubble-time">
                         {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>
@@ -275,16 +340,16 @@ export default function ChatTab({
             </div>
             <form
               onSubmit={e => { e.preventDefault(); sendMessage(); }}
-              style={{ borderTop: "1px solid var(--ad)", padding: 10, display: "flex", gap: 8 }}
+              className="chat-composer"
             >
               <input
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 placeholder="Type a message…"
-                style={{ flex: 1 }}
                 disabled={sending}
+                className="chat-composer-input"
               />
-              <button className="btn-pri" type="submit" disabled={sending || !input.trim()}>
+              <button className="btn-pri chat-send-btn" type="submit" disabled={sending || !input.trim()}>
                 <Send size={14} />
               </button>
             </form>
