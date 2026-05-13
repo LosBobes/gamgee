@@ -4,6 +4,7 @@ import { WEEK_DAYS, getTodayKey } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
 import { ALL_EX } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   weeklyPlan:  WeeklyPlan | null;
@@ -37,6 +38,14 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
           "Stick to the program or go off-script. Either way, we serve."
         )}
       </div>
+
+      <OnboardingHint hintKey="mode" title={t("One-off or weekly plan?", "Pick the vibe", "Pick the vibe")}>
+        {t(
+          "One-off builds a single workout for today. A weekly plan repeats the same routine on the same days — set it up once and we'll auto-load it.",
+          "One-off is a workout for today only. Weekly plan locks in the same routine on the same days — set once, auto-load forever.",
+          "One-off = workout for today only. Weekly plan = same routine on the same days, on repeat. Set once, auto-load forever."
+        )}
+      </OnboardingHint>
 
       {/* Today's active plan */}
       {todayPlan?.enabled && focusDef && (

@@ -12,6 +12,13 @@ interface AdminUser {
   gender: string | null;
   primary_color: string | null;
   is_admin: boolean;
+  is_verified: boolean;
+}
+
+interface ResetResult {
+  mode: "password_set" | "reset_link_sent" | "reset_link_generated";
+  temporary_password?: string | null;
+  reset_link?: string | null;
 }
 
 interface Exercise {
@@ -212,6 +219,7 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
   const [form,    setForm]    = useState<Partial<AdminUser>>({});
   const [saving,  setSaving]  = useState(false);
   const [err,     setErr]     = useState("");
+  const [resetting, setResetting] = useState<AdminUser | null>(null);
 
   useEffect(() => {
     authFetch("/api/admin/users")
@@ -221,7 +229,10 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
 
   const startEdit = (u: AdminUser) => {
     setEditing(u);
-    setForm({ name: u.name ?? "", email: u.email ?? "", gender: u.gender ?? "", is_admin: u.is_admin });
+    setForm({
+      name: u.name ?? "", email: u.email ?? "", gender: u.gender ?? "",
+      is_admin: u.is_admin, is_verified: u.is_verified,
+    });
     setErr("");
   };
 
@@ -257,7 +268,7 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
       <div className="adm-table-wrap">
         <table className="adm-table">
           <thead><tr>
-            <th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Gender</th><th>Admin</th><th></th>
+            <th>ID</th><th>Username</th><th>Name</th><th>Email</th><th>Gender</th><th>Admin</th><th>Verified</th><th></th>
           </tr></thead>
           <tbody>
             {users.map(u => (
@@ -268,8 +279,14 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
                 <td>{u.email ?? <span className="adm-muted">—</span>}</td>
                 <td>{u.gender ?? <span className="adm-muted">—</span>}</td>
                 <td><span className={`adm-badge${u.is_admin ? " adm-badge-admin" : ""}`}>{u.is_admin ? "admin" : "user"}</span></td>
+                <td>
+                  <span className={`adm-badge${u.is_verified ? " adm-badge-verified" : " adm-badge-unverified"}`}>
+                    {u.is_verified ? "verified" : "unverified"}
+                  </span>
+                </td>
                 <td className="adm-actions">
                   <button className="adm-btn-sm" onClick={() => startEdit(u)}>Edit</button>
+                  <button className="adm-btn-sm" onClick={() => setResetting(u)}>Reset PW</button>
                   <button className="adm-btn-sm adm-btn-danger" onClick={() => deleteUser(u)}>Delete</button>
                 </td>
               </tr>
@@ -277,6 +294,14 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
           </tbody>
         </table>
       </div>
+
+      {resetting && (
+        <ResetPasswordModal
+          user={resetting}
+          authFetch={authFetch}
+          onClose={() => setResetting(null)}
+        />
+      )}
 
       {editing && (
         <Modal title={`Edit @${editing.username}`} onClose={() => setEditing(null)}>
@@ -299,6 +324,10 @@ function UsersPage({ authFetch }: { authFetch: AuthFetch }) {
           <label className="adm-checkbox">
             <input type="checkbox" checked={!!form.is_admin} onChange={e => setForm(f => ({ ...f, is_admin: e.target.checked }))} />
             Admin
+          </label>
+          <label className="adm-checkbox">
+            <input type="checkbox" checked={!!form.is_verified} onChange={e => setForm(f => ({ ...f, is_verified: e.target.checked }))} />
+            Email verified
           </label>
           {err && <p className="adm-err">{err}</p>}
           <div className="adm-modal-actions">
@@ -554,6 +583,143 @@ function PRsPage({ authFetch }: { authFetch: AuthFetch }) {
         </table>
       </div>
     </div>
+  );
+}
+
+// ── Admin password reset modal ────────────────────────────────────────────────
+
+function ResetPasswordModal({
+  user, authFetch, onClose,
+}: { user: AdminUser; authFetch: AuthFetch; onClose: () => void }) {
+  const [mode, setMode] = useState<"link" | "password">("link");
+  const [sendEmail, setSendEmail] = useState(true);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [result, setResult] = useState<ResetResult | null>(null);
+
+  const canEmail = !!user.email;
+  const pwOk =
+    pw.length >= 12 && pw.length <= 128 &&
+    /[a-z]/.test(pw) && /[A-Z]/.test(pw) && /\d/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+  const pwMatch = pw === pw2 && pw.length > 0;
+
+  const submit = async () => {
+    setBusy(true); setErr("");
+    try {
+      const body: Record<string, unknown> = { send_email: sendEmail && canEmail };
+      if (mode === "password") {
+        if (!pwOk)   { setErr("Password doesn't meet the policy (12+ chars, mixed case, digit, symbol)."); return; }
+        if (!pwMatch) { setErr("Passwords don't match.");                                                   return; }
+        body.new_password = pw;
+      }
+      const res = await authFetch(`/api/admin/users/${user.id}/reset-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        setErr(typeof detail?.detail === "string" ? detail.detail : "Reset failed");
+        return;
+      }
+      setResult(await res.json());
+    } catch {
+      setErr("Network error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (result) {
+    return (
+      <Modal title={`Password reset · @${user.username}`} onClose={onClose}>
+        {result.mode === "password_set" && (
+          <>
+            <p>The password was set directly. {sendEmail && canEmail ? "An email with the new password has been sent." : "Hand the new password to the user securely."}</p>
+            <p><strong>Temporary password:</strong></p>
+            <pre className="adm-mono adm-pre">{result.temporary_password}</pre>
+            <p className="adm-muted adm-small">Tell the user to change it on next sign-in.</p>
+          </>
+        )}
+        {(result.mode === "reset_link_sent" || result.mode === "reset_link_generated") && (
+          <>
+            <p>
+              {result.mode === "reset_link_sent"
+                ? `A reset link has been emailed to ${user.email}.`
+                : `Reset link generated. Share it with the user securely — they have 60 minutes.`}
+            </p>
+            <pre className="adm-mono adm-pre adm-break">{result.reset_link}</pre>
+          </>
+        )}
+        <div className="adm-modal-actions">
+          <button className="adm-btn-primary" onClick={onClose}>Done</button>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title={`Reset password · @${user.username}`} onClose={onClose}>
+      <div className="adm-field">
+        <label className="adm-radio">
+          <input type="radio" checked={mode === "link"} onChange={() => setMode("link")} />
+          <span>
+            <strong>Send a reset link</strong>{" "}
+            <span className="adm-muted adm-small">(recommended — the user picks their own password)</span>
+          </span>
+        </label>
+        <label className="adm-radio">
+          <input type="radio" checked={mode === "password"} onChange={() => setMode("password")} />
+          <span>
+            <strong>Set a temporary password directly</strong>{" "}
+            <span className="adm-muted adm-small">(useful if the user has no working email)</span>
+          </span>
+        </label>
+      </div>
+
+      {mode === "link" && (
+        <p className="adm-muted adm-small">
+          {canEmail
+            ? `We'll generate a single-use link valid for 60 minutes${sendEmail ? ` and email it to ${user.email}` : " — the URL will be shown so you can deliver it out-of-band"}.`
+            : "This user has no email on file — a link will be generated and shown here for you to share."}
+        </p>
+      )}
+
+      {mode === "password" && (
+        <>
+          <Field label="New password (12+ chars, mixed case, digit, symbol)">
+            <input className="adm-input" type="password" value={pw}  onChange={e => setPw(e.target.value)}  autoComplete="new-password" />
+          </Field>
+          <Field label="Confirm password">
+            <input className="adm-input" type="password" value={pw2} onChange={e => setPw2(e.target.value)} autoComplete="new-password" />
+          </Field>
+          {pw && !pwOk    && <p className="adm-err adm-small">Password doesn't meet policy</p>}
+          {pw2 && !pwMatch && <p className="adm-err adm-small">Passwords don't match</p>}
+        </>
+      )}
+
+      {canEmail && (
+        <label className="adm-checkbox">
+          <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+          Email the user about this reset
+        </label>
+      )}
+
+      {err && <p className="adm-err">{err}</p>}
+
+      <div className="adm-modal-actions">
+        <button
+          className="adm-btn-primary"
+          disabled={busy || (mode === "password" && (!pwOk || !pwMatch))}
+          onClick={submit}
+        >
+          {busy ? "Working…" : mode === "link" ? "Send / generate link" : "Set password"}
+        </button>
+        <button className="adm-btn-ghost" onClick={onClose}>Cancel</button>
+      </div>
+    </Modal>
   );
 }
 

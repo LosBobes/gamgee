@@ -22,16 +22,35 @@ import BuddiesTab from "./components/tabs/BuddiesTab";
 import NotificationsTab from "./components/tabs/NotificationsTab";
 import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
+import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
+import { OnboardingProvider } from "./context/OnboardingContext";
 
 
-export default function WorkoutTracker() {
+interface WorkoutTrackerProps {
+  initialAuthView?: "login" | "register" | "forgot" | "reset" | "verify";
+  initialAuthToken?: string;
+  /** Force the auth screen even when a token is in localStorage (used when
+   *  arriving via a password-reset / email-verify link so the user always sees
+   *  the relevant view first). */
+  forceAuthScreen?: boolean;
+}
+
+export default function WorkoutTracker({
+  initialAuthView,
+  initialAuthToken,
+  forceAuthScreen = false,
+}: WorkoutTrackerProps = {}) {
   // UI
-  const [tab,       setTab]       = useState("workout");
+  const [tab,       setTab]       = useState<string>(() => {
+    const stored = sessionStorage.getItem("gamgee_active_tab");
+    const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile"];
+    return stored && valid.includes(stored) ? stored : "workout";
+  });
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
   const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
@@ -53,6 +72,9 @@ export default function WorkoutTracker() {
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
   const [isAdmin,      setIsAdmin]      = useState(false);
+  const [isVerified,   setIsVerified]   = useState(true);
+  const [verifyMsg,    setVerifyMsg]    = useState<string | null>(null);
+  const [verifyMsgKind, setVerifyMsgKind] = useState<"ok" | "warn">("ok");
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
@@ -102,6 +124,10 @@ export default function WorkoutTracker() {
   }, [toneMode]);
 
   useEffect(() => {
+    sessionStorage.setItem("gamgee_active_tab", tab);
+  }, [tab]);
+
+  useEffect(() => {
     if (!token) return;
     authFetch("/api/workouts")
       .then(r => r.json()).then((data: WorkoutSession[]) => setHistory(data)).catch(() => {});
@@ -112,11 +138,12 @@ export default function WorkoutTracker() {
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean }) => {
+      .then(r => r.json()).then((d: { username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
         setIsAdmin(d.is_admin ?? false);
+        setIsVerified(d.is_verified ?? true);
         if (d.primary_color) setPrimaryColor(d.primary_color);
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -430,6 +457,23 @@ export default function WorkoutTracker() {
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
 
+  const resendVerification = async () => {
+    setVerifyMsg(null);
+    try {
+      const res = await authFetch("/api/auth/resend-verification-me", { method: "POST" });
+      if (res.ok) {
+        setVerifyMsgKind("ok");
+        setVerifyMsg("Verification email sent — check your inbox.");
+      } else {
+        setVerifyMsgKind("warn");
+        setVerifyMsg("Couldn't send the verification email. Try again in a moment.");
+      }
+    } catch {
+      setVerifyMsgKind("warn");
+      setVerifyMsg("Network error while requesting a verification email.");
+    }
+  };
+
   useMobileBackGesture(!!token, () => {
     if (completed)               { setCompleted(null); setTab("history"); return true; }
     if (tab !== "workout")       { setTab("workout"); return true; }
@@ -439,10 +483,21 @@ export default function WorkoutTracker() {
     return false;
   });
 
-  if (!token) return <ToneProvider value={toneMode}><AuthScreen onLogin={setToken} /></ToneProvider>;
+  if (!token || forceAuthScreen)
+    return (
+      <ToneProvider value={toneMode}>
+        <AuthScreen
+          onLogin={setToken}
+          initialView={initialAuthView}
+          initialToken={initialAuthToken}
+        />
+      </ToneProvider>
+    );
 
   return (
   <ToneProvider value={toneMode}>
+    <OnboardingProvider historyLen={history.length}>
+    <OnboardingWelcome />
     <div className="app">
       <AppHeader
         active={active} elapsed={elapsed} wStep={wStep}
@@ -450,6 +505,7 @@ export default function WorkoutTracker() {
         buddyCount={buddies.filter(b => b.status === "accepted").length}
         unreadNotif={unreadCount}
         tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
+        onLogoClick={() => { setTab("workout"); setWStep(0); }}
         onOpenFeedback={() => setFeedbackOpen(true)}
         notifBell={
           <NotificationBell
@@ -465,6 +521,18 @@ export default function WorkoutTracker() {
         }
       />
       {active && <StatsBar exercises={exercises} doneSets={doneSets} />}
+      {!isVerified && (
+        <div className={`verify-banner ${verifyMsgKind === "warn" ? "verify-banner-warn" : ""}`} role="status">
+          <span>
+            Your email isn't verified yet.
+            {email ? <> We sent a confirmation link to <strong>{email}</strong>.</> : null}
+          </span>
+          <button className="verify-banner-btn" onClick={resendVerification}>
+            Resend verification email
+          </button>
+          {verifyMsg && <small className={`verify-banner-msg ${verifyMsgKind === "ok" ? "ok" : "warn"}`}>{verifyMsg}</small>}
+        </div>
+      )}
       <div className="content">
         {completed && (
           <WorkoutComplete session={completed} onDone={dismissCompleted} />
@@ -521,6 +589,7 @@ export default function WorkoutTracker() {
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
     </div>
+    </OnboardingProvider>
   </ToneProvider>
   );
 }

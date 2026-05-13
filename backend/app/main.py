@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
@@ -18,13 +20,30 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100)"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_color VARCHAR(7)"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE"))
+        # is_verified: new column defaults to FALSE for fresh inserts, but
+        # existing users (registered before email verification existed) are
+        # grandfathered in as verified so they don't get locked out.
+        _existing = _conn.execute(text(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='users' AND column_name='is_verified'"
+        )).first()
+        if _existing is None:
+            _conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE"))
+            _conn.execute(text("UPDATE users SET is_verified = TRUE"))
         _conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
 
 app = FastAPI(title="Gamgee API", version="0.1.0", redirect_slashes=False)
 
+_extra_origins = [o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
+_app_base = os.environ.get("APP_BASE_URL", "").strip()
+_allowed_origins = ["http://localhost:5173"]
+if _app_base and _app_base not in _allowed_origins:
+    _allowed_origins.append(_app_base.rstrip("/"))
+_allowed_origins.extend(o for o in _extra_origins if o not in _allowed_origins)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

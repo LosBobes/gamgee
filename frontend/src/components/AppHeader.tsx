@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
+import { useOnboarding } from "../context/OnboardingContext";
 
 interface Props {
   active:       boolean;
@@ -15,16 +16,26 @@ interface Props {
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
+  onLogoClick?: () => void;
   isAdmin?:     boolean;
   notifBell?:   ReactNode;
   onOpenFeedback?: () => void;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell, onOpenFeedback }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, onLogoClick, isAdmin, notifBell, onOpenFeedback }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const t = useTxt();
+  const { openWelcome } = useOnboarding();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
+
+  // Help/tour walks through the workout-wizard flow, so land the user on the
+  // workout home screen first — otherwise the tour overlays don't match what's
+  // visible behind them.
+  const openHelp = () => {
+    onLogoClick?.();
+    openWelcome();
+  };
 
   // `inMenuOnly` tabs don't render in the desktop .tabs row — only in the
   // hamburger drawer. Keeps the top row from getting overcrowded.
@@ -93,35 +104,46 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     <>
       <div className="hdr">
         <div className="hdr-top">
-          <div className="hdr-brand">
+          <button
+            type="button"
+            className="hdr-brand"
+            onClick={onLogoClick}
+            aria-label="Go to start"
+          >
             <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
               <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)", "She's Built That Way")}</div>
             </div>
-          </div>
+          </button>
           {active
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
-          {notifBell}
-          {isAdmin && (
-            <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
-              <Shield size={15} />
-              <span className="logout-label">Admin</span>
-            </a>
-          )}
-          <button className="logout-btn" onClick={onLogout} title="Logout">
-            <LogOut size={15} />
-            <span className="logout-label">Logout</span>
-          </button>
-          <button
-            className={`hamburger-btn${menuOpen ? " open" : ""}`}
-            onClick={() => setMenuOpen(o => !o)}
-            aria-label={menuOpen ? "Close menu" : "Open menu"}
-          >
-            {menuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="hdr-actions">
+            {notifBell}
+            <button className="logout-btn hdr-help-btn" onClick={openHelp} title={t("Help & tour", "Help & tour", "Help & tour")}>
+              <HelpCircle size={15} />
+              <span className="logout-label">Help</span>
+            </button>
+            {isAdmin && (
+              <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
+                <Shield size={15} />
+                <span className="logout-label">Admin</span>
+              </a>
+            )}
+            <button className="logout-btn" onClick={onLogout} title="Logout">
+              <LogOut size={15} />
+              <span className="logout-label">Logout</span>
+            </button>
+            <button
+              className={`hamburger-btn${menuOpen ? " open" : ""}`}
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label={menuOpen ? "Close menu" : "Open menu"}
+            >
+              {menuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
         <div className="tabs">
           {tabs.filter(t => !t.inMenuOnly).map(({ key, Icon, label, badge }) => (
@@ -161,6 +183,13 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
               );
             })}
             <div className="mobile-nav-divider" />
+            <button
+              className="mobile-nav-item"
+              onClick={() => { setMenuOpen(false); openHelp(); }}
+            >
+              <HelpCircle size={18} />
+              <span>Help &amp; tour</span>
+            </button>
             {onOpenFeedback && (
               <button
                 className="mobile-nav-item"
