@@ -73,7 +73,8 @@ export type NotificationKind =
   | "buddy_request" | "buddy_accepted"
   | "workout_done" | "pr_set"
   | "motivate"
-  | "live_started" | "live_joined" | "live_ended";
+  | "live_started" | "live_joined" | "live_ended"
+  | "chat_message" | "trainer_link_request" | "trainer_link_accepted" | "regime_assigned";
 export interface AppNotification {
   id: number;
   kind: NotificationKind;
@@ -107,7 +108,136 @@ export interface LiveSession {
   started_at: number;
   ended_at: number | null;
   owner_sets_done: number;
+  current_exercise_id?: string | null;
+  current_exercise_name?: string | null;
+  current_set_index?: number | null;
+  last_weight?: number | null;
+  last_reps?: number | null;
+  total_sets_planned?: number | null;
+  total_exercises_planned?: number | null;
+  can_see_set_timeline?: boolean;
   participants: LiveParticipant[];
+}
+
+export interface LiveSetEvent {
+  id: number;
+  exercise_id: string;
+  exercise_name: string;
+  set_index: number;
+  weight: number | null;
+  reps: number | null;
+  ts: number;
+}
+
+// ── Trainer / Regime / Chat ────────────────────────────────────────────────
+export interface TrainerPublic {
+  id: number;
+  username: string;
+  name: string | null;
+  primary_color: string | null;
+  trainer_bio: string | null;
+  trainer_specialties: string[] | null;
+  trainer_certifications: string | null;
+  trainer_years_experience: number | null;
+  trainee_count: number;
+  link_status: "none" | "pending_trainer" | "pending_trainee" | "accepted" | "self";
+}
+
+export type TrainerLinkStatus = "pending_trainer" | "pending_trainee" | "accepted";
+export interface TrainerLink {
+  id: number;
+  role: "trainer" | "trainee";
+  other_user_id: number;
+  other_username: string;
+  other_name: string | null;
+  other_primary_color: string | null;
+  other_is_trainer: boolean;
+  status: TrainerLinkStatus;
+  initiator_id: number;
+  note: string | null;
+  created_at: number;
+}
+
+export type RegimeGoal = "strength" | "hypertrophy" | "endurance" | "weight_loss" | "general";
+export type RegimeExperience = "beginner" | "intermediate" | "advanced";
+
+export interface RegimeQuestionnaire {
+  name?: string;
+  goal: RegimeGoal;
+  experience: RegimeExperience;
+  days_per_week: number;
+  focus_areas: string[];
+  avoid_muscles: string[];
+  equipment: string[];
+  include_cardio: boolean;
+}
+
+export interface Regime {
+  id: number;
+  owner_id: number;
+  name: string;
+  description: string | null;
+  goal: RegimeGoal | null;
+  experience: RegimeExperience | null;
+  days_per_week: number;
+  focus_areas: string[];
+  avoid_muscles: string[];
+  equipment: string[];
+  days: Record<string, DayPlan>;
+  is_template: boolean;
+  created_at: number;
+}
+
+export interface RegimeDraft {
+  name: string;
+  description: string | null;
+  goal: RegimeGoal | null;
+  experience: RegimeExperience | null;
+  days_per_week: number;
+  focus_areas: string[];
+  avoid_muscles: string[];
+  equipment: string[];
+  days: Record<string, DayPlan>;
+}
+
+export interface RegimeAssignment {
+  id: number;
+  trainer_id: number;
+  trainer_username: string;
+  trainer_name: string | null;
+  trainee_id: number;
+  trainee_username: string;
+  trainee_name: string | null;
+  regime_id: number;
+  regime: Regime;
+  note: string | null;
+  status: "active" | "accepted" | "revoked";
+  created_at: number;
+}
+
+export type ChatKind = "dm" | "coach";
+export interface Conversation {
+  id: number;
+  kind: ChatKind;
+  other_user_id: number;
+  other_username: string;
+  other_name: string | null;
+  other_primary_color: string | null;
+  other_is_trainer: boolean;
+  last_message_at: number;
+  last_message_preview: string | null;
+  unread_count: number;
+  created_at: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  conversation_id: number;
+  sender_id: number;
+  sender_username: string;
+  sender_name: string | null;
+  body: string;
+  created_at: number;
 }
 // activeMuscles removed — SuggCard uses pre-computed newP/ovP/newS from SuggExercise
 export interface SuggCardProps { ex: SuggExercise; isAdded: boolean; onAdd: () => void; onRemove: () => void; onHover: () => void; onLeave: () => void; }
