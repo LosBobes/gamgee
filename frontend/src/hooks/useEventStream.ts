@@ -3,7 +3,9 @@ import { useEffect, useRef } from "react";
 export type ServerEvent =
   | { type: "notification"; data: { kind?: string } }
   | { type: "buddy"; data: Record<string, unknown> }
-  | { type: "live"; data: { session_id?: string } };
+  | { type: "live"; data: { session_id?: string } }
+  | { type: "chat"; data: { conversation_id?: number } }
+  | { type: "trainer"; data: Record<string, unknown> };
 
 /**
  * Subscribes to ``/api/events/stream`` via Server-Sent Events while ``token``

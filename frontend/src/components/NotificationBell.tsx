@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Bell, Check, Trophy, Zap, Send, UserPlus, Users, Dumbbell } from "lucide-react";
+import { Bell, Check, Trophy, Zap, Send, UserPlus, Users, Dumbbell, MessageSquare, GraduationCap, Calendar } from "lucide-react";
 import type { AppNotification, NotificationKind } from "../types";
 
 interface Props {
@@ -22,6 +22,10 @@ const KIND_ICON: Record<NotificationKind, typeof Bell> = {
   live_started:   Zap,
   live_joined:    Users,
   live_ended:     Zap,
+  chat_message:   MessageSquare,
+  trainer_link_request:  GraduationCap,
+  trainer_link_accepted: GraduationCap,
+  regime_assigned: Calendar,
 };
 
 const KIND_LABEL: Record<NotificationKind, string> = {
@@ -33,6 +37,10 @@ const KIND_LABEL: Record<NotificationKind, string> = {
   live_started:   "Live workout",
   live_joined:    "Joined live",
   live_ended:     "Live ended",
+  chat_message:   "New message",
+  trainer_link_request:  "Coaching request",
+  trainer_link_accepted: "Coaching accepted",
+  regime_assigned: "Plan assigned",
 };
 
 export default function NotificationBell({

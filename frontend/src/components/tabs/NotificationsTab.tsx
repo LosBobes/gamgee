@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, Check, Trash2, Trophy, Zap, Send, UserPlus, Users, Dumbbell,
-  CheckCheck,
+  CheckCheck, MessageSquare, GraduationCap, Calendar,
 } from "lucide-react";
 import type { AppNotification, NotificationKind } from "../../types";
 import { useTxt } from "../../context/ToneContext";
@@ -26,6 +26,10 @@ const KIND_ICON: Record<NotificationKind, typeof Bell> = {
   live_started:   Zap,
   live_joined:    Users,
   live_ended:     Zap,
+  chat_message:   MessageSquare,
+  trainer_link_request:  GraduationCap,
+  trainer_link_accepted: GraduationCap,
+  regime_assigned: Calendar,
 };
 
 const KIND_LABEL: Record<NotificationKind, string> = {
@@ -37,6 +41,10 @@ const KIND_LABEL: Record<NotificationKind, string> = {
   live_started:   "Live workout",
   live_joined:    "Joined live",
   live_ended:     "Live ended",
+  chat_message:   "New message",
+  trainer_link_request:  "Coaching request",
+  trainer_link_accepted: "Coaching accepted",
+  regime_assigned: "Plan assigned",
 };
 
 type Filter = "all" | "unread";
@@ -44,6 +52,7 @@ const KINDS: NotificationKind[] = [
   "workout_done", "pr_set", "motivate",
   "buddy_request", "buddy_accepted",
   "live_started", "live_joined", "live_ended",
+  "chat_message", "trainer_link_request", "trainer_link_accepted", "regime_assigned",
 ];
 
 export default function NotificationsTab({

@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle, GraduationCap, MessagesSquare, Calendar } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 import { useOnboarding } from "../context/OnboardingContext";
@@ -13,6 +13,10 @@ interface Props {
   coachCount:   number;
   buddyCount:   number;
   unreadNotif:  number;
+  unreadChat?:  number;
+  isTrainer?:   boolean;
+  traineeCount?: number;
+  assignmentCount?: number;
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
@@ -22,7 +26,7 @@ interface Props {
   onOpenFeedback?: () => void;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, onLogoClick, isAdmin, notifBell, onOpenFeedback }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, unreadChat = 0, isTrainer = false, traineeCount = 0, assignmentCount = 0, tab, setTab, onLogout, onLogoClick, isAdmin, notifBell, onOpenFeedback }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const t = useTxt();
@@ -44,9 +48,13 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "history",       Icon: ClipboardList, label: "HISTORY",     badge: historyCount || null,    inMenuOnly: false },
     { key: "prs",           Icon: Trophy,        label: "PRs",         badge: prCount || null,         inMenuOnly: false },
     { key: "buddies",       Icon: Users,         label: "BUDDIES",     badge: buddyCount || null,      inMenuOnly: false },
-    { key: "health",        Icon: Heart,         label: "HEALTH",      badge: null,                    inMenuOnly: false },
-    { key: "coach",         Icon: Brain,         label: "COACH",       badge: coachCount || null,      inMenuOnly: false },
-    { key: "exercises",     Icon: Wrench,        label: "EXERCISES",   badge: null,                    inMenuOnly: false },
+    { key: "chat",          Icon: MessagesSquare, label: "CHAT",       badge: unreadChat || null,      inMenuOnly: false },
+    { key: "regimes",       Icon: Calendar,      label: "REGIMES",     badge: assignmentCount || null, inMenuOnly: false },
+    { key: "coaching",      Icon: GraduationCap, label: "COACHING",    badge: null,                    inMenuOnly: !isTrainer },
+    { key: "trainees",      Icon: GraduationCap, label: "TRAINEES",    badge: traineeCount || null,    inMenuOnly: !isTrainer },
+    { key: "health",        Icon: Heart,         label: "HEALTH",      badge: null,                    inMenuOnly: true },
+    { key: "coach",         Icon: Brain,         label: "COACH",       badge: coachCount || null,      inMenuOnly: true },
+    { key: "exercises",     Icon: Wrench,        label: "EXERCISES",   badge: null,                    inMenuOnly: true },
     { key: "notifications", Icon: Bell,          label: "NOTIFICATIONS", badge: unreadNotif || null,   inMenuOnly: true  },
     { key: "profile",       Icon: User,          label: "PROFILE",     badge: null,                    inMenuOnly: false },
   ];
@@ -57,10 +65,13 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
   type MenuEntry = MenuItem | MenuGroup;
   const isGroup = (e: MenuEntry): e is MenuGroup => "items" in e;
 
+  const coachingItems: MenuItem[] = [{ key: "coaching" }, { key: "regimes" }];
+  if (isTrainer) coachingItems.push({ key: "trainees" });
   const menuStructure: MenuEntry[] = [
     { key: "workout" },
     { id: "activity", label: "Activity", items: [{ key: "history" }, { key: "prs" }, { key: "health" }] },
-    { id: "social",   label: "Social",   items: [{ key: "buddies" }, { key: "notifications" }] },
+    { id: "social",   label: "Social",   items: [{ key: "buddies" }, { key: "chat" }, { key: "notifications" }] },
+    { id: "coaching", label: isTrainer ? "Coaching" : "Coaching & Plans", items: coachingItems },
     { id: "tools",    label: "Tools",    items: [{ key: "coach" }, { key: "exercises" }] },
     { key: "profile" },
   ];

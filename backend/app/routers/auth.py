@@ -61,6 +61,34 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     return user
 
 
+@router.post("/register-trainer", response_model=schemas.UserOut, status_code=201)
+def register_trainer(payload: schemas.TrainerCreate, db: Session = Depends(get_db)):
+    """Trainer sign-up flow. Identical to /register but additionally captures
+    the public coaching profile and flips ``is_trainer`` on the new account."""
+    if db.query(models.User).filter(func.lower(models.User.username) == payload.username.lower()).first():
+        raise HTTPException(status_code=400, detail="Username already taken")
+    if db.query(models.User).filter(models.User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    user = models.User(
+        username=payload.username,
+        hashed_password=hash_password(payload.password),
+        name=payload.name,
+        email=payload.email,
+        gender=payload.gender,
+        is_verified=False,
+        is_trainer=True,
+        trainer_bio=payload.bio,
+        trainer_specialties=payload.specialties,
+        trainer_certifications=payload.certifications or None,
+        trainer_years_experience=payload.years_experience,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    _issue_verification_email(db, user)
+    return user
+
+
 @router.post("/login", response_model=schemas.Token)
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # Accept "username or email", case-insensitive, with surrounding whitespace

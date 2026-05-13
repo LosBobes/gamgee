@@ -12,7 +12,17 @@ from ..notifications import create_notification, notify_buddies, now_ms, publish
 router = APIRouter(prefix="/live-sessions", tags=["live"])
 
 
-def _serialize(db: Session, ls: models.LiveSession) -> schemas.LiveSessionOut:
+def _trainer_ids_of(db: Session, user_id: int) -> set[int]:
+    """Accepted trainers of this user (used for live-session visibility)."""
+    return {
+        r.trainer_id for r in
+        db.query(models.TrainerLink.trainer_id)
+        .filter(models.TrainerLink.trainee_id == user_id, models.TrainerLink.status == "accepted")
+        .all()
+    }
+
+
+def _serialize(db: Session, ls: models.LiveSession, viewer_id: int | None = None) -> schemas.LiveSessionOut:
     owner = db.query(models.User).filter(models.User.id == ls.owner_id).first()
     parts = (
         db.query(models.LiveParticipant, models.User)
@@ -20,6 +30,13 @@ def _serialize(db: Session, ls: models.LiveSession) -> schemas.LiveSessionOut:
         .filter(models.LiveParticipant.session_id == ls.id)
         .all()
     )
+    # Set-by-set timeline is visible to the owner and to any trainer of the owner.
+    can_timeline = False
+    if viewer_id is not None:
+        if viewer_id == ls.owner_id:
+            can_timeline = True
+        else:
+            can_timeline = viewer_id in _trainer_ids_of(db, ls.owner_id)
     return schemas.LiveSessionOut(
         id=ls.id, owner_id=ls.owner_id,
         owner_username=owner.username if owner else "",
@@ -28,6 +45,14 @@ def _serialize(db: Session, ls: models.LiveSession) -> schemas.LiveSessionOut:
         focus=ls.focus, note=ls.note, status=ls.status,
         started_at=ls.started_at, ended_at=ls.ended_at,
         owner_sets_done=ls.owner_sets_done,
+        current_exercise_id=ls.current_exercise_id,
+        current_exercise_name=ls.current_exercise_name,
+        current_set_index=ls.current_set_index,
+        last_weight=ls.last_weight,
+        last_reps=ls.last_reps,
+        total_sets_planned=ls.total_sets_planned,
+        total_exercises_planned=ls.total_exercises_planned,
+        can_see_set_timeline=can_timeline,
         participants=[
             schemas.LiveParticipantOut(
                 user_id=u.id, username=u.username, name=u.name,
@@ -41,7 +66,8 @@ def _serialize(db: Session, ls: models.LiveSession) -> schemas.LiveSessionOut:
 
 def _session_audience(db: Session, ls: models.LiveSession) -> set[int]:
     """User ids who should see real-time changes for this live session: the
-    owner, the owner's accepted buddies, and anyone who has joined."""
+    owner, the owner's accepted buddies, any trainer of the owner, and anyone
+    who has joined."""
     buddy_ids = {
         row.user_id for row in
         db.query(models.Buddy.user_id)
@@ -54,19 +80,26 @@ def _session_audience(db: Session, ls: models.LiveSession) -> set[int]:
         .filter(models.LiveParticipant.session_id == ls.id)
         .all()
     }
-    return {ls.owner_id, *buddy_ids, *participant_ids}
+    trainer_ids = _trainer_ids_of(db, ls.owner_id)
+    return {ls.owner_id, *buddy_ids, *participant_ids, *trainer_ids}
 
 
 def _accessible_session_ids(db: Session, user_id: int) -> set[str]:
-    """Sessions the user can see: owned by them, owned by an accepted buddy,
-    or joined by them."""
+    """Sessions the user can see: owned by them, owned by an accepted buddy
+    or a trainee of theirs, or joined by them."""
     buddy_ids = [
         row.buddy_user_id for row in
         db.query(models.Buddy.buddy_user_id)
         .filter(models.Buddy.user_id == user_id, models.Buddy.status == "accepted")
         .all()
     ]
-    owners = [user_id, *buddy_ids]
+    trainee_ids = [
+        row.trainee_id for row in
+        db.query(models.TrainerLink.trainee_id)
+        .filter(models.TrainerLink.trainer_id == user_id, models.TrainerLink.status == "accepted")
+        .all()
+    ]
+    owners = [user_id, *buddy_ids, *trainee_ids]
     owned = {s.id for s in db.query(models.LiveSession.id).filter(models.LiveSession.owner_id.in_(owners)).all()}
     joined = {p.session_id for p in db.query(models.LiveParticipant.session_id).filter(models.LiveParticipant.user_id == user_id).all()}
     return owned | joined
@@ -86,7 +119,7 @@ def list_active(
         .order_by(models.LiveSession.started_at.desc())
         .all()
     )
-    return [_serialize(db, r) for r in rows]
+    return [_serialize(db, r, viewer_id=current_user.id) for r in rows]
 
 
 @router.post("", response_model=schemas.LiveSessionOut, status_code=201)
@@ -122,7 +155,7 @@ def start_live(
     publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
-    return _serialize(db, ls)
+    return _serialize(db, ls, viewer_id=current_user.id)
 
 
 @router.post("/{session_id}/join", response_model=schemas.LiveSessionOut)
@@ -175,7 +208,7 @@ def join_live(
     publish_live_change(db, _session_audience(db, ls) | {current_user.id}, session_id=ls.id)
     db.commit()
     db.refresh(ls)
-    return _serialize(db, ls)
+    return _serialize(db, ls, viewer_id=current_user.id)
 
 
 @router.post("/{session_id}/progress", response_model=schemas.LiveSessionOut)
@@ -191,6 +224,12 @@ def update_progress(
 
     if ls.owner_id == current_user.id:
         ls.owner_sets_done = body.sets_done
+        # Owner-only rich fields — peers don't get to overwrite the broadcast.
+        data = body.model_dump(exclude_unset=True)
+        for fld in ("current_exercise_id", "current_exercise_name", "current_set_index",
+                    "last_weight", "last_reps", "total_sets_planned", "total_exercises_planned"):
+            if fld in data:
+                setattr(ls, fld, data[fld])
     else:
         part = (
             db.query(models.LiveParticipant)
@@ -207,7 +246,74 @@ def update_progress(
     publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
-    return _serialize(db, ls)
+    return _serialize(db, ls, viewer_id=current_user.id)
+
+
+# ── Set-by-set timeline (trainer audience) ───────────────────────────────────
+
+@router.post("/{session_id}/set", response_model=schemas.LiveSetEventOut, status_code=201)
+def log_set(
+    session_id: str,
+    body: schemas.LiveSetEventCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Log one completed set. Only the session owner can post.
+    Trainers see the full timeline via `GET /set-events`; peers stay on the
+    summary fields (current exercise + last set) carried on the session itself."""
+    ls = db.query(models.LiveSession).filter(models.LiveSession.id == session_id).first()
+    if not ls:
+        raise HTTPException(status_code=404, detail="Live session not found")
+    if ls.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the session owner can log sets")
+    ev = models.LiveSetEvent(
+        session_id=session_id,
+        exercise_id=body.exercise_id, exercise_name=body.exercise_name,
+        set_index=body.set_index, weight=body.weight, reps=body.reps,
+        ts=now_ms(),
+    )
+    db.add(ev)
+    # Keep the summary fields on the session in sync — peers use these.
+    ls.current_exercise_id = body.exercise_id
+    ls.current_exercise_name = body.exercise_name
+    ls.current_set_index = body.set_index
+    ls.last_weight = body.weight
+    ls.last_reps = body.reps
+    publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
+    db.commit()
+    db.refresh(ev)
+    return schemas.LiveSetEventOut(
+        id=ev.id, exercise_id=ev.exercise_id, exercise_name=ev.exercise_name,
+        set_index=ev.set_index, weight=ev.weight, reps=ev.reps, ts=ev.ts,
+    )
+
+
+@router.get("/{session_id}/set-events", response_model=list[schemas.LiveSetEventOut])
+def list_set_events(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    ls = db.query(models.LiveSession).filter(models.LiveSession.id == session_id).first()
+    if not ls:
+        raise HTTPException(status_code=404, detail="Live session not found")
+    is_owner = ls.owner_id == current_user.id
+    is_trainer = current_user.id in _trainer_ids_of(db, ls.owner_id)
+    if not (is_owner or is_trainer):
+        raise HTTPException(status_code=403, detail="Only the owner or their trainer can see the set timeline")
+    events = (
+        db.query(models.LiveSetEvent)
+        .filter(models.LiveSetEvent.session_id == session_id)
+        .order_by(models.LiveSetEvent.ts.asc(), models.LiveSetEvent.id.asc())
+        .all()
+    )
+    return [
+        schemas.LiveSetEventOut(
+            id=ev.id, exercise_id=ev.exercise_id, exercise_name=ev.exercise_name,
+            set_index=ev.set_index, weight=ev.weight, reps=ev.reps, ts=ev.ts,
+        )
+        for ev in events
+    ]
 
 
 @router.post("/{session_id}/end", response_model=schemas.LiveSessionOut)
@@ -241,4 +347,4 @@ def end_live(
     publish_live_change(db, _session_audience(db, ls), session_id=ls.id)
     db.commit()
     db.refresh(ls)
-    return _serialize(db, ls)
+    return _serialize(db, ls, viewer_id=current_user.id)

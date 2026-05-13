@@ -13,7 +13,8 @@ test.beforeEach(async ({ page }) => {
 
 test("can switch between top-level tabs", async ({ page }) => {
   const tabs = page.locator(".tabs .tab");
-  await expect(tabs).toHaveCount(8);
+  // workout, history, prs, buddies, chat, regimes, profile = 7 for a non-trainer
+  await expect(tabs).toHaveCount(7);
 
   await tabs.filter({ hasText: "HISTORY" }).first().click();
   await expect(tabs.filter({ hasText: "HISTORY" }).first()).toHaveClass(/active/);
