@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import "./AdminApp.css";
 
-type Page = "users" | "exercises" | "workouts" | "prs" | "feedback";
+type Page = "users" | "exercises" | "workouts" | "prs" | "feedback" | "quotes" | "tips" | "motions";
 type AuthFetch = (url: string, opts?: RequestInit) => Promise<Response>;
 
 interface AdminUser {
@@ -155,6 +155,9 @@ export default function AdminApp() {
     { key: "workouts",  label: "Workouts"  },
     { key: "prs",       label: "PRs"       },
     { key: "feedback",  label: "Feedback"  },
+    { key: "quotes",    label: "Quotes"    },
+    { key: "tips",      label: "Tips"      },
+    { key: "motions",   label: "Motions"   },
   ];
 
   const currentLabel = NAV.find(n => n.key === page)?.label ?? "";
@@ -199,6 +202,9 @@ export default function AdminApp() {
         {page === "workouts"  && <WorkoutsPage  authFetch={authFetch} />}
         {page === "prs"       && <PRsPage       authFetch={authFetch} />}
         {page === "feedback"  && <FeedbackPage  authFetch={authFetch} />}
+        {page === "quotes"    && <QuotesPage    authFetch={authFetch} />}
+        {page === "tips"      && <TipsPage      authFetch={authFetch} />}
+        {page === "motions"   && <MotionsPage   authFetch={authFetch} />}
       </main>
     </div>
   );
@@ -844,6 +850,388 @@ function FeedbackPage({ authFetch }: { authFetch: AuthFetch }) {
     </div>
   );
 }
+
+// ── Quotes ────────────────────────────────────────────────────────────────────
+// All five quote "buckets" share one editor table. Hero calls use the `line2`
+// field for the second-line accent; other buckets leave it empty. PRO quotes
+// also use `source` for the attribution.
+
+type QuoteBucket = "bro" | "grl" | "pro" | "hero_bro" | "hero_grl";
+
+interface QuoteRow {
+  id: number;
+  bucket: QuoteBucket;
+  text: string;
+  source: string | null;
+  line2: string | null;
+  sort: number;
+}
+
+const BUCKET_LABEL: Record<QuoteBucket, string> = {
+  bro: "Bro", grl: "Girl", pro: "Pro / attribution",
+  hero_bro: "Hero call (bro)", hero_grl: "Hero call (girl)",
+};
+
+function QuotesPage({ authFetch }: { authFetch: AuthFetch }) {
+  const [items,   setItems]   = useState<QuoteRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [bucket,  setBucket]  = useState<QuoteBucket>("bro");
+  const [editing, setEditing] = useState<QuoteRow | null>(null);
+  const [adding,  setAdding]  = useState<boolean>(false);
+  const [form,    setForm]    = useState<{ text: string; source: string; line2: string }>({ text: "", source: "", line2: "" });
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState("");
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    fetch("/api/content/quotes").then(r => r.json()).then(setItems).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const open = (q: QuoteRow | null) => {
+    if (q) {
+      setEditing(q); setAdding(false);
+      setForm({ text: q.text, source: q.source ?? "", line2: q.line2 ?? "" });
+    } else {
+      setEditing(null); setAdding(true);
+      setForm({ text: "", source: "", line2: "" });
+    }
+    setErr("");
+  };
+  const close = () => { setEditing(null); setAdding(false); };
+
+  const save = async () => {
+    setSaving(true); setErr("");
+    const body = {
+      bucket, text: form.text.trim(),
+      source: form.source.trim() || null,
+      line2:  form.line2.trim()  || null,
+      sort: editing?.sort ?? items.filter(i => i.bucket === bucket).length,
+    };
+    try {
+      const res = editing
+        ? await authFetch(`/api/content/quotes/${editing.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        : await authFetch("/api/content/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) { setErr(`Save failed: ${res.status}`); return; }
+      close(); refresh();
+    } finally { setSaving(false); }
+  };
+
+  const del = async (q: QuoteRow) => {
+    if (!confirm("Delete this quote? Cannot be undone.")) return;
+    const res = await authFetch(`/api/content/quotes/${q.id}`, { method: "DELETE" });
+    if (res.ok) setItems(prev => prev.filter(i => i.id !== q.id));
+  };
+
+  if (loading) return <div className="adm-center">Loading…</div>;
+
+  const filtered = items.filter(i => i.bucket === bucket);
+
+  return (
+    <div className="adm-page">
+      <div className="adm-page-header">
+        <h1 className="adm-page-title">Quotes ({items.length})</h1>
+        <button className="adm-btn-primary" onClick={() => open(null)}>+ New quote</button>
+      </div>
+
+      <div className="adm-filter-bar">
+        {(Object.keys(BUCKET_LABEL) as QuoteBucket[]).map(b => (
+          <button key={b}
+            className={`adm-filter-btn${bucket === b ? " active" : ""}`}
+            onClick={() => setBucket(b)}>
+            {BUCKET_LABEL[b]} ({items.filter(i => i.bucket === b).length})
+          </button>
+        ))}
+      </div>
+
+      <table className="adm-table">
+        <thead>
+          <tr>
+            <th style={{ width: 60 }}>#</th>
+            <th>Text</th>
+            {bucket === "pro" && <th style={{ width: 180 }}>Source</th>}
+            {(bucket === "hero_bro" || bucket === "hero_grl") && <th style={{ width: 180 }}>Line 2</th>}
+            <th style={{ width: 140 }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {filtered.map((q, i) => (
+            <tr key={q.id}>
+              <td>{i + 1}</td>
+              <td style={{ whiteSpace: "pre-wrap" }}>{q.text}</td>
+              {bucket === "pro" && <td>{q.source ?? ""}</td>}
+              {(bucket === "hero_bro" || bucket === "hero_grl") && <td>{q.line2 ?? ""}</td>}
+              <td>
+                <button className="adm-btn-ghost" onClick={() => open(q)}>Edit</button>
+                <button className="adm-btn-danger" onClick={() => del(q)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {(editing || adding) && (
+        <Modal title={editing ? "Edit quote" : `New ${BUCKET_LABEL[bucket]} quote`} onClose={close}>
+          <Field label="Text">
+            <textarea className="adm-input" rows={3} value={form.text}
+              onChange={e => setForm(f => ({ ...f, text: e.target.value }))} />
+          </Field>
+          {bucket === "pro" && (
+            <Field label="Source (attribution)">
+              <input className="adm-input" value={form.source}
+                onChange={e => setForm(f => ({ ...f, source: e.target.value }))} />
+            </Field>
+          )}
+          {(bucket === "hero_bro" || bucket === "hero_grl") && (
+            <Field label="Line 2 (accent)">
+              <input className="adm-input" value={form.line2}
+                onChange={e => setForm(f => ({ ...f, line2: e.target.value }))} />
+            </Field>
+          )}
+          {err && <p className="adm-err">{err}</p>}
+          <div className="adm-modal-actions">
+            <button className="adm-btn-ghost" onClick={close} disabled={saving}>Cancel</button>
+            <button className="adm-btn-primary" onClick={save} disabled={saving || !form.text.trim()}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+
+// ── Tips ──────────────────────────────────────────────────────────────────────
+
+interface TipRow {
+  id: string;
+  icon: string;
+  title: string;
+  body: string;
+  body_bro: string | null;
+  body_grl: string | null;
+  sort: number;
+}
+
+function TipsPage({ authFetch }: { authFetch: AuthFetch }) {
+  const [items,   setItems]   = useState<TipRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<TipRow | null>(null);
+  const [adding,  setAdding]  = useState(false);
+  const [form,    setForm]    = useState<TipRow>({ id: "", icon: "Target", title: "", body: "", body_bro: "", body_grl: "", sort: 0 });
+  const [saving,  setSaving]  = useState(false);
+  const [err,     setErr]     = useState("");
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    fetch("/api/content/tips").then(r => r.json()).then(setItems).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const open = (t: TipRow | null) => {
+    if (t) {
+      setEditing(t); setAdding(false);
+      setForm({ ...t, body_bro: t.body_bro ?? "", body_grl: t.body_grl ?? "" });
+    } else {
+      setEditing(null); setAdding(true);
+      setForm({ id: "", icon: "Target", title: "", body: "", body_bro: "", body_grl: "", sort: items.length });
+    }
+    setErr("");
+  };
+  const close = () => { setEditing(null); setAdding(false); };
+
+  const save = async () => {
+    setSaving(true); setErr("");
+    try {
+      let res: Response;
+      if (editing) {
+        const { id: _id, ...patch } = form;
+        void _id;
+        res = await authFetch(`/api/content/tips/${editing.id}`, {
+          method: "PATCH", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...patch, body_bro: patch.body_bro || null, body_grl: patch.body_grl || null }),
+        });
+      } else {
+        res = await authFetch("/api/content/tips", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...form, body_bro: form.body_bro || null, body_grl: form.body_grl || null }),
+        });
+      }
+      if (!res.ok) { setErr(`Save failed: ${res.status}`); return; }
+      close(); refresh();
+    } finally { setSaving(false); }
+  };
+
+  const del = async (t: TipRow) => {
+    if (!confirm("Delete this tip?")) return;
+    const res = await authFetch(`/api/content/tips/${t.id}`, { method: "DELETE" });
+    if (res.ok) setItems(prev => prev.filter(i => i.id !== t.id));
+  };
+
+  if (loading) return <div className="adm-center">Loading…</div>;
+
+  return (
+    <div className="adm-page">
+      <div className="adm-page-header">
+        <h1 className="adm-page-title">Coaching tips ({items.length})</h1>
+        <button className="adm-btn-primary" onClick={() => open(null)}>+ New tip</button>
+      </div>
+
+      <table className="adm-table">
+        <thead>
+          <tr>
+            <th style={{ width: 120 }}>ID</th>
+            <th style={{ width: 100 }}>Icon</th>
+            <th style={{ width: 180 }}>Title</th>
+            <th>Body</th>
+            <th style={{ width: 140 }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(t => (
+            <tr key={t.id}>
+              <td><code>{t.id}</code></td>
+              <td>{t.icon}</td>
+              <td>{t.title}</td>
+              <td style={{ whiteSpace: "pre-wrap" }}>{t.body}</td>
+              <td>
+                <button className="adm-btn-ghost" onClick={() => open(t)}>Edit</button>
+                <button className="adm-btn-danger" onClick={() => del(t)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {(editing || adding) && (
+        <Modal title={editing ? `Edit tip — ${editing.id}` : "New tip"} onClose={close}>
+          {adding && (
+            <Field label="ID (unique, lowercase_with_underscores)">
+              <input className="adm-input" value={form.id}
+                onChange={e => setForm(f => ({ ...f, id: e.target.value }))} />
+            </Field>
+          )}
+          <Field label="Icon (lucide name, e.g. Timer, Beef, Target)">
+            <input className="adm-input" value={form.icon}
+              onChange={e => setForm(f => ({ ...f, icon: e.target.value }))} />
+          </Field>
+          <Field label="Title">
+            <input className="adm-input" value={form.title}
+              onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          </Field>
+          <Field label="Body (default tone)">
+            <textarea className="adm-input" rows={3} value={form.body}
+              onChange={e => setForm(f => ({ ...f, body: e.target.value }))} />
+          </Field>
+          <Field label="Body — bro tone (optional)">
+            <textarea className="adm-input" rows={3} value={form.body_bro ?? ""}
+              onChange={e => setForm(f => ({ ...f, body_bro: e.target.value }))} />
+          </Field>
+          <Field label="Body — girl tone (optional)">
+            <textarea className="adm-input" rows={3} value={form.body_grl ?? ""}
+              onChange={e => setForm(f => ({ ...f, body_grl: e.target.value }))} />
+          </Field>
+          {err && <p className="adm-err">{err}</p>}
+          <div className="adm-modal-actions">
+            <button className="adm-btn-ghost" onClick={close} disabled={saving}>Cancel</button>
+            <button className="adm-btn-primary" onClick={save} disabled={saving || !form.title || !form.body || (adding && !form.id)}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+
+// ── Motions ───────────────────────────────────────────────────────────────────
+// A directory of every saved animation, with links into the existing
+// /exercise-graphics/editor for the actual keyframe editing.
+
+interface MotionRow {
+  exercise_id: string;
+  name: string;
+  category: string | null;
+  duration: number | null;
+  bench: boolean;
+  floor: boolean;
+  rig: { feet?: string; arm2?: string; leg2?: string };
+  frames: unknown[];
+}
+
+function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
+  const [items,   setItems]   = useState<MotionRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    fetch("/api/content/motions").then(r => r.json()).then(setItems).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const del = async (m: MotionRow) => {
+    if (!confirm(`Delete ${m.name}? Frontend will fall back to the bundled default until re-saved.`)) return;
+    const res = await authFetch(`/api/content/motions/${m.exercise_id}`, { method: "DELETE" });
+    if (res.ok) setItems(prev => prev.filter(i => i.exercise_id !== m.exercise_id));
+  };
+
+  if (loading) return <div className="adm-center">Loading…</div>;
+
+  return (
+    <div className="adm-page">
+      <div className="adm-page-header">
+        <h1 className="adm-page-title">Motion animations ({items.length})</h1>
+        <a className="adm-btn-primary" href="/exercise-graphics" target="_blank" rel="noreferrer">
+          Open gallery →
+        </a>
+      </div>
+      <p style={{ color: "var(--muted)", marginTop: 0 }}>
+        Each row is one stick-figure animation persisted in the database. Use the in-app keyframe editor (link below)
+        to drag joints; saving from there writes back to this table.
+      </p>
+
+      <table className="adm-table">
+        <thead>
+          <tr>
+            <th style={{ width: 140 }}>ID</th>
+            <th>Name</th>
+            <th style={{ width: 90 }}>Category</th>
+            <th style={{ width: 80 }}>Duration</th>
+            <th style={{ width: 70 }}>Frames</th>
+            <th style={{ width: 90 }}>Bench</th>
+            <th style={{ width: 90 }}>Floor</th>
+            <th style={{ width: 200 }}>Rig</th>
+            <th style={{ width: 180 }}>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map(m => (
+            <tr key={m.exercise_id}>
+              <td><code>{m.exercise_id}</code></td>
+              <td>{m.name}</td>
+              <td>{m.category ?? "—"}</td>
+              <td>{m.duration ? `${m.duration}ms` : "—"}</td>
+              <td>{m.frames.length}</td>
+              <td>{m.bench ? "yes" : "—"}</td>
+              <td>{m.floor ? "yes" : "—"}</td>
+              <td style={{ fontSize: 11 }}>
+                feet:{m.rig?.feet ?? "oval"} · arm2:{m.rig?.arm2 ?? "none"} · leg2:{m.rig?.leg2 ?? "none"}
+              </td>
+              <td>
+                <a className="adm-btn-ghost" href={`/exercise-editor?id=${m.exercise_id}`}
+                   target="_blank" rel="noreferrer">Edit keyframes</a>
+                <button className="adm-btn-danger" onClick={() => del(m)}>Delete</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
 

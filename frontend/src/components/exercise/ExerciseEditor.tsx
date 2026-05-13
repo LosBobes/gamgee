@@ -9,8 +9,17 @@ import {
 import ExerciseAnimation, { type Frame } from "./ExerciseAnimation";
 import { MOTIONS, type ExerciseMotion } from "../../data/exerciseMotions";
 import {
-  clearOverride, exportMotionAsTs, loadAllMotions, saveOverride,
+  exportMotionAsTs, loadAllMotions, refreshMotions, saveMotion, deleteMotionRow,
 } from "../../data/motionStorage";
+
+// Token persistence matches WorkoutTracker.tsx — keep in sync.
+const TOKEN_KEY = "iron_log_token";
+function authFetch(url: string, opts: RequestInit = {}): Promise<Response> {
+  const token = localStorage.getItem(TOKEN_KEY);
+  const headers = new Headers(opts.headers || {});
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(url, { ...opts, headers });
+}
 
 // Keyframe editor — drag joints with the mouse, scrub through the cycle,
 // add/delete frames, then save to localStorage. The /exercise-graphics demo
@@ -41,6 +50,16 @@ export default function ExerciseEditor() {
   const [previewT, setPreviewT] = useState<number>(0);  // 0..1 along the cycle
   const [playing, setPlaying] = useState<boolean>(false);
   const [dirty, setDirty] = useState<boolean>(false);
+  const [saving, setSaving] = useState<boolean>(false);
+
+  // Pull the latest motions from the backend on mount so the snapshot above
+  // gets upgraded as soon as the network responds.
+  useEffect(() => {
+    void refreshMotions().then(() => {
+      setMotion(clone(loadAllMotions()[exerciseId]));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reload baseline when the exercise selection changes.
   useEffect(() => {
@@ -162,14 +181,30 @@ export default function ExerciseEditor() {
   };
 
   // ── Persistence ──────────────────────────────────────────────────────────
-  const save = () => {
-    saveOverride(exerciseId, motion);
-    setDirty(false);
+  const save = async () => {
+    setSaving(true);
+    try {
+      await saveMotion(authFetch, exerciseId, motion);
+      setDirty(false);
+      flashToast("Saved to server");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Save failed";
+      flashToast(msg.includes("401") || msg.includes("403")
+        ? "Save failed — admin login required"
+        : "Save failed — see console");
+      console.error("saveMotion failed:", err);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const revertToBaseline = () => {
-    if (!confirm("Discard your edits for this exercise and restore the bundled keyframes?")) return;
-    clearOverride(exerciseId);
+  const revertToBaseline = async () => {
+    if (!confirm("Delete the server motion and restore the bundled defaults? This affects every user.")) return;
+    try {
+      await deleteMotionRow(authFetch, exerciseId);
+    } catch (err) {
+      console.warn("deleteMotion: ignoring (row may not exist):", err);
+    }
     const fresh = clone(MOTIONS[exerciseId] ?? motion);
     setMotion(fresh);
     setSelectedFrame(0);
@@ -231,8 +266,8 @@ export default function ExerciseEditor() {
               ))}
           </select>
 
-          <button type="button" onClick={save} disabled={!dirty} style={primaryBtn(dirty)}>
-            <Save size={12} /> {dirty ? "Save" : "Saved"}
+          <button type="button" onClick={save} disabled={!dirty || saving} style={primaryBtn(dirty && !saving)}>
+            <Save size={12} /> {saving ? "Saving…" : dirty ? "Save" : "Saved"}
           </button>
           <button type="button" onClick={copyExport} style={ghostBtn}>
             <Copy size={12} /> Export TS
@@ -342,6 +377,41 @@ export default function ExerciseEditor() {
             </button>
           </FieldRow>
 
+          <SectionLabel style={{ marginTop: 16 }}>Rig</SectionLabel>
+          <FieldRow label="Feet">
+            <select
+              value={motion.rig?.feet ?? "oval"}
+              onChange={e => { setMotion(m => ({ ...m, rig: { ...(m.rig ?? {}), feet: e.target.value as "oval" | "line" | "none" } })); setDirty(true); }}
+              style={inputStyle}
+            >
+              <option value="oval">oval</option>
+              <option value="line">line</option>
+              <option value="none">none</option>
+            </select>
+          </FieldRow>
+          <FieldRow label="2nd arm">
+            <select
+              value={motion.rig?.arm2 ?? "none"}
+              onChange={e => { setMotion(m => ({ ...m, rig: { ...(m.rig ?? {}), arm2: e.target.value as "none" | "mirror" | "independent" } })); setDirty(true); }}
+              style={inputStyle}
+            >
+              <option value="none">none</option>
+              <option value="mirror">mirror</option>
+              <option value="independent">independent</option>
+            </select>
+          </FieldRow>
+          <FieldRow label="2nd leg">
+            <select
+              value={motion.rig?.leg2 ?? "none"}
+              onChange={e => { setMotion(m => ({ ...m, rig: { ...(m.rig ?? {}), leg2: e.target.value as "none" | "mirror" | "independent" } })); setDirty(true); }}
+              style={inputStyle}
+            >
+              <option value="none">none</option>
+              <option value="mirror">mirror</option>
+              <option value="independent">independent</option>
+            </select>
+          </FieldRow>
+
           <SectionLabel style={{ marginTop: 16 }}>Selected frame</SectionLabel>
           <FieldRow label="t (0..1)">
             <input
@@ -409,6 +479,7 @@ export default function ExerciseEditor() {
             duration={motion.duration}
             bench={motion.bench}
             floor={motion.floor}
+            rig={motion.rig}
             width={220}
             height={280}
           />

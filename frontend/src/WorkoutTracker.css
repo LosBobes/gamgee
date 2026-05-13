@@ -188,7 +188,8 @@ html, body { background: var(--bg); }
   padding: max(12px, env(safe-area-inset-top)) 16px 0;
   position: sticky; top: 0; z-index: 100;
 }
-.hdr-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.hdr-top { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.hdr-actions { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 .hdr-brand {
   display: flex; align-items: center; gap: 9px;
   background: transparent; border: none; padding: 0; margin: 0;
@@ -1907,13 +1908,16 @@ html, body { background: var(--bg); }
 .cardio-summary-text { font-size: 13px; color: var(--text); }
 
 /* ── Notification bell ──────────────────────────────────────────────── */
-.notif-wrap { position: relative; margin-right: 8px; }
+.notif-wrap { position: relative; }
 .notif-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 6px;
+  width: 32px; height: 32px; flex-shrink: 0; border-radius: 6px;
   background: none; border: 1px solid var(--border); color: var(--muted);
   cursor: pointer; position: relative; padding: 0; transition: all 0.15s;
   -webkit-tap-highlight-color: transparent;
+}
+@media (max-width: 480px) {
+  .notif-btn { width: 40px; height: 40px; }
 }
 .notif-btn:hover { color: var(--text); border-color: var(--muted); }
 .notif-btn.has-unread { color: var(--accent); border-color: var(--accent); }

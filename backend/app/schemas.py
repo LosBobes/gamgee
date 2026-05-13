@@ -518,3 +518,195 @@ class FeedbackAdminOut(BaseModel):
 class FeedbackStatusUpdate(BaseModel):
     status: FeedbackStatus
 
+
+
+# ── Editable content (quotes, tips, motions, …) ──────────────────────────────
+
+QuoteBucket = Literal["bro", "grl", "pro", "hero_bro", "hero_grl"]
+
+
+class QuoteIn(BaseModel):
+    bucket: QuoteBucket
+    text: str = Field(min_length=1, max_length=2000)
+    source: str | None = Field(default=None, max_length=120)
+    line2: str | None = Field(default=None, max_length=120)
+    sort: int = 0
+
+    @field_validator("text")
+    @classmethod
+    def _strip_text(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Quote text cannot be empty")
+        return v
+
+
+class QuoteOut(QuoteIn):
+    id: int
+    model_config = {"from_attributes": True}
+
+
+class TipIn(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    icon: str = Field(min_length=1, max_length=40)
+    title: str = Field(min_length=1, max_length=120)
+    body: str = Field(min_length=1, max_length=4000)
+    body_bro: str | None = Field(default=None, max_length=4000)
+    body_grl: str | None = Field(default=None, max_length=4000)
+    sort: int = 0
+
+
+class TipUpdate(BaseModel):
+    icon: str | None = Field(default=None, max_length=40)
+    title: str | None = Field(default=None, max_length=120)
+    body: str | None = Field(default=None, max_length=4000)
+    body_bro: str | None = Field(default=None, max_length=4000)
+    body_grl: str | None = Field(default=None, max_length=4000)
+    sort: int | None = None
+
+
+class TipOut(TipIn):
+    model_config = {"from_attributes": True}
+
+
+class FocusIn(BaseModel):
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=80)
+    icon: str = Field(min_length=1, max_length=40)
+    description: str = Field(default="", max_length=200)
+    exercise_ids: list[str] = Field(default_factory=list)
+    sort: int = 0
+
+
+class FocusUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=80)
+    icon: str | None = Field(default=None, max_length=40)
+    description: str | None = Field(default=None, max_length=200)
+    exercise_ids: list[str] | None = None
+    sort: int | None = None
+
+
+class FocusOut(FocusIn):
+    model_config = {"from_attributes": True}
+
+
+class MuscleIn(BaseModel):
+    id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=80)
+    muscle_group: str = Field(min_length=1, max_length=60)
+    sort: int = 0
+
+
+class MuscleUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=80)
+    muscle_group: str | None = Field(default=None, max_length=60)
+    sort: int | None = None
+
+
+class MuscleOut(MuscleIn):
+    model_config = {"from_attributes": True}
+
+
+class StretchIn(BaseModel):
+    muscle_group: str = Field(min_length=1, max_length=60)
+    name: str = Field(min_length=1, max_length=120)
+    duration: int = Field(ge=1, le=600)
+    per_side: bool = False
+    cue: str = Field(min_length=1, max_length=2000)
+    sort: int = 0
+
+
+class StretchOut(StretchIn):
+    id: int
+    model_config = {"from_attributes": True}
+
+
+class ExerciseInfoIn(BaseModel):
+    exercise_id: str = Field(min_length=1, max_length=40)
+    setup: str = Field(min_length=1, max_length=2000)
+    execute: str = Field(min_length=1, max_length=2000)
+    cue: str = Field(min_length=1, max_length=2000)
+
+
+class ExerciseInfoUpdate(BaseModel):
+    setup: str | None = Field(default=None, max_length=2000)
+    execute: str | None = Field(default=None, max_length=2000)
+    cue: str | None = Field(default=None, max_length=2000)
+
+
+class ExerciseInfoOut(ExerciseInfoIn):
+    model_config = {"from_attributes": True}
+
+
+class MetricDefIn(BaseModel):
+    id: str = Field(min_length=1, max_length=40)
+    label: str = Field(min_length=1, max_length=80)
+    unit: str = Field(min_length=1, max_length=20)
+    color: str = Field(min_length=1, max_length=20)
+    step: float = 1.0
+    min_value: float = 0
+    max_value: float = 999
+    sort: int = 0
+
+
+class MetricDefUpdate(BaseModel):
+    label: str | None = Field(default=None, max_length=80)
+    unit: str | None = Field(default=None, max_length=20)
+    color: str | None = Field(default=None, max_length=20)
+    step: float | None = None
+    min_value: float | None = None
+    max_value: float | None = None
+    sort: int | None = None
+
+
+class MetricDefOut(MetricDefIn):
+    model_config = {"from_attributes": True}
+
+
+class BodyMapShapeIn(BaseModel):
+    id: str = Field(min_length=1, max_length=80)
+    data: dict
+
+
+class BodyMapShapeOut(BodyMapShapeIn):
+    model_config = {"from_attributes": True}
+
+
+class WeekDayIn(BaseModel):
+    key: str = Field(min_length=2, max_length=3)
+    label: str = Field(min_length=1, max_length=40)
+    short: str = Field(min_length=1, max_length=8)
+    sort: int = 0
+
+
+class WeekDayOut(WeekDayIn):
+    model_config = {"from_attributes": True}
+
+
+# Motion frame validators — the renderer relies on `pose` being an object of
+# 2-tuple [x, y] joint positions. Use generic dicts to keep room for the
+# rig extensions (arm2, leg2, etc.).
+
+class ExerciseMotionIn(BaseModel):
+    exercise_id: str = Field(min_length=1, max_length=40)
+    name: str = Field(min_length=1, max_length=120)
+    category: str | None = Field(default=None, max_length=60)
+    duration: int | None = Field(default=None, ge=100, le=60000)
+    bench: bool = False
+    floor: bool = False
+    rig: dict = Field(default_factory=dict)
+    frames: list[dict] = Field(default_factory=list)
+
+
+class ExerciseMotionUpdate(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    category: str | None = Field(default=None, max_length=60)
+    duration: int | None = Field(default=None, ge=100, le=60000)
+    bench: bool | None = None
+    floor: bool | None = None
+    rig: dict | None = None
+    frames: list[dict] | None = None
+
+
+class ExerciseMotionOut(ExerciseMotionIn):
+    model_config = {"from_attributes": True}
