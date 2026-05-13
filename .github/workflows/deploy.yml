@@ -41,8 +41,10 @@ jobs:
             echo "▶ Rebuilding containers..."
             # Unset anything the GH secret left empty so compose falls back to
             # whatever's in the box's .env (instead of overriding with "").
+            # Use if/fi (not `test && unset`) so the loop always exits 0 —
+            # otherwise script_stop aborts here when the last var is non-empty.
             for v in SENDGRID_API_KEY EMAIL_FROM EMAIL_FROM_NAME APP_BASE_URL; do
-              [ -z "${!v}" ] && unset "$v"
+              if [ -z "${!v}" ]; then unset "$v"; fi
             done
             export SENDGRID_API_KEY EMAIL_FROM EMAIL_FROM_NAME APP_BASE_URL 2>/dev/null || true
             docker compose -f docker-compose.prod.yml up --build -d --remove-orphans
