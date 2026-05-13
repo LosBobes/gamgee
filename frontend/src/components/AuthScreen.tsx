@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Dumbbell, Trophy, Activity, Brain } from "lucide-react";
 import { useTxt } from "../context/ToneContext";
 
 interface Props {
@@ -163,6 +164,46 @@ export default function AuthScreen({ onLogin }: Props) {
 
   return (
     <div className="wt-auth-screen tab-anim">
+      <div className="auth-shell">
+        <section className="auth-hero" aria-labelledby="auth-hero-title">
+          <div className="auth-hero-logo" role="img" aria-label="Gamgee" />
+          <h1 id="auth-hero-title" className="auth-hero-title">GAMGEE</h1>
+          <p className="auth-hero-tagline">
+            Your strength training companion — log workouts, track personal records,
+            and watch your progress map across every muscle.
+          </p>
+          <ul className="auth-hero-features">
+            <li>
+              <Dumbbell size={18} aria-hidden="true" />
+              <div>
+                <strong>Log every set</strong>
+                <span>Fast logging for weights, reps, and rest — built for the gym floor.</span>
+              </div>
+            </li>
+            <li>
+              <Trophy size={18} aria-hidden="true" />
+              <div>
+                <strong>Track personal records</strong>
+                <span>Automatic PR detection and 1RM estimates as you lift heavier.</span>
+              </div>
+            </li>
+            <li>
+              <Activity size={18} aria-hidden="true" />
+              <div>
+                <strong>Visualize muscle coverage</strong>
+                <span>An interactive body map shows what you trained and what's lagging.</span>
+              </div>
+            </li>
+            <li>
+              <Brain size={18} aria-hidden="true" />
+              <div>
+                <strong>Smart progression</strong>
+                <span>A built-in coach suggests when to push, hold, or back off.</span>
+              </div>
+            </li>
+          </ul>
+          <p className="auth-hero-foot">Free to use. No ads. Your data stays yours.</p>
+        </section>
       <div className="auth-card">
         <div className="auth-logo" role="img" aria-label="Gamgee" />
         <h2>{view === "login" ? t("Welcome back", "Welcome back, beast!", "Welcome back, bestie") : t("Create your account", "Join the Church of Iron", "Join the Sisterhood of Iron")}</h2>
@@ -301,6 +342,7 @@ export default function AuthScreen({ onLogin }: Props) {
         >
           {view === "login" ? t("Need an account? Register", "New here? Join the Church of Iron", "New here? Join the Sisterhood") : t("Have an account? Sign In", "Already a Disciple? Sign in", "Already in the group chat? Sign in")}
         </button>
+      </div>
       </div>
     </div>
   );
