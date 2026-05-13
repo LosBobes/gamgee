@@ -399,6 +399,28 @@ class NotificationOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Web Push subscriptions ────────────────────────────────────────────────────
+
+class PushKeys(BaseModel):
+    p256dh: str = Field(min_length=1, max_length=300)
+    auth: str = Field(min_length=1, max_length=200)
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str = Field(min_length=10, max_length=2000)
+    keys: PushKeys
+    user_agent: str | None = Field(default=None, max_length=500)
+
+
+class PushUnsubscribeIn(BaseModel):
+    endpoint: str = Field(min_length=10, max_length=2000)
+
+
+class PushPublicKeyOut(BaseModel):
+    public_key: str | None = None
+    enabled: bool = False
+
+
 # ── Live (co-working-out) sessions ────────────────────────────────────────────
 
 class LiveSessionCreate(BaseModel):

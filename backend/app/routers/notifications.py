@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
+from .. import models, push, schemas
 from ..auth import get_current_user
 from ..database import get_db
 
@@ -96,4 +98,68 @@ def delete_notification(
     if not n:
         raise HTTPException(status_code=404, detail="Notification not found")
     db.delete(n)
+    db.commit()
+
+
+# ── Web Push subscriptions ────────────────────────────────────────────────────
+
+@router.get("/push/public-key", response_model=schemas.PushPublicKeyOut)
+def get_push_public_key():
+    """Return the server's VAPID public key so the browser can subscribe.
+    ``enabled`` is false when the server has no keys configured — the frontend
+    uses this to hide the opt-in toggle entirely instead of showing a dead one."""
+    return schemas.PushPublicKeyOut(
+        public_key=push.VAPID_PUBLIC_KEY or None,
+        enabled=push.is_configured(),
+    )
+
+
+@router.post("/push/subscribe", status_code=204)
+def subscribe_push(
+    payload: schemas.PushSubscriptionIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    if not push.is_configured():
+        raise HTTPException(status_code=503, detail="Web push is not configured on the server")
+
+    existing = (
+        db.query(models.PushSubscription)
+        .filter(
+            models.PushSubscription.user_id == current_user.id,
+            models.PushSubscription.endpoint == payload.endpoint,
+        )
+        .first()
+    )
+    if existing is not None:
+        existing.p256dh = payload.keys.p256dh
+        existing.auth = payload.keys.auth
+        if payload.user_agent:
+            existing.user_agent = payload.user_agent
+    else:
+        db.add(models.PushSubscription(
+            user_id=current_user.id,
+            endpoint=payload.endpoint,
+            p256dh=payload.keys.p256dh,
+            auth=payload.keys.auth,
+            user_agent=payload.user_agent,
+            created_at=int(time.time() * 1000),
+        ))
+    db.commit()
+
+
+@router.post("/push/unsubscribe", status_code=204)
+def unsubscribe_push(
+    payload: schemas.PushUnsubscribeIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    (
+        db.query(models.PushSubscription)
+        .filter(
+            models.PushSubscription.user_id == current_user.id,
+            models.PushSubscription.endpoint == payload.endpoint,
+        )
+        .delete(synchronize_session=False)
+    )
     db.commit()

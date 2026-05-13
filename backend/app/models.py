@@ -165,6 +165,23 @@ class LiveParticipant(Base):
     last_seen = Column(BigInteger, nullable=False, default=0)
 
 
+class PushSubscription(Base):
+    """Web Push API endpoint registered by a browser. One row per user/device.
+    Endpoint URL is unique within a user — duplicate subscribes upsert."""
+    __tablename__ = "push_subscriptions"
+    __table_args__ = (
+        UniqueConstraint("user_id", "endpoint", name="uq_push_user_endpoint"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    endpoint = Column(Text, nullable=False)
+    p256dh = Column(Text, nullable=False)
+    auth = Column(Text, nullable=False)
+    user_agent = Column(String(500), nullable=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+
+
 # ── Feedback ──────────────────────────────────────────────────────────────────
 
 class Feedback(Base):

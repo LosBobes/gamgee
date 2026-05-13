@@ -30,6 +30,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         navigateFallbackDenylist: [/^\/api\//],
+        importScripts: ['/push-handlers.js'],
         runtimeCaching: [
           {
             // Never cache the SSE stream — it's a long-lived response and
