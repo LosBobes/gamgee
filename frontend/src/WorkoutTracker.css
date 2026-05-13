@@ -700,9 +700,13 @@ html, body { background: var(--bg); }
   cursor: pointer; width: 100%; outline: none;
   transition: opacity 0.15s, transform 0.15s, box-shadow 0.18s;
   -webkit-tap-highlight-color: transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: 14px; line-height: 1.2;
 }
 .btn-start:not(:disabled):hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 25%, transparent); }
 .btn-start:not(:disabled):active { transform: translateY(0); }
+.btn-start > svg,
+.btn-finish > svg,
+.btn-secondary > svg { width: auto; height: 2.2em; flex-shrink: 0; }
 .btn-add-ex {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase; padding: 11px 18px; flex: 1;
@@ -715,6 +719,7 @@ html, body { background: var(--bg); }
   letter-spacing: 2px; text-transform: uppercase; padding: 11px 22px; flex: 1;
   background: var(--green); color: #060e0a; border: none; border-radius: 6px;
   cursor: pointer; transition: opacity 0.15s, transform 0.15s;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.2;
 }
 .btn-finish:disabled { opacity: 0.3; cursor: default; }
 .btn-finish:not(:disabled):hover { opacity: 0.88; transform: translateY(-1px); }
