@@ -4,7 +4,13 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models, schemas
-from ..auth import hash_password, verify_password, create_access_token, get_current_user
+from ..auth import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    password_needs_rehash,
+    verify_password,
+)
 from ..database import get_db
 from ..email_service import send_password_reset_email, send_verification_email
 from ..tokens import RESET_TOKEN_TTL, VERIFY_TOKEN_TTL, hash_token, new_token, now_utc
@@ -70,6 +76,9 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
             detail="Invalid username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if password_needs_rehash(form.password, user.hashed_password):
+        user.hashed_password = hash_password(form.password)
+        db.commit()
     token = create_access_token({"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
