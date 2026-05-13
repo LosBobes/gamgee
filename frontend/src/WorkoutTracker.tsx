@@ -79,7 +79,7 @@ export default function WorkoutTracker({
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
   const [toneMode, setToneMode] = useState<ToneMode>(
-    () => (localStorage.getItem("gamgee_tone") ?? "bro") as ToneMode
+    () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
   const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
   // buddy/notif/live state
