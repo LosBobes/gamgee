@@ -62,6 +62,47 @@ def test_login_wrong_password_returns_401(client: TestClient):
     assert res.status_code == 401
 
 
+def test_login_username_is_case_insensitive(client: TestClient):
+    # Registered with mixed case; a different-case attempt must still log in,
+    # otherwise users get locked out of their own accounts after re-typing.
+    client.post("/api/auth/register", json=_new_user("Marko"))
+    res = client.post("/api/auth/login", data={"username": "marko", "password": STRONG_PW})
+    assert res.status_code == 200
+    res = client.post("/api/auth/login", data={"username": "MARKO", "password": STRONG_PW})
+    assert res.status_code == 200
+
+
+def test_login_strips_whitespace(client: TestClient):
+    client.post("/api/auth/register", json=_new_user("eve"))
+    res = client.post("/api/auth/login", data={"username": "  eve  ", "password": STRONG_PW})
+    assert res.status_code == 200
+
+
+def test_login_with_email_works(client: TestClient):
+    client.post("/api/auth/register", json=_new_user("frank"))
+    res = client.post(
+        "/api/auth/login",
+        data={"username": "frank@example.com", "password": STRONG_PW},
+    )
+    assert res.status_code == 200
+    # Email matching should also be case-insensitive.
+    res = client.post(
+        "/api/auth/login",
+        data={"username": "FRANK@Example.com", "password": STRONG_PW},
+    )
+    assert res.status_code == 200
+
+
+def test_register_duplicate_username_is_case_insensitive(client: TestClient):
+    client.post("/api/auth/register", json=_new_user("Greta"))
+    res = client.post(
+        "/api/auth/register",
+        json=_new_user("greta", email="greta2@example.com"),
+    )
+    assert res.status_code == 400
+    assert "taken" in res.json()["detail"].lower()
+
+
 def test_me_requires_auth(client: TestClient):
     res = client.get("/api/auth/me")
     assert res.status_code == 401
