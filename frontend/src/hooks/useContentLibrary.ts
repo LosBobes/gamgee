@@ -20,8 +20,8 @@ import type {
 type Library = {
   // Quotes split by bucket; identical shapes to the bundled defaults so
   // callers don't need to know whether the data came from server or static.
-  broQuotes: string[];
-  grlQuotes: string[];
+  broQuotes: { text: string; source?: string }[];
+  grlQuotes: { text: string; source?: string }[];
   proQuotes: { text: string; source: string }[];
   heroCallsBro: [string, string][];
   heroCallsGrl: [string, string][];
@@ -70,15 +70,15 @@ function getSnapshot(): Library {
 }
 
 function mergeQuotes(rows: QuoteRow[]) {
-  const bro: string[] = [];
-  const grl: string[] = [];
+  const bro: { text: string; source?: string }[] = [];
+  const grl: { text: string; source?: string }[] = [];
   const pro: { text: string; source: string }[] = [];
   const heroBro: [string, string][] = [];
   const heroGrl: [string, string][] = [];
   for (const r of rows) {
     switch (r.bucket) {
-      case "bro":      bro.push(r.text); break;
-      case "grl":      grl.push(r.text); break;
+      case "bro":      bro.push({ text: r.text, source: r.source ?? undefined }); break;
+      case "grl":      grl.push({ text: r.text, source: r.source ?? undefined }); break;
       case "pro":      pro.push({ text: r.text, source: r.source ?? "" }); break;
       case "hero_bro": heroBro.push([r.text, r.line2 ?? ""]); break;
       case "hero_grl": heroGrl.push([r.text, r.line2 ?? ""]); break;
