@@ -3,8 +3,15 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from .. import models, schemas
-from ..auth import get_admin_user
+from ..auth import get_admin_user, hash_password
 from ..database import get_db
+from ..email_service import (
+    app_base_url,
+    send_admin_password_reset_notice,
+    send_password_reset_email,
+)
+from ..password_policy import validate_password
+from ..tokens import RESET_TOKEN_TTL, new_token, now_utc
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -39,9 +46,77 @@ def update_user(
         if user.id == current.id and not update.is_admin:
             raise HTTPException(status_code=400, detail="Cannot remove your own admin rights")
         user.is_admin = update.is_admin
+    if update.is_verified is not None:
+        user.is_verified = update.is_verified
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.post(
+    "/users/{user_id}/reset-password",
+    response_model=schemas.AdminResetPasswordResult,
+)
+def admin_reset_password(
+    user_id: int,
+    body: schemas.AdminResetPassword,
+    db: Session = Depends(get_db),
+    current: models.User = Depends(get_admin_user),
+):
+    """Reset another user's password.
+
+    Two modes:
+
+    * ``new_password`` supplied → set it immediately and (optionally) email
+      the user a notice with the temporary password.
+    * ``new_password`` omitted → generate a one-time reset link valid for the
+      normal TTL. If the user has an email and ``send_email`` is true, the
+      link is emailed to them; the link is also returned in the response so
+      the admin can hand it over out-of-band.
+    """
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.new_password is not None:
+        try:
+            validate_password(body.new_password, username=user.username, email=user.email)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc))
+        user.hashed_password = hash_password(body.new_password)
+        # Invalidate any outstanding reset tokens so old links can't be used.
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user.id,
+            models.PasswordResetToken.used_at.is_(None),
+        ).delete(synchronize_session=False)
+        db.commit()
+        if body.send_email and user.email:
+            send_admin_password_reset_notice(
+                user.email, user.name, body.new_password, current.username,
+            )
+        return schemas.AdminResetPasswordResult(
+            mode="password_set",
+            temporary_password=body.new_password,
+        )
+
+    # Link mode: invalidate prior tokens, issue a fresh one.
+    db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user.id,
+        models.PasswordResetToken.used_at.is_(None),
+    ).delete(synchronize_session=False)
+    raw, hashed = new_token()
+    db.add(models.PasswordResetToken(
+        user_id=user.id,
+        token_hash=hashed,
+        expires_at=now_utc() + RESET_TOKEN_TTL,
+    ))
+    db.commit()
+    link = f"{app_base_url()}/reset-password?token={raw}"
+
+    if body.send_email and user.email:
+        send_password_reset_email(user.email, user.name, raw)
+        return schemas.AdminResetPasswordResult(mode="reset_link_sent", reset_link=link)
+    return schemas.AdminResetPasswordResult(mode="reset_link_generated", reset_link=link)
 
 
 @router.delete("/users/{user_id}", status_code=204)

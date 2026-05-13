@@ -6,8 +6,32 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import hash_password, verify_password, create_access_token, get_current_user
 from ..database import get_db
+from ..email_service import send_password_reset_email, send_verification_email
+from ..tokens import RESET_TOKEN_TTL, VERIFY_TOKEN_TTL, hash_token, new_token, now_utc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _issue_verification_email(db: Session, user: models.User) -> None:
+    """Generate a fresh verification token and email it to the user.
+
+    Existing un-used tokens for this user are invalidated so an email always
+    contains the most recent link.
+    """
+    if not user.email:
+        return
+    db.query(models.EmailVerificationToken).filter(
+        models.EmailVerificationToken.user_id == user.id,
+        models.EmailVerificationToken.consumed_at.is_(None),
+    ).delete(synchronize_session=False)
+    raw, hashed = new_token()
+    db.add(models.EmailVerificationToken(
+        user_id=user.id,
+        token_hash=hashed,
+        expires_at=now_utc() + VERIFY_TOKEN_TTL,
+    ))
+    db.commit()
+    send_verification_email(user.email, user.name, raw)
 
 
 @router.post("/register", response_model=schemas.UserOut, status_code=201)
@@ -22,10 +46,12 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
         name=user_in.name,
         email=user_in.email,
         gender=user_in.gender,
+        is_verified=False,
     )
     db.add(user)
     db.commit()
     db.refresh(user)
+    _issue_verification_email(db, user)
     return user
 
 
@@ -92,7 +118,115 @@ def update_profile(
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email already in use by another account")
+    email_changed = body.email != current_user.email
     current_user.email = body.email
+    if email_changed:
+        current_user.is_verified = False
     db.commit()
     db.refresh(current_user)
+    if email_changed and current_user.email:
+        _issue_verification_email(db, current_user)
     return current_user
+
+
+# ── Password reset ───────────────────────────────────────────────────────────
+
+@router.post("/forgot-password", status_code=202)
+def forgot_password(body: schemas.ForgotPassword, db: Session = Depends(get_db)):
+    """Email a password reset link.
+
+    Always returns 202 — we don't reveal whether an email is registered, so
+    an attacker can't probe for valid accounts.
+    """
+    user = db.query(models.User).filter(models.User.email == body.email).first()
+    if user:
+        # Invalidate previous unused reset tokens for this user.
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user.id,
+            models.PasswordResetToken.used_at.is_(None),
+        ).delete(synchronize_session=False)
+        raw, hashed = new_token()
+        db.add(models.PasswordResetToken(
+            user_id=user.id,
+            token_hash=hashed,
+            expires_at=now_utc() + RESET_TOKEN_TTL,
+        ))
+        db.commit()
+        send_password_reset_email(user.email, user.name, raw)
+    return {"detail": "If an account with that email exists, a reset link has been sent."}
+
+
+@router.post("/reset-password", status_code=204)
+def reset_password(body: schemas.ResetPassword, db: Session = Depends(get_db)):
+    record = db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.token_hash == hash_token(body.token),
+    ).first()
+    if not record or record.used_at is not None:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    expires = record.expires_at
+    if expires.tzinfo is None:
+        from datetime import timezone
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < now_utc():
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    user = db.query(models.User).filter(models.User.id == record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset link")
+    # Re-validate password against the user's identifiers (already format-validated
+    # by the schema, but we want the policy's username/email similarity check).
+    from ..password_policy import validate_password
+    try:
+        validate_password(body.new_password, username=user.username, email=user.email)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    user.hashed_password = hash_password(body.new_password)
+    record.used_at = now_utc()
+    db.commit()
+
+
+# ── Email verification ───────────────────────────────────────────────────────
+
+@router.post("/verify-email", status_code=204)
+def verify_email(body: schemas.VerifyEmail, db: Session = Depends(get_db)):
+    record = db.query(models.EmailVerificationToken).filter(
+        models.EmailVerificationToken.token_hash == hash_token(body.token),
+    ).first()
+    if not record or record.consumed_at is not None:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    expires = record.expires_at
+    if expires.tzinfo is None:
+        from datetime import timezone
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < now_utc():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    user = db.query(models.User).filter(models.User.id == record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification link")
+    user.is_verified = True
+    record.consumed_at = now_utc()
+    db.commit()
+
+
+@router.post("/resend-verification", status_code=202)
+def resend_verification(body: schemas.ResendVerification, db: Session = Depends(get_db)):
+    """Unauthenticated resend — caller supplies the email.
+
+    Always returns 202 so an attacker can't probe whether an email is
+    registered or already verified.
+    """
+    if body.email:
+        target = db.query(models.User).filter(models.User.email == body.email).first()
+        if target and not target.is_verified:
+            _issue_verification_email(db, target)
+    return {"detail": "If the email needs verification, a fresh link has been sent."}
+
+
+@router.post("/resend-verification-me", status_code=202)
+def resend_verification_me(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.is_verified or not current_user.email:
+        return {"detail": "Nothing to send"}
+    _issue_verification_email(db, current_user)
+    return {"detail": "Verification email sent"}
