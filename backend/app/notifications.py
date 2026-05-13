@@ -171,3 +171,17 @@ def publish_live_change(db: Session, user_ids: Iterable[int], *, session_id: str
     data = {"session_id": session_id} if session_id else {}
     for uid in set(user_ids):
         _queue_event(db, uid, "live", data)
+
+
+def publish_chat_change(db: Session, user_ids: Iterable[int], *, conversation_id: int | None = None) -> None:
+    """Tell each listed user that the chat conversation list / message thread
+    has new content."""
+    data = {"conversation_id": conversation_id} if conversation_id else {}
+    for uid in set(user_ids):
+        _queue_event(db, uid, "chat", data)
+
+
+def publish_trainer_change(db: Session, user_ids: Iterable[int]) -> None:
+    """Tell each listed user that trainer/trainee links or assignments changed."""
+    for uid in set(user_ids):
+        _queue_event(db, uid, "trainer", {})

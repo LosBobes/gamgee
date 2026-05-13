@@ -80,8 +80,74 @@ class UserOut(BaseModel):
     primary_color: str | None = None
     is_admin: bool = False
     is_verified: bool = False
+    is_trainer: bool = False
+    trainer_bio: str | None = None
+    trainer_specialties: list[str] | None = None
+    trainer_certifications: str | None = None
+    trainer_years_experience: int | None = None
 
     model_config = {"from_attributes": True}
+
+
+class TrainerCreate(BaseModel):
+    """Sign-up payload for the trainer-specific registration flow.
+
+    Extends the regular UserCreate fields with public profile info (bio,
+    specialties, certifications, years of experience) so a newly minted
+    trainer has a real coaching page from day one."""
+    username: str = Field(min_length=3, max_length=50)
+    password: str
+    name: str = Field(min_length=1, max_length=100)
+    email: str = Field(max_length=254)
+    gender: Gender
+    bio: str = Field(min_length=20, max_length=2000)
+    specialties: list[str] = Field(min_length=1, max_length=10)
+    certifications: str = Field(default="", max_length=2000)
+    years_experience: int = Field(ge=0, le=80)
+
+    @field_validator("username")
+    @classmethod
+    def _u_format(cls, v: str) -> str:
+        v = v.strip()
+        if not _USERNAME_RE.match(v):
+            raise ValueError("Username may only contain letters, digits, '.', '_' or '-'")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def _n_format(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Name is required")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _e_format(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL_RE.match(v):
+            raise ValueError("Please enter a valid email address")
+        return v
+
+    @field_validator("specialties")
+    @classmethod
+    def _strip_specialties(cls, v: list[str]) -> list[str]:
+        out = [s.strip() for s in v if s and s.strip()]
+        if not out:
+            raise ValueError("Pick at least one specialty")
+        return out
+
+    @model_validator(mode="after")
+    def _check_password(self) -> "TrainerCreate":
+        validate_password(self.password, username=self.username, email=self.email)
+        return self
+
+
+class TrainerProfileUpdate(BaseModel):
+    bio: str | None = Field(default=None, max_length=2000)
+    specialties: list[str] | None = None
+    certifications: str | None = Field(default=None, max_length=2000)
+    years_experience: int | None = Field(default=None, ge=0, le=80)
 
 
 class UserPreferences(BaseModel):
@@ -451,11 +517,50 @@ class LiveSessionOut(BaseModel):
     started_at: int = 0
     ended_at: int | None = None
     owner_sets_done: int = 0
+    current_exercise_id: str | None = None
+    current_exercise_name: str | None = None
+    current_set_index: int | None = None
+    last_weight: float | None = None
+    last_reps: int | None = None
+    total_sets_planned: int | None = None
+    total_exercises_planned: int | None = None
+    # Set whenever the requester is a trainer of the owner (or the owner
+    # themselves). The set-by-set timeline is not visible to peers.
+    can_see_set_timeline: bool = False
     participants: list[LiveParticipantOut] = []
 
 
 class LiveProgressUpdate(BaseModel):
     sets_done: int = Field(ge=0, le=10000)
+    current_exercise_id: str | None = Field(default=None, max_length=80)
+    current_exercise_name: str | None = Field(default=None, max_length=120)
+    current_set_index: int | None = Field(default=None, ge=0, le=10000)
+    last_weight: float | None = Field(default=None, ge=0, le=10000)
+    last_reps: int | None = Field(default=None, ge=0, le=10000)
+    total_sets_planned: int | None = Field(default=None, ge=0, le=10000)
+    total_exercises_planned: int | None = Field(default=None, ge=0, le=200)
+
+
+class LiveSetEventCreate(BaseModel):
+    """Logged after every completed set. Stored in `live_set_events` so a
+    trainer can replay the workout one set at a time."""
+    exercise_id: str = Field(min_length=1, max_length=80)
+    exercise_name: str = Field(min_length=1, max_length=120)
+    set_index: int = Field(ge=0, le=10000)
+    weight: float | None = Field(default=None, ge=0, le=10000)
+    reps: int | None = Field(default=None, ge=0, le=10000)
+
+
+class LiveSetEventOut(BaseModel):
+    id: int
+    exercise_id: str
+    exercise_name: str
+    set_index: int
+    weight: float | None = None
+    reps: int | None = None
+    ts: int = 0
+
+    model_config = {"from_attributes": True}
 
 
 # ── Body metrics ──────────────────────────────────────────────────────────────
@@ -710,3 +815,160 @@ class ExerciseMotionUpdate(BaseModel):
 
 class ExerciseMotionOut(ExerciseMotionIn):
     model_config = {"from_attributes": True}
+
+
+# ── Trainer / Trainee ────────────────────────────────────────────────────────
+
+class TrainerPublicOut(BaseModel):
+    """Public-facing trainer profile shown in the trainer directory."""
+    id: int
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    trainer_bio: str | None = None
+    trainer_specialties: list[str] | None = None
+    trainer_certifications: str | None = None
+    trainer_years_experience: int | None = None
+    trainee_count: int = 0
+    link_status: str = "none"      # none | pending_trainer | pending_trainee | accepted | self
+
+    model_config = {"from_attributes": True}
+
+
+class TrainerLinkOut(BaseModel):
+    id: int
+    role: Literal["trainer", "trainee"]    # current user's role in this link
+    other_user_id: int
+    other_username: str
+    other_name: str | None = None
+    other_primary_color: str | None = None
+    other_is_trainer: bool = False
+    status: Literal["pending_trainer", "pending_trainee", "accepted"]
+    initiator_id: int
+    note: str | None = None
+    created_at: int = 0
+
+
+class TrainerLinkRequestCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    note: str | None = Field(default=None, max_length=2000)
+
+
+# ── Regime ───────────────────────────────────────────────────────────────────
+
+RegimeGoal = Literal["strength", "hypertrophy", "endurance", "weight_loss", "general"]
+RegimeExperience = Literal["beginner", "intermediate", "advanced"]
+
+
+class DayPlanIn(BaseModel):
+    focus: str
+    exerciseIds: list[str] = Field(default_factory=list)
+    enabled: bool = True
+
+
+class RegimeQuestionnaire(BaseModel):
+    """Inputs to the rule-based generator."""
+    name: str | None = Field(default=None, max_length=120)
+    goal: RegimeGoal = "general"
+    experience: RegimeExperience = "beginner"
+    days_per_week: int = Field(ge=1, le=7, default=3)
+    focus_areas: list[str] = Field(default_factory=list)        # muscle group ids
+    avoid_muscles: list[str] = Field(default_factory=list)      # muscle group ids
+    equipment: list[str] = Field(default_factory=list)          # barbell | dumbbell | bodyweight | machine
+    include_cardio: bool = False
+
+
+class RegimeOut(BaseModel):
+    id: int
+    owner_id: int
+    name: str
+    description: str | None = None
+    goal: str | None = None
+    experience: str | None = None
+    days_per_week: int = 3
+    focus_areas: list[str] = []
+    avoid_muscles: list[str] = []
+    equipment: list[str] = []
+    days: dict[str, DayPlanIn] = {}
+    is_template: bool = False
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class RegimeCreate(BaseModel):
+    """Save a generated or manually-built regime."""
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    goal: RegimeGoal | None = None
+    experience: RegimeExperience | None = None
+    days_per_week: int = Field(ge=1, le=7, default=3)
+    focus_areas: list[str] = Field(default_factory=list)
+    avoid_muscles: list[str] = Field(default_factory=list)
+    equipment: list[str] = Field(default_factory=list)
+    days: dict[str, DayPlanIn] = Field(default_factory=dict)
+
+
+class AssignmentCreate(BaseModel):
+    trainee_id: int
+    regime_id: int
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class AssignmentOut(BaseModel):
+    id: int
+    trainer_id: int
+    trainer_username: str
+    trainer_name: str | None = None
+    trainee_id: int
+    trainee_username: str
+    trainee_name: str | None = None
+    regime_id: int
+    regime: RegimeOut
+    note: str | None = None
+    status: str = "active"
+    created_at: int = 0
+
+
+# ── Chat ─────────────────────────────────────────────────────────────────────
+
+class ConversationOut(BaseModel):
+    id: int
+    kind: Literal["dm", "coach"]
+    other_user_id: int
+    other_username: str
+    other_name: str | None = None
+    other_primary_color: str | None = None
+    other_is_trainer: bool = False
+    last_message_at: int = 0
+    last_message_preview: str | None = None
+    unread_count: int = 0
+    created_at: int = 0
+
+
+class ConversationCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+
+
+class MessageOut(BaseModel):
+    id: int
+    conversation_id: int
+    sender_id: int
+    sender_username: str
+    sender_name: str | None = None
+    body: str
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class MessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+
+    @field_validator("body")
+    @classmethod
+    def _strip_body(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        return v

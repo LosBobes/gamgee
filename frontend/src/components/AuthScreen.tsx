@@ -92,6 +92,12 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
   const [info,    setInfo]    = useState("");
   const [busy,    setBusy]    = useState(false);
   const [token,   setToken]   = useState(initialToken);
+  // Trainer signup add-on
+  const [asTrainer,           setAsTrainer]           = useState(false);
+  const [trainerBio,          setTrainerBio]          = useState("");
+  const [trainerSpecialties,  setTrainerSpecialties]  = useState("");
+  const [trainerCerts,        setTrainerCerts]        = useState("");
+  const [trainerYears,        setTrainerYears]        = useState("");
 
   // When mounted in "verify" mode, hit the backend immediately.
   useEffect(() => {
@@ -180,6 +186,21 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
         setErr("Passwords do not match");
         return;
       }
+      if (asTrainer) {
+        if (trainerBio.trim().length < 20) {
+          setErr("Trainer bio must be at least 20 characters");
+          return;
+        }
+        const specialties = trainerSpecialties.split(",").map(s => s.trim()).filter(Boolean);
+        if (specialties.length === 0) {
+          setErr("Add at least one specialty (e.g. powerlifting, weight loss)");
+          return;
+        }
+        if (!trainerYears || isNaN(parseInt(trainerYears, 10))) {
+          setErr("Years of experience is required");
+          return;
+        }
+      }
     } else if (view === "reset") {
       if (!token) {
         setErr("This reset link is invalid or has expired.");
@@ -213,16 +234,30 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
     setBusy(true);
     try {
       if (view === "register") {
-        const res = await fetch("/api/auth/register", {
+        const endpoint = asTrainer ? "/api/auth/register-trainer" : "/api/auth/register";
+        const body = asTrainer
+          ? {
+              username: user.trim(),
+              password: pass,
+              name:     name.trim(),
+              email:    email.trim().toLowerCase(),
+              gender,
+              bio:      trainerBio.trim(),
+              specialties: trainerSpecialties.split(",").map(s => s.trim()).filter(Boolean),
+              certifications: trainerCerts.trim(),
+              years_experience: parseInt(trainerYears, 10) || 0,
+            }
+          : {
+              username: user.trim(),
+              password: pass,
+              name:     name.trim(),
+              email:    email.trim().toLowerCase(),
+              gender,
+            };
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username: user.trim(),
-            password: pass,
-            name:     name.trim(),
-            email:    email.trim().toLowerCase(),
-            gender,
-          }),
+          body: JSON.stringify(body),
         });
         if (!res.ok) {
           setErr(extractError(await res.json().catch(() => ({}))));
@@ -405,6 +440,63 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
                     ))}
                   </select>
                 </label>
+
+                <label className="auth-field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={asTrainer}
+                    onChange={e => setAsTrainer(e.target.checked)}
+                    style={{ width: "auto", margin: 0 }}
+                  />
+                  <span style={{ marginBottom: 0 }}>I'm signing up as a trainer / coach</span>
+                </label>
+
+                {asTrainer && (
+                  <>
+                    <label className="auth-field">
+                      <span>Coaching bio</span>
+                      <textarea
+                        placeholder="What do you specialise in? How do you coach? (shown on your public profile)"
+                        value={trainerBio}
+                        onChange={e => setTrainerBio(e.target.value)}
+                        rows={4}
+                        maxLength={2000}
+                      />
+                      <small className="auth-hint">
+                        At least 20 characters. This appears in the trainer directory.
+                      </small>
+                    </label>
+                    <label className="auth-field">
+                      <span>Specialties (comma separated)</span>
+                      <input
+                        placeholder="powerlifting, hypertrophy, weight loss"
+                        value={trainerSpecialties}
+                        onChange={e => setTrainerSpecialties(e.target.value)}
+                        maxLength={400}
+                      />
+                    </label>
+                    <label className="auth-field">
+                      <span>Certifications (optional)</span>
+                      <input
+                        placeholder="e.g. NASM-CPT, USAPL coach"
+                        value={trainerCerts}
+                        onChange={e => setTrainerCerts(e.target.value)}
+                        maxLength={2000}
+                      />
+                    </label>
+                    <label className="auth-field">
+                      <span>Years of coaching experience</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={80}
+                        placeholder="e.g. 3"
+                        value={trainerYears}
+                        onChange={e => setTrainerYears(e.target.value)}
+                      />
+                    </label>
+                  </>
+                )}
               </>
             )}
 

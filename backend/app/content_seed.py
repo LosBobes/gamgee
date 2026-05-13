@@ -785,7 +785,7 @@ def seed_if_empty():
         if db.query(models.Quote).count() == 0:
             rows: list[models.Quote] = []
             for i, q in enumerate(BRO_QUOTES):
-                rows.append(models.Quote(bucket="bro", text=q, sort=i))
+                rows.append(models.Quote(bucket="bro", text=q, source="Dom Mazzetti", sort=i))
             for i, q in enumerate(GRL_QUOTES):
                 rows.append(models.Quote(bucket="grl", text=q, sort=i))
             for i, (src, q) in enumerate(PRO_QUOTES):

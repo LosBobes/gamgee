@@ -29,8 +29,12 @@ export default function WizardStart({ lastSession, onStart }: Props) {
   const [grlHero]  = useState(() => heroGrl[Math.floor(Math.random() * heroGrl.length)]);
 
   const hero      = mode === "grl" ? grlHero : broHero;
-  const quoteText = mode === "grl" ? grlQuote : mode === "bro" ? broQuote : proQuote.text;
-  const showAttr  = mode === "pro";
+  const activeQuote =
+    mode === "grl" ? grlQuote :
+    mode === "bro" ? broQuote :
+    proQuote;
+  const quoteText = activeQuote.text;
+  const attr      = activeQuote.source;
 
   return (
     <div className="start-screen">
@@ -44,7 +48,7 @@ export default function WizardStart({ lastSession, onStart }: Props) {
       <h1 className="start-hero">{hero[0]}<br /><span>{hero[1]}</span></h1>
       <div className="start-quote">
         &ldquo;{quoteText}&rdquo;
-        {showAttr && <div className="start-quote-attr">{proQuote.source}</div>}
+        {attr && <div className="start-quote-attr">{attr}</div>}
       </div>
       <button className="btn-start" onClick={onStart} style={{ marginBottom: 12 }}>
         BUILD WORKOUT

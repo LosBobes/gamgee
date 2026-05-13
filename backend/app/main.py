@@ -5,7 +5,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import Base, engine
-from .routers import items, workouts, prs, auth, health, admin, buddies, notifications, live, feedback, events, content
+from .routers import (
+    items, workouts, prs, auth, health, admin, buddies, notifications, live,
+    feedback, events, content, trainers, regimes, assignments, chat,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -37,6 +40,20 @@ if engine.dialect.name == "postgresql":
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_push_user_endpoint "
             "ON push_subscriptions (user_id, endpoint)"
         ))
+        # Trainer profile columns
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_trainer BOOLEAN NOT NULL DEFAULT FALSE"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_bio TEXT"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_specialties JSONB"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_certifications TEXT"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_years_experience INTEGER"))
+        # Live session rich-broadcast columns
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_id VARCHAR"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_name VARCHAR"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_set_index INTEGER"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS last_weight DOUBLE PRECISION"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS last_reps INTEGER"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_sets_planned INTEGER"))
+        _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_exercises_planned INTEGER"))
 
 app = FastAPI(title="Gamgee API", version="0.1.0", redirect_slashes=False)
 
@@ -68,6 +85,10 @@ app.include_router(feedback.router, prefix="/api")
 app.include_router(feedback.admin_router, prefix="/api")
 app.include_router(events.router, prefix="/api")
 app.include_router(content.router, prefix="/api")
+app.include_router(trainers.router, prefix="/api")
+app.include_router(regimes.router, prefix="/api")
+app.include_router(assignments.router, prefix="/api")
+app.include_router(chat.router, prefix="/api")
 
 
 # Seed any empty content tables on startup so a fresh dev DB or upgrade is
