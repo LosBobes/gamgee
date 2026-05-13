@@ -132,9 +132,9 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
       {view === "calendar" && (
         <div className="cal-wrap">
           <div className="cal-nav">
-            <button className="cal-nav-btn" onClick={prevMonth}><ChevronLeft size={14} /> PREV</button>
+            <button className="cal-nav-btn" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={14} /><span className="cal-nav-text">PREV</span></button>
             <span className="cal-month-label">{monthLabel}</span>
-            <button className="cal-nav-btn" onClick={nextMonth}>NEXT <ChevronRight size={14} /></button>
+            <button className="cal-nav-btn" onClick={nextMonth} aria-label="Next month"><span className="cal-nav-text">NEXT</span><ChevronRight size={14} /></button>
           </div>
           <div className="cal-dow">
             {DAYS.map((d, i) => <div key={i} className="cal-dow-lbl">{d}</div>)}
