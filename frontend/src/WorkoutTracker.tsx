@@ -46,7 +46,11 @@ export default function WorkoutTracker({
   forceAuthScreen = false,
 }: WorkoutTrackerProps = {}) {
   // UI
-  const [tab,       setTab]       = useState("workout");
+  const [tab,       setTab]       = useState<string>(() => {
+    const stored = sessionStorage.getItem("gamgee_active_tab");
+    const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile"];
+    return stored && valid.includes(stored) ? stored : "workout";
+  });
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
   const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
@@ -118,6 +122,10 @@ export default function WorkoutTracker({
   useEffect(() => {
     localStorage.setItem("gamgee_tone", toneMode);
   }, [toneMode]);
+
+  useEffect(() => {
+    sessionStorage.setItem("gamgee_active_tab", tab);
+  }, [tab]);
 
   useEffect(() => {
     if (!token) return;
