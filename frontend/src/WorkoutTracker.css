@@ -324,6 +324,7 @@ html, body { background: var(--bg); }
 
 /* ── CONTENT ── */
 .content { padding: 16px; max-width: 700px; margin: 0 auto; }
+.content.content-wide { max-width: 1080px; }
 
 /* ── START SCREEN ── */
 .start-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center; }
@@ -2455,4 +2456,141 @@ html, body { background: var(--bg); }
 .hdr-help-btn { display: inline-flex; }
 @media (max-width: 640px) {
   .hdr-help-btn { display: none; }
+}
+
+/* ── SHARED CARD + BUTTON PRIMITIVES ── used by coaching, regimes, trainees, chat ── */
+.card {
+  background: var(--s1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  animation: fadeUp 0.22s ease both;
+  transition: border-color 0.18s, transform 0.18s;
+}
+.card .card {
+  background: var(--s2);
+  border-radius: 10px;
+}
+
+.btn-pri, .btn-sec {
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: opacity 0.15s, transform 0.15s, border-color 0.18s, background 0.18s, color 0.18s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.btn-pri {
+  background: var(--accent);
+  color: #0a0804;
+  border: 1px solid var(--accent);
+}
+.btn-pri:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+.btn-pri:active:not(:disabled) { transform: translateY(0); }
+.btn-pri:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-sec {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+.btn-sec:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+.btn-sec:active:not(:disabled) { transform: translateY(1px); }
+.btn-sec:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Scoped form-control defaults so inline forms in coaching/regimes/trainees/chat
+   render with the rest of the app's look. Auth/health forms keep their own. */
+.coaching-tab input,
+.coaching-tab textarea,
+.coaching-tab select,
+.chat-tab input,
+.chat-tab textarea,
+.trainees-tab input,
+.trainees-tab textarea,
+.trainees-tab select,
+.regimes-tab input,
+.regimes-tab textarea,
+.regimes-tab select,
+.regime-questionnaire input,
+.regime-questionnaire textarea,
+.regime-questionnaire select,
+.card > input,
+.card > textarea,
+.card > select,
+.card input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+.card textarea,
+.card select {
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 9px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.18s, background 0.18s;
+}
+.coaching-tab input:focus,
+.coaching-tab textarea:focus,
+.coaching-tab select:focus,
+.chat-tab input:focus,
+.chat-tab textarea:focus,
+.trainees-tab input:focus,
+.trainees-tab textarea:focus,
+.trainees-tab select:focus,
+.regimes-tab input:focus,
+.regimes-tab textarea:focus,
+.regimes-tab select:focus,
+.regime-questionnaire input:focus,
+.regime-questionnaire textarea:focus,
+.regime-questionnaire select:focus,
+.card input:focus,
+.card textarea:focus,
+.card select:focus { border-color: var(--accent); background: var(--s1); }
+.coaching-tab textarea,
+.chat-tab textarea,
+.trainees-tab textarea,
+.regimes-tab textarea,
+.regime-questionnaire textarea,
+.card textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+
+/* Section headings inside these tabs */
+.coaching-tab h2,
+.trainees-tab h2,
+.regimes-tab h2,
+.chat-tab h2 {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text);
+}
+.coaching-tab h3,
+.trainees-tab h3,
+.regimes-tab h3,
+.regime-questionnaire h3,
+.chat-tab h3 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* Card hover lift for click-affordance items (trainer cards, plan cards) */
+.coaching-tab .card .card:hover,
+.regime-questionnaire .card .card:hover { border-color: var(--muted); }
+
+/* Chat row buttons (used in ChatTab list) */
+.chat-row { transition: border-color 0.18s, background 0.18s; }
+.chat-row:hover { border-color: var(--muted); background: var(--s2); }
+
+/* Tighter chip spacing on small screens */
+@media (max-width: 480px) {
+  .btn-pri, .btn-sec { padding: 7px 11px; font-size: 11px; }
 }

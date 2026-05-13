@@ -126,7 +126,7 @@ export default function ChatTab({
   const showList = activeConvId == null;
 
   return (
-    <div className="chat-tab" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
+    <div className="chat-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 12, height: "100%" }}>
       <div className="chat-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1 }}>CHAT</h2>
         <button className="btn-sec" onClick={() => setNewConvOpen(true)}>

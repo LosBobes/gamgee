@@ -79,7 +79,7 @@ export default function CoachingTab({
   const myCoaches = trainerLinks.filter(l => l.role === "trainee");
 
   return (
-    <div className="coaching-tab" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="coaching-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1 }}>COACHING</h2>
 
       {/* My coaches */}

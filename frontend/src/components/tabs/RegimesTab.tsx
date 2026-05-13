@@ -48,7 +48,7 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+    <div className="regimes-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
           <Calendar size={16} /> MY REGIMES
