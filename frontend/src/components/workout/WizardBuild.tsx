@@ -9,6 +9,7 @@ import BodyMap from "../BodyMap";
 import SuggCard from "../SuggCard";
 import CustomExerciseModal from "./CustomExerciseModal";
 import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   focus:      string;
@@ -148,6 +149,14 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onNext
         </span>
         <button className="wz-next" onClick={onNext} disabled={planned.length === 0}>REVIEW <ChevronRight size={13} /></button>
       </div>
+
+      <OnboardingHint hintKey="build" step="STEP 3" title={t("Stack your exercises", "Stack your lifts", "Stack your moves")}>
+        {t(
+          "Tap any exercise on the right to add it. The body map on the left fills in as muscles get covered — grey chips show what your focus still hasn't trained.",
+          "Tap a lift on the right to add it. Body map on the left fills in as muscles get hit. Grey chips = still need work.",
+          "Tap any move on the right to add it. Body map on the left fills in as muscles get hit. Grey chips = still need work, bestie."
+        )}
+      </OnboardingHint>
 
       <div className="build-layout">
 

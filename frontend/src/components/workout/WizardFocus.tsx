@@ -3,6 +3,7 @@ import { X, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { FOCUS, ICON_OPTIONS, getCustomFocuses, saveCustomFocuses } from "../../data/focuses";
 import type { CustomFocusDef } from "../../types";
 import { useTxt } from "../../context/ToneContext";
+import OnboardingHint from "../OnboardingHint";
 
 interface Props {
   focus:    string | null;
@@ -54,6 +55,14 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
       </div>
       <div className="wizard-title">{t("What are we training?", "What are we DESTROYING today?", "What are we SERVING today?")}</div>
       <div className="wizard-sub">{t("Pick a focus to get smart exercise suggestions", "Pick your battleground and we'll arm you with the right exercises", "Pick your vibe and we'll line up the right moves")}</div>
+
+      <OnboardingHint hintKey="focus" step="STEP 1" title={t("Tap a focus to continue", "Tap a focus to continue", "Tap a vibe to continue")}>
+        {t(
+          "A focus tells us which muscle groups you're targeting. We use it to suggest exercises and check coverage on the body map.",
+          "Focus = which muscles you're going after. We use it to suggest the right lifts.",
+          "Focus = which muscles you're serving today. We use it to line up the right moves."
+        )}
+      </OnboardingHint>
 
       <div className="focus-grid">
         {Object.entries(FOCUS).map(([k, f]) => (

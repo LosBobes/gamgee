@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
+import { useOnboarding } from "../context/OnboardingContext";
 
 interface Props {
   active:       boolean;
@@ -24,6 +25,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const t = useTxt();
+  const { openWelcome } = useOnboarding();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
   // `inMenuOnly` tabs don't render in the desktop .tabs row — only in the
@@ -105,6 +107,10 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
           {notifBell}
+          <button className="logout-btn hdr-help-btn" onClick={openWelcome} title={t("Help & tour", "Help & tour", "Help & tour")}>
+            <HelpCircle size={15} />
+            <span className="logout-label">Help</span>
+          </button>
           {isAdmin && (
             <a href="/admin" className="logout-btn" title="Admin panel" style={{ textDecoration: "none" }}>
               <Shield size={15} />
@@ -161,6 +167,13 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
               );
             })}
             <div className="mobile-nav-divider" />
+            <button
+              className="mobile-nav-item"
+              onClick={() => { setMenuOpen(false); openWelcome(); }}
+            >
+              <HelpCircle size={18} />
+              <span>Help &amp; tour</span>
+            </button>
             {onOpenFeedback && (
               <button
                 className="mobile-nav-item"
