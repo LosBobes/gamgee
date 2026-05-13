@@ -29,6 +29,14 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
   const { openWelcome } = useOnboarding();
   const workoutLabel = active ? "ACTIVE" : wStep > 0 ? "BUILD" : "WORKOUT";
 
+  // Help/tour walks through the workout-wizard flow, so land the user on the
+  // workout home screen first — otherwise the tour overlays don't match what's
+  // visible behind them.
+  const openHelp = () => {
+    onLogoClick?.();
+    openWelcome();
+  };
+
   // `inMenuOnly` tabs don't render in the desktop .tabs row — only in the
   // hamburger drawer. Keeps the top row from getting overcrowded.
   const tabs = [
@@ -113,7 +121,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>
           }
           {notifBell}
-          <button className="logout-btn hdr-help-btn" onClick={openWelcome} title={t("Help & tour", "Help & tour", "Help & tour")}>
+          <button className="logout-btn hdr-help-btn" onClick={openHelp} title={t("Help & tour", "Help & tour", "Help & tour")}>
             <HelpCircle size={15} />
             <span className="logout-label">Help</span>
           </button>
@@ -175,7 +183,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
             <div className="mobile-nav-divider" />
             <button
               className="mobile-nav-item"
-              onClick={() => { setMenuOpen(false); openWelcome(); }}
+              onClick={() => { setMenuOpen(false); openHelp(); }}
             >
               <HelpCircle size={18} />
               <span>Help &amp; tour</span>
