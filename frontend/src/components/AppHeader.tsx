@@ -16,12 +16,13 @@ interface Props {
   tab:          string;
   setTab:       (t: string) => void;
   onLogout:     () => void;
+  onLogoClick?: () => void;
   isAdmin?:     boolean;
   notifBell?:   ReactNode;
   onOpenFeedback?: () => void;
 }
 
-export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, isAdmin, notifBell, onOpenFeedback }: Props) {
+export default function AppHeader({ active, elapsed, wStep, historyCount, prCount, coachCount, buddyCount, unreadNotif, tab, setTab, onLogout, onLogoClick, isAdmin, notifBell, onOpenFeedback }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const t = useTxt();
@@ -95,13 +96,18 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     <>
       <div className="hdr">
         <div className="hdr-top">
-          <div className="hdr-brand">
+          <button
+            type="button"
+            className="hdr-brand"
+            onClick={onLogoClick}
+            aria-label="Go to start"
+          >
             <div className="logo-img" role="img" aria-label="Gamgee" />
             <div className="hdr-brand-text">
               <div className="logo-name">GAMGEE</div>
               <div className="logo-sub">{t("Workout Tracker", "Built Different (Allegedly)", "She's Built That Way")}</div>
             </div>
-          </div>
+          </button>
           {active
             ? <div className="timer-pill"><Zap size={14} />{fmtClock(elapsed)}</div>
             : <div className="hdr-current-tab">{activeTabDef?.label}</div>

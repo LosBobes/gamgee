@@ -497,6 +497,7 @@ export default function WorkoutTracker({
         buddyCount={buddies.filter(b => b.status === "accepted").length}
         unreadNotif={unreadCount}
         tab={tab} setTab={setTab} onLogout={logout} isAdmin={isAdmin}
+        onLogoClick={() => { setTab("workout"); setWStep(0); }}
         onOpenFeedback={() => setFeedbackOpen(true)}
         notifBell={
           <NotificationBell
