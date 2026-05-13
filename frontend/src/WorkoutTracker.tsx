@@ -747,6 +747,8 @@ export default function WorkoutTracker({
             activeConvId={activeConvId}
             setActiveConvId={setActiveConvId}
             currentUserId={currentUserId}
+            buddies={buddies}
+            trainerLinks={trainerLinks}
           />
         )}
         {!completed && tab === "coaching" && (
