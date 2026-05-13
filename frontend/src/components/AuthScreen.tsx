@@ -93,17 +93,6 @@ export default function AuthScreen({ onLogin }: Props) {
   const allPwOk  = checks.every(c => c.ok);
   const pwMatch  = pass.length > 0 && pass === pass2;
 
-  const registerInvalid =
-    view === "register" &&
-    (!user.trim() ||
-      !USERNAME_RE.test(user.trim()) ||
-      user.trim().length < 3 ||
-      !name.trim() ||
-      !EMAIL_RE.test(email.trim()) ||
-      !gender ||
-      !allPwOk ||
-      !pwMatch);
-
   const reset = (next: View) => {
     setView(next);
     setErr("");
@@ -115,13 +104,53 @@ export default function AuthScreen({ onLogin }: Props) {
     e.preventDefault();
     setErr("");
 
+    const username = user.trim();
+
     if (view === "register") {
+      if (!username) {
+        setErr("Username is required");
+        return;
+      }
+      if (username.length < 3) {
+        setErr("Username must be at least 3 characters");
+        return;
+      }
+      if (username.length > 50) {
+        setErr("Username must be at most 50 characters");
+        return;
+      }
+      if (!USERNAME_RE.test(username)) {
+        setErr("Username may only contain letters, digits, '.', '_' or '-'");
+        return;
+      }
+      if (!name.trim()) {
+        setErr("Name is required");
+        return;
+      }
+      if (!EMAIL_RE.test(email.trim())) {
+        setErr("Please enter a valid email address");
+        return;
+      }
+      if (!gender) {
+        setErr("Please select a gender option");
+        return;
+      }
+      if (!allPwOk) {
+        const failed = checks.filter(c => !c.ok).map(c => c.label).join("; ");
+        setErr(`Password does not meet the requirements: ${failed}`);
+        return;
+      }
       if (!pwMatch) {
         setErr("Passwords do not match");
         return;
       }
-      if (!allPwOk) {
-        setErr("Password does not meet the requirements");
+    } else {
+      if (!username) {
+        setErr("Username is required");
+        return;
+      }
+      if (!pass) {
+        setErr("Password is required");
         return;
       }
     }
@@ -219,6 +248,12 @@ export default function AuthScreen({ onLogin }: Props) {
               maxLength={50}
               required
             />
+            {view === "register" && user.length > 0 && user.trim().length < 3 && (
+              <small className="auth-hint auth-hint-warn">Username must be at least 3 characters</small>
+            )}
+            {view === "register" && user.trim().length >= 3 && !USERNAME_RE.test(user.trim()) && (
+              <small className="auth-hint auth-hint-warn">Only letters, digits, '.', '_' or '-' allowed</small>
+            )}
           </label>
 
           {view === "register" && (
@@ -331,7 +366,7 @@ export default function AuthScreen({ onLogin }: Props) {
           <button
             type="submit"
             className="auth-submit"
-            disabled={busy || registerInvalid}
+            disabled={busy}
           >
             {busy ? t("Please wait…", "Hang tight…", "One sec, bestie…") : view === "login" ? t("Sign In", "LET'S GO", "LET'S GO, BESTIE") : t("Create account", "BUILD MY ACCOUNT", "MAKE IT OFFICIAL")}
           </button>
