@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
-import { User } from "lucide-react";
+import { User, Bell, BellOff } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
 import { useTxt, useToneMode, type ToneMode } from "../../context/ToneContext";
+import {
+  pushSupported, fetchPushPublicKey, getExistingSubscription,
+  subscribePush, unsubscribePush,
+} from "../../push";
 
 interface Props {
   username:        string | null;
@@ -18,6 +22,7 @@ interface Props {
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
   isAdmin?:        boolean;
+  authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
 const PALETTE = [
@@ -291,7 +296,106 @@ function ChangePasswordCard({ token }: { token: string | null }) {
   );
 }
 
-export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange, isAdmin }: Props) {
+function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
+  const t = useTxt();
+  // null = still probing; otherwise concrete state.
+  const [enabled,   setEnabled]   = useState<boolean | null>(null);
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [busy,      setBusy]      = useState(false);
+  const [err,       setErr]       = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!pushSupported()) {
+        if (!cancelled) { setAvailable(false); setEnabled(false); }
+        return;
+      }
+      const [{ enabled: serverOn }, sub] = await Promise.all([
+        fetchPushPublicKey(authFetch),
+        getExistingSubscription(),
+      ]);
+      if (cancelled) return;
+      setAvailable(serverOn);
+      setEnabled(!!sub && serverOn);
+    })().catch(() => {
+      if (!cancelled) { setAvailable(false); setEnabled(false); }
+    });
+    return () => { cancelled = true; };
+  }, [authFetch]);
+
+  const toggle = async () => {
+    setErr(null);
+    setBusy(true);
+    try {
+      if (enabled) {
+        await unsubscribePush(authFetch);
+        setEnabled(false);
+      } else {
+        await subscribePush(authFetch);
+        setEnabled(true);
+      }
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Couldn't update push settings.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (available === false) {
+    return (
+      <div className="profile-card">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <BellOff size={16} style={{ color: "var(--muted)" }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {t("Push notifications", "Push notifications", "Push notifications")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+              {pushSupported()
+                ? "Not enabled on this server"
+                : "Your browser doesn't support push"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="profile-card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+          {enabled ? <Bell size={16} style={{ color: "var(--primary)" }} /> : <BellOff size={16} style={{ color: "var(--muted)" }} />}
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {t("Push notifications", "Push notifications", "Push notifications")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+              {enabled
+                ? t("On for this device", "Lit on this device", "Live on this device")
+                : t("Get pinged when buddies lift, motivate, or set PRs",
+                    "Get pinged when bros lift, hype, or hit PRs",
+                    "Get pinged when besties lift, hype, or hit PRs")}
+            </div>
+          </div>
+        </div>
+        <button
+          className={enabled ? "auth-toggle" : "btn-primary"}
+          style={{ whiteSpace: "nowrap" }}
+          onClick={toggle}
+          disabled={busy || enabled === null}
+        >
+          {busy ? "…" : enabled ? "Disable" : "Enable"}
+        </button>
+      </div>
+      {err && <p className="auth-err" style={{ marginTop: 8, marginBottom: 0 }}>{err}</p>}
+    </div>
+  );
+}
+
+
+export default function ProfileTab({ username, name, email, history, token, primaryColor, onColorChange, onProfileUpdate, toneMode, onToneChange, isAdmin, authFetch }: Props) {
   const t = useTxt();
 
   if (history.length === 0) {
@@ -303,6 +407,8 @@ export default function ProfileTab({ username, name, email, history, token, prim
         <div className="profile-section">{t("Appearance", "Appearance")}</div>
         <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
         <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
+        <div className="profile-section">{t("Notifications", "Notifications")}</div>
+        <PushToggleCard authFetch={authFetch} />
         <div className="profile-section">{t("Account", "Account")}</div>
         <ChangePasswordCard token={token} />
         <Duck isAdmin={isAdmin} />
@@ -440,6 +546,9 @@ export default function ProfileTab({ username, name, email, history, token, prim
       <div className="profile-section">{t("Appearance", "Appearance")}</div>
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
+
+      <div className="profile-section">{t("Notifications", "Notifications")}</div>
+      <PushToggleCard authFetch={authFetch} />
 
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />

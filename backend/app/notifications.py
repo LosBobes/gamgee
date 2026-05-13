@@ -17,7 +17,7 @@ from typing import Iterable
 from sqlalchemy import event as sa_event
 from sqlalchemy.orm import Session
 
-from . import models
+from . import models, push
 from .events import publish_one
 
 
@@ -25,23 +25,65 @@ def now_ms() -> int:
     return int(time.time() * 1000)
 
 
+_PUSH_TITLE = {
+    "buddy_request":  "New buddy request",
+    "buddy_accepted": "Buddy accepted",
+    "workout_done":   "Workout logged",
+    "pr_set":         "New PR!",
+    "motivate":       "Motivation",
+    "live_started":   "Live workout started",
+    "live_joined":    "Joined live workout",
+    "live_ended":     "Live workout ended",
+}
+
+
 def _queue_event(db: Session, user_id: int, event_type: str, data: dict | None = None) -> None:
     pending: list = db.info.setdefault("_pending_realtime_events", [])
     pending.append((user_id, event_type, data or {}))
 
 
+def _queue_push(db: Session, *, user_id: int, kind: str, message: str, notification_id_thunk) -> None:
+    """Queue a web push to fire after commit. ``notification_id_thunk`` is a
+    zero-arg callable that returns the notification id once SQLAlchemy assigns
+    it (after flush)."""
+    pending: list = db.info.setdefault("_pending_push", [])
+    pending.append({
+        "user_id": user_id,
+        "kind": kind,
+        "message": message,
+        "id_thunk": notification_id_thunk,
+    })
+
+
 @sa_event.listens_for(Session, "after_commit")
 def _drain_after_commit(session: Session) -> None:
-    pending = session.info.pop("_pending_realtime_events", None)
-    if not pending:
-        return
-    for user_id, event_type, data in pending:
-        publish_one(user_id, event_type, data)
+    realtime = session.info.pop("_pending_realtime_events", None)
+    if realtime:
+        for user_id, event_type, data in realtime:
+            publish_one(user_id, event_type, data)
+
+    push_items = session.info.pop("_pending_push", None)
+    if push_items:
+        dispatch = []
+        for item in push_items:
+            try:
+                nid = item["id_thunk"]()
+            except Exception:
+                nid = None
+            dispatch.append({
+                "user_id":         item["user_id"],
+                "title":           _PUSH_TITLE.get(item["kind"], "Gamgee"),
+                "body":            item["message"],
+                "kind":            item["kind"],
+                "notification_id": nid,
+            })
+        push.dispatch_batch_async(dispatch)
 
 
 @sa_event.listens_for(Session, "after_rollback")
 def _discard_after_rollback(session: Session) -> None:
     session.info.pop("_pending_realtime_events", None)
+    session.info.pop("_pending_push", None)
 
 
 def create_notification(
@@ -63,7 +105,9 @@ def create_notification(
         created_at=now_ms(),
     )
     db.add(n)
+    db.flush()  # assign n.id so the push payload can reference it
     _queue_event(db, user_id, "notification", {"kind": kind})
+    _queue_push(db, user_id=user_id, kind=kind, message=message, notification_id_thunk=lambda: n.id)
     return n
 
 

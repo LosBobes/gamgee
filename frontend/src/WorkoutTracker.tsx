@@ -35,6 +35,7 @@ import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
+import { registerServiceWorker } from "./push";
 
 
 interface WorkoutTrackerProps {
@@ -53,8 +54,13 @@ export default function WorkoutTracker({
 }: WorkoutTrackerProps = {}) {
   // UI
   const [tab,       setTab]       = useState<string>(() => {
-    const stored = sessionStorage.getItem("gamgee_active_tab");
     const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile", "chat", "coaching", "trainees", "regimes"];
+    // A ?tab= query param takes precedence — push-notification clicks route
+    // through the service worker to /?tab=notifications.
+    const params = new URLSearchParams(window.location.search);
+    const urlTab = params.get("tab");
+    if (urlTab && valid.includes(urlTab)) return urlTab;
+    const stored = sessionStorage.getItem("gamgee_active_tab");
     return stored && valid.includes(stored) ? stored : "workout";
   });
   const [wStep,     setWStep]     = useState(0);
@@ -299,6 +305,24 @@ export default function WorkoutTracker({
     broadcastSetsRef.current = new Set();
   }, [myLiveSession?.id]);
 
+  // Register the service worker once we have a session, so push messages can
+  // wake the browser even when no tab is open. Service-worker click events
+  // postMessage back here to switch to the Notifications tab.
+  useEffect(() => {
+    if (!token) return;
+    registerServiceWorker();
+    if (!("serviceWorker" in navigator)) return;
+    const onMessage = (event: MessageEvent) => {
+      if (event.data?.type === "open-notifications") {
+        setTab("notifications");
+        refreshNotifications();
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMessage);
+    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
+  }, [token, refreshNotifications]);
+
+  // Sync owner_sets_done with active workout's completed sets in real time
   useEffect(() => {
     if (!myLiveSession || myLiveSession.status !== "active") return;
     if (!active) return;
@@ -753,7 +777,7 @@ export default function WorkoutTracker({
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"     && <CoachTab history={history} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
-        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} />}
+        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

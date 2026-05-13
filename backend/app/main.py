@@ -34,6 +34,12 @@ if engine.dialect.name == "postgresql":
             _conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE"))
             _conn.execute(text("UPDATE users SET is_verified = TRUE"))
         _conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
+        # push_subscriptions: ensure the unique (user_id, endpoint) constraint
+        # exists for existing dev DBs that pre-date Web Push support.
+        _conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_push_user_endpoint "
+            "ON push_subscriptions (user_id, endpoint)"
+        ))
         # Trainer profile columns
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_trainer BOOLEAN NOT NULL DEFAULT FALSE"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_bio TEXT"))

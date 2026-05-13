@@ -30,6 +30,9 @@ services:
       EMAIL_FROM:        ${EMAIL_FROM}
       EMAIL_FROM_NAME:   ${EMAIL_FROM_NAME:-Gamgee}
       APP_BASE_URL:      ${APP_BASE_URL}
+      VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT:     ${VAPID_SUBJECT:-mailto:admin@example.com}
     # No --reload, no volume mount — code is baked into the image
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     # NOT exposed to host — nginx inside the frontend container proxies /api/* to here
