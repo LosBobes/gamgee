@@ -99,7 +99,7 @@ export default function TraineesTab({
 
   return (
     <div className="trainees-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
           <GraduationCap size={16} /> MY TRAINEES
         </h2>
@@ -205,8 +205,8 @@ export default function TraineesTab({
           {assignments
             .filter(a => myTrainees.some(t => t.other_user_id === a.trainee_id))
             .map(a => (
-              <div key={a.id} className="card" style={{ padding: 10, display: "flex", justifyContent: "space-between", gap: 8 }}>
-                <div>
+              <div key={a.id} className="card" style={{ padding: 10, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <div style={{ minWidth: 0 }}>
                   <strong>{a.regime.name}</strong>
                   <div style={{ fontSize: 12, color: "var(--muted)" }}>
                     → {a.trainee_name || a.trainee_username}

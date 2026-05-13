@@ -2533,6 +2533,8 @@ html, body { background: var(--bg); }
   font-size: 0.9rem;
   font-family: inherit;
   outline: none;
+  width: 100%;
+  max-width: 100%;
   transition: border-color 0.18s, background 0.18s;
 }
 .coaching-tab input:focus,
@@ -2782,13 +2784,107 @@ html, body { background: var(--bg); }
 .chat-composer-input { flex: 1; }
 .chat-send-btn { padding: 8px 14px; }
 
-@media (max-width: 480px) {
-  .chat-bubble { max-width: 85%; }
-  .chat-thread-body { max-height: 55vh; }
-  .chat-avatar { width: 32px; height: 32px; font-size: 12px; }
+/* Drag handle for the fullscreen thread on mobile (hidden on desktop) */
+.chat-thread-handle { display: none; }
+
+@keyframes chatThreadSlideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 
-/* Tighter chip spacing on small screens */
 @media (max-width: 480px) {
-  .btn-pri, .btn-sec { padding: 7px 11px; font-size: 11px; }
+  /* ── CHAT TAB ── */
+  .chat-bubble { max-width: 85%; }
+  .chat-shell { min-height: 0; }
+  .chat-thread { min-height: 0; }
+  .chat-thread-body { min-height: 220px; max-height: 55vh; padding: 12px; }
+  .chat-avatar { width: 32px; height: 32px; font-size: 12px; }
+  .chat-newconv { padding: 10px; }
+  .chat-newconv-input-row { flex-wrap: wrap; }
+  .chat-newconv-input-row input { flex: 1 1 100%; min-width: 0; }
+  .chat-newconv-input-row .btn-pri { width: 100%; }
+  .chat-thread-header { padding: 9px 10px; gap: 8px; }
+  .chat-thread-name { font-size: 13px; }
+  .chat-row { padding: 9px 10px; gap: 10px; }
+  .chat-row-name strong { font-size: 13px; }
+  .chat-row-preview { font-size: 11px; }
+  .chat-row-meta { gap: 2px; }
+  .chat-row-time { font-size: 10px; }
+  .chat-suggestion-name { font-size: 12px; }
+  .chat-kind-tag { font-size: 8px; padding: 2px 5px; }
+  .chat-composer { padding: 8px; gap: 6px; }
+  .chat-send-btn { padding: 0 14px; min-width: 44px; min-height: 38px; }
+
+  /* Fullscreen thread: covers viewport, slides up, can be pulled down */
+  .chat-thread-fullscreen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 200;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: var(--bg);
+    overflow: hidden;
+    animation: chatThreadSlideUp 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+    will-change: transform;
+    touch-action: pan-y;
+  }
+  .chat-thread-fullscreen.is-dragging { animation: none; }
+  .chat-thread-fullscreen .chat-thread-header {
+    padding-top: max(10px, env(safe-area-inset-top));
+  }
+  .chat-thread-fullscreen .chat-thread-body {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+  }
+  .chat-thread-fullscreen .chat-composer {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .chat-thread-fullscreen .chat-thread-handle {
+    display: block;
+    width: 38px; height: 4px;
+    background: var(--muted);
+    border-radius: 999px;
+    margin: 6px auto 2px;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
+
+  /* ── BUTTONS — keep touch targets usable ── */
+  .btn-pri, .btn-sec {
+    padding: 9px 12px;
+    font-size: 11px;
+    min-height: 38px;
+  }
+
+  /* ── iOS ZOOM PREVENTION — inputs need ≥16px font-size on focus ── */
+  .coaching-tab input,
+  .coaching-tab textarea,
+  .coaching-tab select,
+  .chat-tab input,
+  .chat-tab textarea,
+  .trainees-tab input,
+  .trainees-tab textarea,
+  .trainees-tab select,
+  .regimes-tab input,
+  .regimes-tab textarea,
+  .regimes-tab select,
+  .regime-questionnaire input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+  .regime-questionnaire textarea,
+  .regime-questionnaire select,
+  .card input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+  .card textarea,
+  .card select,
+  .field-input,
+  .search-input,
+  .search-inp,
+  .cf-modal-input,
+  .cardio-select,
+  .cardio-duration-input,
+  .cx-cat-select {
+    font-size: 16px;
+  }
+  /* set-inp is a tiny weight/reps cell — keep readable but avoid zoom */
+  .set-inp { font-size: 16px; }
 }

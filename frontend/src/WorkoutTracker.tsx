@@ -626,11 +626,12 @@ export default function WorkoutTracker({
   };
 
   useMobileBackGesture(!!token, () => {
-    if (completed)               { setCompleted(null); setTab("history"); return true; }
-    if (tab !== "workout")       { setTab("workout"); return true; }
-    if (active)                  { return true; }
-    if (wStep === 6)              { setWStep(1); return true; }
-    if (wStep > 0)               { setWStep(wStep - 1); return true; }
+    if (completed)                          { setCompleted(null); setTab("history"); return true; }
+    if (tab === "chat" && activeConvId != null) { setActiveConvId(null); return true; }
+    if (tab !== "workout")                  { setTab("workout"); return true; }
+    if (active)                             { return true; }
+    if (wStep === 6)                         { setWStep(1); return true; }
+    if (wStep > 0)                          { setWStep(wStep - 1); return true; }
     return false;
   });
 

@@ -49,7 +49,7 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
 
   return (
     <div className="regimes-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 16, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
           <Calendar size={16} /> MY REGIMES
         </h2>
@@ -82,14 +82,14 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {regimes.map(r => (
           <div key={r.id} className="card" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 160px", minWidth: 0 }}>
                 <strong>{r.name}</strong>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {r.days_per_week} days/week · {r.goal || "general"} · {r.experience || "any"}
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button className="btn-pri" onClick={() => applyToWeek(r)}>
                   {appliedId === r.id ? "Applied!" : "Apply to my week"}
                 </button>
@@ -99,7 +99,7 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
               </div>
             </div>
             {r.description && <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.description}</div>}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4 }}>
               {(["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[]).map(k => {
                 const d = r.days?.[k];
                 const active = d?.enabled;
@@ -114,10 +114,20 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
                       background: active ? "var(--ad2)" : "transparent",
                       border: active ? "1px solid var(--accent)" : "1px solid var(--ad)",
                       fontSize: 11,
+                      minWidth: 0,
                     }}
                   >
                     <div>{WEEK_LABELS[k]}</div>
-                    <div style={{ color: "var(--muted)", fontSize: 10, textTransform: "uppercase" }}>
+                    <div
+                      style={{
+                        color: "var(--muted)",
+                        fontSize: 10,
+                        textTransform: "uppercase",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
                       {active ? (d?.focus || "—") : "rest"}
                     </div>
                   </div>

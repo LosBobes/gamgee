@@ -35,6 +35,91 @@ export default function ChatTab({
   const [newConvErr, setNewConvErr] = useState<string | null>(null);
   const [opening, setOpening] = useState(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const threadRef = useRef<HTMLDivElement | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const dragOffset = useRef(0);
+  const dragActive = useRef(false);
+
+  const isFullscreenMobile = () =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 480px)").matches;
+
+  const closeThread = () => {
+    const el = threadRef.current;
+    if (!el || !isFullscreenMobile()) {
+      setActiveConvId(null);
+      return;
+    }
+    el.style.transition = "transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)";
+    el.style.transform = "translateY(100%)";
+    window.setTimeout(() => setActiveConvId(null), 220);
+  };
+
+  const onThreadTouchStart = (e: React.TouchEvent) => {
+    if (!isFullscreenMobile()) return;
+    const target = e.target as HTMLElement;
+    // Only engage drag from the top of the sheet — never from scrollable body or composer.
+    if (target.closest(".chat-thread-body")) return;
+    if (target.closest(".chat-composer")) return;
+    dragStartY.current = e.touches[0].clientY;
+    dragOffset.current = 0;
+    dragActive.current = false;
+    const el = threadRef.current;
+    if (el) el.style.transition = "";
+  };
+
+  const onThreadTouchMove = (e: React.TouchEvent) => {
+    if (dragStartY.current == null) return;
+    const dy = e.touches[0].clientY - dragStartY.current;
+    if (dy <= 0) {
+      // Pulling up — ignore until the user pulls down past the engagement threshold.
+      return;
+    }
+    if (!dragActive.current && dy < 6) return;
+    dragActive.current = true;
+    dragOffset.current = dy;
+    const el = threadRef.current;
+    if (el) {
+      el.classList.add("is-dragging");
+      el.style.transform = `translateY(${dy}px)`;
+    }
+  };
+
+  const onThreadTouchEnd = () => {
+    if (dragStartY.current == null) return;
+    const wasDragging = dragActive.current;
+    const offset = dragOffset.current;
+    dragStartY.current = null;
+    dragOffset.current = 0;
+    dragActive.current = false;
+    const el = threadRef.current;
+    if (!wasDragging) return;
+    const threshold = Math.min(140, window.innerHeight * 0.22);
+    if (offset > threshold) {
+      closeThread();
+      return;
+    }
+    if (el) {
+      el.style.transition = "transform 0.22s cubic-bezier(0.32, 0.72, 0, 1)";
+      el.style.transform = "translateY(0)";
+      window.setTimeout(() => {
+        if (!el) return;
+        el.classList.remove("is-dragging");
+        el.style.transform = "";
+        el.style.transition = "";
+      }, 240);
+    }
+  };
+
+  // Reset any inline transform when the active conversation changes so a
+  // newly-opened thread always starts from its CSS-animated entry state.
+  useEffect(() => {
+    const el = threadRef.current;
+    if (!el) return;
+    el.style.transform = "";
+    el.style.transition = "";
+    el.classList.remove("is-dragging");
+  }, [activeConvId]);
 
   const activeConv = useMemo(
     () => conversations.find(c => c.id === activeConvId) ?? null,
@@ -302,9 +387,17 @@ export default function ChatTab({
             ))}
           </div>
         ) : (
-          <div className="card chat-thread">
+          <div
+            ref={threadRef}
+            className="card chat-thread chat-thread-fullscreen"
+            onTouchStart={onThreadTouchStart}
+            onTouchMove={onThreadTouchMove}
+            onTouchEnd={onThreadTouchEnd}
+            onTouchCancel={onThreadTouchEnd}
+          >
+            <div className="chat-thread-handle" aria-hidden="true" />
             <div className="chat-thread-header">
-              <button className="chat-back-btn" onClick={() => setActiveConvId(null)} aria-label="Back">
+              <button className="chat-back-btn" onClick={closeThread} aria-label="Back">
                 <ArrowLeft size={16} />
               </button>
               <span
