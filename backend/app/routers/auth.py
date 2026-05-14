@@ -143,6 +143,21 @@ def update_preferences(
     return current_user
 
 
+@router.patch("/notification-preferences", response_model=schemas.UserOut)
+def update_notification_preferences(
+    body: schemas.NotificationPreferences,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    data = body.model_dump(exclude_unset=True)
+    for key in ("notify_workout", "notify_pr", "notify_motivate", "notify_live"):
+        if key in data and data[key] is not None:
+            setattr(current_user, key, data[key])
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @router.patch("/profile", response_model=schemas.UserOut)
 def update_profile(
     body: schemas.UserProfileUpdate,

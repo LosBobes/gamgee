@@ -262,7 +262,11 @@ def motivate(
     if row.status != "accepted":
         raise HTTPException(status_code=400, detail="You can only motivate accepted buddies")
 
-    # Check the recipient's preference for motivate from us specifically
+    # Check the recipient's master switch (Settings → Notifications) and the
+    # per-buddy preference for motivate from us specifically.
+    recipient = db.query(models.User).filter(models.User.id == row.buddy_user_id).first()
+    if recipient and not recipient.notify_motivate:
+        raise HTTPException(status_code=403, detail="Recipient has disabled motivate notifications")
     recipient_row = (
         db.query(models.Buddy)
         .filter(
