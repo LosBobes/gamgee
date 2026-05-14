@@ -1176,9 +1176,15 @@ html, body { background: var(--bg); }
 }
 .health-load-more:hover { color: var(--text); }
 .recharts-wrapper,
-.recharts-surface,
+.recharts-surface { -webkit-tap-highlight-color: transparent; }
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
 .recharts-wrapper *:focus,
-.recharts-surface *:focus { outline: none; }
+.recharts-wrapper *:focus-visible,
+.recharts-surface *:focus,
+.recharts-surface *:focus-visible { outline: none !important; }
 
 /* ── EMPTY ── */
 .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
