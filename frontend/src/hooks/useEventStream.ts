@@ -4,7 +4,6 @@ export type ServerEvent =
   | { type: "notification"; data: { kind?: string } }
   | { type: "buddy"; data: Record<string, unknown> }
   | { type: "live"; data: { session_id?: string } }
-  | { type: "chat"; data: { conversation_id?: number } }
   | { type: "trainer"; data: Record<string, unknown> };
 
 /**
