@@ -127,6 +127,24 @@ export default function WorkoutTracker({
 
   useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
 
+  // A ?conv=<id> URL param (set by push-notification click-throughs for
+  // chat messages) deep-links straight to that conversation. Read it once on
+  // mount, then strip it so a manual refresh doesn't keep yanking the user
+  // back into the same thread.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const convRaw = params.get("conv");
+    if (!convRaw) return;
+    const convId = Number.parseInt(convRaw, 10);
+    if (Number.isFinite(convId)) {
+      setActiveConvId(convId);
+    }
+    params.delete("conv");
+    const qs = params.toString();
+    const next = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+    window.history.replaceState({}, "", next);
+  }, []);
+
   const setWeeklyPlan = useCallback((plan: WeeklyPlan) => {
     saveWeeklyPlan(plan);
     setWeeklyPlanState(plan);
@@ -258,6 +276,11 @@ export default function WorkoutTracker({
       if (r.ok) setConversations(await r.json());
     } catch { /* ignore */ }
   }, [authFetch]);
+
+  const goToChat = useCallback((conversationId?: number) => {
+    setTab("chat");
+    if (conversationId != null) setActiveConvId(conversationId);
+  }, []);
 
   const openChatWith = useCallback(async (otherUsername: string) => {
     try {
@@ -693,6 +716,7 @@ export default function WorkoutTracker({
             onMarkAll={markAllNotifRead}
             onDelete={deleteNotif}
             onGoToBuddies={() => setTab("buddies")}
+            onGoToChat={goToChat}
             onViewAll={() => setTab("notifications")}
             refresh={refreshNotifications}
           />
@@ -760,6 +784,7 @@ export default function WorkoutTracker({
             onMarkAll={markAllNotifRead}
             onDelete={deleteNotif}
             onGoToBuddies={() => setTab("buddies")}
+            onGoToChat={goToChat}
             refresh={refreshNotifications}
             authFetch={authFetch}
           />

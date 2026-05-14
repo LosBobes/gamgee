@@ -78,9 +78,13 @@ def send_to_user(
     body: str,
     kind: str,
     notification_id: int | None = None,
+    url: str | None = None,
 ) -> int:
     """Push to every subscription for ``user_id``. Returns the number of
-    successful sends. Subscriptions that come back 404/410 are deleted."""
+    successful sends. Subscriptions that come back 404/410 are deleted.
+
+    ``url`` is the click-through target; defaults to the in-app
+    notifications tab when not supplied."""
     if not is_configured():
         return 0
 
@@ -97,7 +101,7 @@ def send_to_user(
         "body": body,
         "kind": kind,
         "notification_id": notification_id,
-        "url": "/?tab=notifications",
+        "url": url or "/?tab=notifications",
     }
 
     ok = 0

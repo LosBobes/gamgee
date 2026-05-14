@@ -9,6 +9,7 @@ interface Props {
   onMarkAll:       () => Promise<void>;
   onDelete:        (id: number) => Promise<void>;
   onGoToBuddies:   () => void;
+  onGoToChat:      (conversationId?: number) => void;
   onViewAll:       () => void;
   refresh:         () => Promise<void>;
 }
@@ -45,7 +46,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 
 export default function NotificationBell({
   notifications, unreadCount,
-  onMarkRead, onMarkAll, onDelete, onGoToBuddies, onViewAll, refresh,
+  onMarkRead, onMarkAll, onDelete, onGoToBuddies, onGoToChat, onViewAll, refresh,
 }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -63,6 +64,11 @@ export default function NotificationBell({
   const handleClick = async (n: AppNotification) => {
     if (!n.read) await onMarkRead(n.id);
     setOpen(false);
+    if (n.kind === "chat_message") {
+      const convId = readConvId(n.payload);
+      onGoToChat(convId);
+      return;
+    }
     if (["buddy_request", "buddy_accepted", "motivate", "live_started", "live_joined", "workout_done", "pr_set", "live_ended"].includes(n.kind)) {
       onGoToBuddies();
     }
@@ -132,6 +138,14 @@ export default function NotificationBell({
       )}
     </div>
   );
+}
+
+function readConvId(payload: unknown): number | undefined {
+  if (payload && typeof payload === "object" && "conversation_id" in payload) {
+    const v = (payload as { conversation_id?: unknown }).conversation_id;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return undefined;
 }
 
 function fmtRelative(ms: number): string {
