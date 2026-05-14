@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from .database import SessionLocal
 from . import models
+from .seed import EXERCISES as _EXERCISES
 
 # ── Quotes ───────────────────────────────────────────────────────────────────
 
@@ -782,6 +783,13 @@ def seed_if_empty():
     left untouched so admin edits survive container restarts."""
     db = SessionLocal()
     try:
+        # The exercise catalog is required by the regime generator and the
+        # workout wizards. Seed it before content tables so a fresh DB is
+        # immediately usable without running `python -m app.init_db`.
+        if db.query(models.Exercise).count() == 0:
+            db.add_all([models.Exercise(**ex) for ex in _EXERCISES])
+            db.commit()
+
         if db.query(models.Quote).count() == 0:
             rows: list[models.Quote] = []
             for i, q in enumerate(BRO_QUOTES):

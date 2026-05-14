@@ -136,6 +136,8 @@ def update_preferences(
 ):
     if body.primary_color is not None:
         current_user.primary_color = body.primary_color
+    if body.progression_speed is not None:
+        current_user.progression_speed = body.progression_speed
     db.commit()
     db.refresh(current_user)
     return current_user

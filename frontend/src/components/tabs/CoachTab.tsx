@@ -1,5 +1,5 @@
 import { Brain, ChevronRight } from "lucide-react";
-import type { ExerciseDef, WorkoutSession } from "../../types";
+import type { ExerciseDef, WorkoutSession, ProgressionSpeed } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { useTips } from "../../hooks/useContentLibrary";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
@@ -7,6 +7,7 @@ import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
+  progressionSpeed: ProgressionSpeed;
 }
 
 const STATUS_ORDER: Record<string, number> = {
@@ -14,11 +15,11 @@ const STATUS_ORDER: Record<string, number> = {
   "READY TO JUMP": 3, "PROGRESSING": 4, "BUILDING REPS": 5, "NEW": 6,
 };
 
-export default function CoachTab({ history }: Props) {
+export default function CoachTab({ history, progressionSpeed }: Props) {
   const t = useTxt();
   const tips = useTips();
   const coachData = ALL_EX
-    .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
+    .map(ex => ({ ex, a: analyzeEx(ex.id, history, progressionSpeed) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
 

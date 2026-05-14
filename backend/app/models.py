@@ -13,6 +13,9 @@ class User(Base):
     email = Column(String(254), unique=True, nullable=True, index=True)
     gender = Column(String(20), nullable=True)
     primary_color = Column(String(7), nullable=True)
+    # "slow" | "moderate" | "fast" — scales how aggressively the analyzer
+    # recommends weight jumps. Null is treated as "moderate".
+    progression_speed = Column(String(20), nullable=True)
     is_admin = Column(Boolean, nullable=False, default=False)
     is_verified = Column(Boolean, nullable=False, default=False)
     # Trainer profile: populated when a user signs up through the trainer flow.
