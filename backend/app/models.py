@@ -24,6 +24,12 @@ class User(Base):
     trainer_specialties = Column(JSONB, nullable=True)        # list[str]
     trainer_certifications = Column(Text, nullable=True)
     trainer_years_experience = Column(Integer, nullable=True)
+    # Global notification preferences. Apply as a master switch on top of the
+    # per-buddy `Buddy.notify_*` flags: if either is off, no notification.
+    notify_workout = Column(Boolean, nullable=False, default=True)
+    notify_pr = Column(Boolean, nullable=False, default=True)
+    notify_motivate = Column(Boolean, nullable=False, default=True)
+    notify_live = Column(Boolean, nullable=False, default=True)
 
 
 class PasswordResetToken(Base):

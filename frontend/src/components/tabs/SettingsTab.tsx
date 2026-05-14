@@ -425,6 +425,93 @@ function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
   );
 }
 
+type NotifKind = "notify_workout" | "notify_pr" | "notify_motivate" | "notify_live";
+
+const NOTIF_ROWS: Array<{ key: NotifKind; label: string; hint: string }> = [
+  { key: "notify_workout",  label: "Workouts",      hint: "When a buddy finishes a session" },
+  { key: "notify_pr",       label: "Personal records", hint: "When a buddy hits a new PR" },
+  { key: "notify_motivate", label: "Motivations",   hint: "When a buddy sends you a hype message" },
+  { key: "notify_live",     label: "Live sessions", hint: "When a buddy starts or ends a live workout" },
+];
+
+function NotificationTypesCard({ authFetch }: { authFetch: Props["authFetch"] }) {
+  const [prefs, setPrefs] = useState<Record<NotifKind, boolean> | null>(null);
+  const [busy, setBusy] = useState<NotifKind | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    authFetch("/api/auth/me")
+      .then(r => r.ok ? r.json() : null)
+      .then((d: Record<string, unknown> | null) => {
+        if (cancelled || !d) return;
+        setPrefs({
+          notify_workout:  d.notify_workout  !== false,
+          notify_pr:       d.notify_pr       !== false,
+          notify_motivate: d.notify_motivate !== false,
+          notify_live:     d.notify_live     !== false,
+        });
+      })
+      .catch(() => { if (!cancelled) setErr("Couldn't load notification settings."); });
+    return () => { cancelled = true; };
+  }, [authFetch]);
+
+  const toggle = async (key: NotifKind) => {
+    if (!prefs) return;
+    const next = !prefs[key];
+    setBusy(key);
+    setErr(null);
+    setPrefs({ ...prefs, [key]: next });
+    try {
+      const r = await authFetch("/api/auth/notification-preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: next }),
+      });
+      if (!r.ok) {
+        setPrefs(p => p && { ...p, [key]: !next });
+        setErr("Couldn't save that change.");
+      }
+    } catch {
+      setPrefs(p => p && { ...p, [key]: !next });
+      setErr("Network error.");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="profile-card">
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        What to notify me about
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {NOTIF_ROWS.map(({ key, label, hint }) => {
+          const on = prefs?.[key] ?? true;
+          const loading = busy === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => toggle(key)}
+              disabled={prefs === null || loading}
+              className={`pref-toggle${on ? " on" : ""}`}
+            >
+              {on ? <Bell size={14} /> : <BellOff size={14} />}
+              <span style={{ display: "flex", flexDirection: "column", minWidth: 0, gap: 2 }}>
+                <span style={{ fontWeight: 600 }}>{label}</span>
+                <span style={{ fontSize: 11, color: "var(--muted)" }}>{hint}</span>
+              </span>
+              <span className={`pref-pill${on ? " on" : ""}`}>{loading ? "…" : on ? "ON" : "OFF"}</span>
+            </button>
+          );
+        })}
+      </div>
+      {err && <p className="auth-err" style={{ marginTop: 8, marginBottom: 0 }}>{err}</p>}
+    </div>
+  );
+}
+
 function OnboardingCard() {
   const t = useTxt();
   const { openWelcome, resetHints, dismissedHints } = useOnboarding();
@@ -489,6 +576,7 @@ export default function SettingsTab({
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />
+      <NotificationTypesCard authFetch={authFetch} />
 
       <div className="profile-section">{t("Guidance", "Guidance", "Guidance")}</div>
       <OnboardingCard />

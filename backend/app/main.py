@@ -47,6 +47,13 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_specialties JSONB"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_certifications TEXT"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_years_experience INTEGER"))
+        # Global notification preference columns — master switches surfaced in
+        # the Settings tab. Default TRUE so existing accounts keep getting all
+        # their buddy-driven pings.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_workout BOOLEAN NOT NULL DEFAULT TRUE"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_pr BOOLEAN NOT NULL DEFAULT TRUE"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_motivate BOOLEAN NOT NULL DEFAULT TRUE"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_live BOOLEAN NOT NULL DEFAULT TRUE"))
         # Live session rich-broadcast columns
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_id VARCHAR"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_name VARCHAR"))

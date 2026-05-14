@@ -131,23 +131,29 @@ def notify_buddies(
     only_user_ids: Iterable[int] | None = None,
 ) -> int:
     """Create one notification per accepted buddy whose preference for ``kind``
-    is enabled. Returns the number of notifications created."""
+    is enabled. Both the recipient's global ``User.notify_*`` switch and their
+    per-buddy ``Buddy.notify_*`` flag must be on. Returns the number of
+    notifications created."""
     field = _PREF_FIELD.get(kind)
-    q = (
-        db.query(models.Buddy)
+    rows = (
+        db.query(models.Buddy, models.User)
+        .join(models.User, models.User.id == models.Buddy.user_id)
         .filter(models.Buddy.user_id != sender_user_id)
         .filter(models.Buddy.buddy_user_id == sender_user_id)
         .filter(models.Buddy.status == "accepted")
+        .all()
     )
-    rows = q.all()
     if only_user_ids is not None:
         allow = set(only_user_ids)
-        rows = [r for r in rows if r.user_id in allow]
+        rows = [(b, u) for (b, u) in rows if b.user_id in allow]
 
     count = 0
-    for row in rows:
-        if field is not None and not getattr(row, field, True):
-            continue
+    for row, recipient in rows:
+        if field is not None:
+            if not getattr(row, field, True):
+                continue
+            if not getattr(recipient, field, True):
+                continue
         create_notification(
             db,
             user_id=row.user_id,

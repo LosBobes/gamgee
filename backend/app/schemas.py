@@ -86,6 +86,10 @@ class UserOut(BaseModel):
     trainer_specialties: list[str] | None = None
     trainer_certifications: str | None = None
     trainer_years_experience: int | None = None
+    notify_workout: bool = True
+    notify_pr: bool = True
+    notify_motivate: bool = True
+    notify_live: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -161,6 +165,13 @@ class UserPreferences(BaseModel):
         if v is not None and not _HEX_COLOR_RE.match(v):
             raise ValueError("primary_color must be a valid #RRGGBB hex color")
         return v
+
+
+class NotificationPreferences(BaseModel):
+    notify_workout: bool | None = None
+    notify_pr: bool | None = None
+    notify_motivate: bool | None = None
+    notify_live: bool | None = None
 
 
 class UserProfileUpdate(BaseModel):
