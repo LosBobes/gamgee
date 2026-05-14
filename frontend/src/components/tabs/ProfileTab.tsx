@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User, Bell, BellOff } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
@@ -586,13 +586,22 @@ function Duck({ isAdmin }: { isAdmin?: boolean }) {
   const mode = useToneMode();
   const [msg, setMsg]       = useState<string | null>(null);
   const [bounce, setBounce] = useState(false);
+  const msgTimer    = useRef<number | null>(null);
+  const bounceTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (msgTimer.current)    window.clearTimeout(msgTimer.current);
+    if (bounceTimer.current) window.clearTimeout(bounceTimer.current);
+  }, []);
 
   const handleDuck = useCallback(() => {
     const pool = mode === "grl" ? GRL_DUCK_MSGS : DUCK_MSGS;
     setMsg(pool[Math.floor(Math.random() * pool.length)]);
     setBounce(true);
-    setTimeout(() => setBounce(false), 500);
-    setTimeout(() => setMsg(null), 2800);
+    if (bounceTimer.current) window.clearTimeout(bounceTimer.current);
+    if (msgTimer.current)    window.clearTimeout(msgTimer.current);
+    bounceTimer.current = window.setTimeout(() => setBounce(false), 500);
+    msgTimer.current    = window.setTimeout(() => setMsg(null), 6000);
   }, [mode]);
 
   return (
