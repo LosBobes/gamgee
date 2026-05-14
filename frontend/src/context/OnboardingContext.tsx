@@ -10,6 +10,7 @@ interface OnboardingState {
   dismissedHints: Set<string>;
   isHintVisible:  (key: string) => boolean;
   dismissHint:    (key: string) => void;
+  resetHints:     () => void;
   startTour:      () => void;
   endTour:        () => void;
   openWelcome:    () => void;
@@ -59,6 +60,10 @@ export function OnboardingProvider({ children, historyLen }: ProviderProps) {
     });
   }, []);
 
+  const resetHints = useCallback(() => {
+    setDismissedHints(new Set());
+  }, []);
+
   const startTour = useCallback(() => {
     setDismissedHints(new Set());
     setTourActive(true);
@@ -84,8 +89,8 @@ export function OnboardingProvider({ children, historyLen }: ProviderProps) {
 
   const value = useMemo<OnboardingState>(() => ({
     showWelcome, tourActive, dismissedHints,
-    isHintVisible, dismissHint, startTour, endTour, openWelcome, closeWelcome,
-  }), [showWelcome, tourActive, dismissedHints, isHintVisible, dismissHint, startTour, endTour, openWelcome, closeWelcome]);
+    isHintVisible, dismissHint, resetHints, startTour, endTour, openWelcome, closeWelcome,
+  }), [showWelcome, tourActive, dismissedHints, isHintVisible, dismissHint, resetHints, startTour, endTour, openWelcome, closeWelcome]);
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
 }

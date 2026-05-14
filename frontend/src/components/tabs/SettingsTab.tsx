@@ -1,18 +1,30 @@
 import { useState, useEffect } from "react";
 import { Bell, BellOff } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
+import { useOnboarding } from "../../context/OnboardingContext";
 import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
 
+type Gender = "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
+
+const GENDER_OPTIONS: Array<{ id: Gender; label: string }> = [
+  { id: "female",            label: "Female"            },
+  { id: "male",              label: "Male"              },
+  { id: "non_binary",        label: "Non-binary"        },
+  { id: "other",             label: "Other"             },
+  { id: "prefer_not_to_say", label: "Prefer not to say" },
+];
+
 interface Props {
   name:            string | null;
   email:           string | null;
+  gender:          string | null;
   token:           string | null;
   primaryColor:    string;
   onColorChange:   (color: string) => void;
-  onProfileUpdate: (name: string | null, email: string | null) => void;
+  onProfileUpdate: (name: string | null, email: string | null, gender: string | null) => void;
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
@@ -129,22 +141,34 @@ function ColorPicker({ color, onChange, token }: { color: string; onChange: (c: 
   );
 }
 
-function EditProfileCard({ name, email, token, onSave }: {
-  name: string | null;
-  email: string | null;
-  token: string | null;
-  onSave: (name: string | null, email: string | null) => void;
+function isGender(value: string | null): value is Gender {
+  return value === "female" || value === "male" || value === "non_binary"
+      || value === "other"  || value === "prefer_not_to_say";
+}
+
+function EditProfileCard({ name, email, gender, token, onSave }: {
+  name:   string | null;
+  email:  string | null;
+  gender: string | null;
+  token:  string | null;
+  onSave: (name: string | null, email: string | null, gender: string | null) => void;
 }) {
-  const [nameVal,  setNameVal]  = useState(name ?? "");
-  const [emailVal, setEmailVal] = useState(email ?? "");
-  const [err,      setErr]      = useState("");
-  const [saving,   setSaving]   = useState(false);
-  const [ok,       setOk]       = useState(false);
+  const initialGender: Gender = isGender(gender) ? gender : "prefer_not_to_say";
+  const [nameVal,   setNameVal]   = useState(name ?? "");
+  const [emailVal,  setEmailVal]  = useState(email ?? "");
+  const [genderVal, setGenderVal] = useState<Gender>(initialGender);
+  const [err,       setErr]       = useState("");
+  const [saving,    setSaving]    = useState(false);
+  const [ok,        setOk]        = useState(false);
 
   useEffect(() => { setNameVal(name ?? ""); }, [name]);
   useEffect(() => { setEmailVal(email ?? ""); }, [email]);
+  useEffect(() => { setGenderVal(isGender(gender) ? gender : "prefer_not_to_say"); }, [gender]);
 
-  const changed = nameVal.trim() !== (name ?? "") || emailVal.trim() !== (email ?? "");
+  const changed =
+    nameVal.trim() !== (name ?? "")
+    || emailVal.trim() !== (email ?? "")
+    || genderVal !== initialGender;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,11 +178,15 @@ function EditProfileCard({ name, email, token, onSave }: {
       const res = await fetch("/api/auth/profile", {
         method:  "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
-        body:    JSON.stringify({ name: nameVal.trim(), email: emailVal.trim() || null }),
+        body:    JSON.stringify({
+          name:   nameVal.trim(),
+          email:  emailVal.trim() || null,
+          gender: genderVal,
+        }),
       });
       if (!res.ok) { setErr((await res.json()).detail ?? "Failed"); return; }
       const data = await res.json();
-      onSave(data.name ?? null, data.email ?? null);
+      onSave(data.name ?? null, data.email ?? null, data.gender ?? null);
       setOk(true);
       setTimeout(() => setOk(false), 2500);
     } catch {
@@ -188,6 +216,16 @@ function EditProfileCard({ name, email, token, onSave }: {
           onChange={e => { setEmailVal(e.target.value); setOk(false); }}
           maxLength={254}
         />
+        <select
+          className="field-input"
+          value={genderVal}
+          onChange={e => { setGenderVal(e.target.value as Gender); setOk(false); }}
+          aria-label="Gender"
+        >
+          {GENDER_OPTIONS.map(o => (
+            <option key={o.id} value={o.id}>{o.label}</option>
+          ))}
+        </select>
         {err && <p className="auth-err">{err}</p>}
         {ok  && <p style={{ color: "var(--green)", fontSize: 12, margin: 0 }}>Saved.</p>}
         <button
@@ -387,8 +425,49 @@ function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
   );
 }
 
+function OnboardingCard() {
+  const t = useTxt();
+  const { openWelcome, resetHints, dismissedHints } = useOnboarding();
+  const [hintsReset, setHintsReset] = useState(false);
+
+  const handleResetHints = () => {
+    resetHints();
+    setHintsReset(true);
+    setTimeout(() => setHintsReset(false), 2500);
+  };
+
+  return (
+    <div className="profile-card">
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        {t("Tour & hints", "Tour & hints", "Tour & hints")}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <button type="button" className="auth-toggle" style={{ textAlign: "left" }} onClick={openWelcome}>
+          {t("Replay welcome tour", "Replay welcome tour", "Replay welcome tour")}
+        </button>
+        <button
+          type="button"
+          className="auth-toggle"
+          style={{ textAlign: "left" }}
+          onClick={handleResetHints}
+          disabled={dismissedHints.size === 0}
+        >
+          {dismissedHints.size === 0
+            ? t("No dismissed hints", "No dismissed hints", "No dismissed hints")
+            : t(`Show ${dismissedHints.size} dismissed hint${dismissedHints.size === 1 ? "" : "s"} again`,
+                `Show ${dismissedHints.size} dismissed hint${dismissedHints.size === 1 ? "" : "s"} again`,
+                `Show ${dismissedHints.size} dismissed hint${dismissedHints.size === 1 ? "" : "s"} again`)}
+        </button>
+        {hintsReset && (
+          <p style={{ color: "var(--green)", fontSize: 12, margin: 0 }}>Hints restored.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsTab({
-  name, email, token, primaryColor, onColorChange, onProfileUpdate,
+  name, email, gender, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, authFetch,
 }: Props) {
   const t = useTxt();
@@ -396,7 +475,13 @@ export default function SettingsTab({
   return (
     <div className="tab-anim">
       <div className="profile-section">{t("Profile", "Profile")}</div>
-      <EditProfileCard name={name} email={email} token={token} onSave={onProfileUpdate} />
+      <EditProfileCard
+        name={name}
+        email={email}
+        gender={gender}
+        token={token}
+        onSave={onProfileUpdate}
+      />
 
       <div className="profile-section">{t("Appearance", "Appearance")}</div>
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
@@ -404,6 +489,9 @@ export default function SettingsTab({
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />
+
+      <div className="profile-section">{t("Guidance", "Guidance", "Guidance")}</div>
+      <OnboardingCard />
 
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />

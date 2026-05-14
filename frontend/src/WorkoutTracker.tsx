@@ -90,6 +90,7 @@ export default function WorkoutTracker({
   const [username,     setUsername]     = useState<string | null>(null);
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
+  const [gender,       setGender]       = useState<string | null>(null);
   const [isAdmin,      setIsAdmin]      = useState(false);
   const [isVerified,   setIsVerified]   = useState(true);
   const [isTrainer,    setIsTrainer]    = useState(false);
@@ -166,10 +167,11 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
+        setGender(d.gender ?? null);
         setIsAdmin(d.is_admin ?? false);
         setIsVerified(d.is_verified ?? true);
         setIsTrainer(d.is_trainer ?? false);
@@ -784,7 +786,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (
