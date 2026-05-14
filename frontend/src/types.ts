@@ -70,6 +70,33 @@ export interface ScoreboardRow {
 }
 export interface MotivatePreset { id: string; message: string; }
 
+export interface PublicProfileMemory {
+  id: number;
+  sender_user_id: number | null;
+  sender_username: string | null;
+  sender_name: string | null;
+  sender_primary_color: string | null;
+  message: string;
+  created_at: number;
+}
+export interface PublicProfile {
+  user_id: number;
+  username: string;
+  name: string | null;
+  primary_color: string | null;
+  gender: string | null;
+  is_trainer: boolean;
+  is_self: boolean;
+  relationship: "self" | "accepted" | "none";
+  member_since: string | null;
+  workouts_total: number;
+  pr_count: number;
+  current_streak: number;
+  last_workout: string | null;
+  top_focuses: string[];
+  memories: PublicProfileMemory[];
+}
+
 export type NotificationKind =
   | "buddy_request" | "buddy_accepted"
   | "workout_done" | "pr_set"

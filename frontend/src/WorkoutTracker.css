@@ -2160,6 +2160,111 @@ html, body { background: var(--bg); }
   letter-spacing: 0.1em; font-family: 'Nunito', sans-serif;
 }
 
+.score-card.clickable { cursor: pointer; transition: border-color 0.12s, transform 0.12s; }
+.score-card.clickable:hover { border-color: var(--muted); transform: translateY(-1px); }
+.score-card.clickable.is-self:hover { border-color: var(--accent); }
+.score-card.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Make a buddy-row's avatar+name region behave like a button. */
+.buddy-row-clickable {
+  display: flex; align-items: center; gap: 10px;
+  flex: 1; min-width: 0; padding: 0; margin: 0;
+  background: transparent; border: 0; color: inherit;
+  text-align: left; cursor: pointer; font: inherit;
+  border-radius: 8px; transition: background 0.12s;
+}
+.buddy-row-clickable:hover { background: var(--s2); }
+.buddy-row-clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.buddy-row-clickable .buddy-row-main { flex: 1; min-width: 0; }
+
+/* ── Public profile modal & memories board ─────────────────────────── */
+.public-profile-modal { position: relative; padding: 22px 18px 18px; }
+.public-profile-close {
+  position: absolute; top: 10px; right: 10px;
+}
+.public-profile-hero {
+  display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+  padding-right: 28px;
+}
+.public-profile-avatar {
+  width: 60px; height: 60px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Nunito', sans-serif; font-size: 18px; font-weight: 800;
+  color: #000; letter-spacing: 0.04em;
+}
+.public-profile-meta { min-width: 0; flex: 1; }
+.public-profile-name {
+  font-size: 18px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.public-profile-username {
+  font-size: 12px; color: var(--muted); margin-top: 2px;
+  font-family: 'Nunito', sans-serif;
+}
+.public-profile-since {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px; font-family: 'Nunito', sans-serif;
+  font-size: 9px; letter-spacing: 0.08em; color: var(--muted);
+}
+.public-profile-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+  margin-bottom: 12px;
+}
+.public-profile-stat {
+  background: var(--s2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.public-profile-stat-icon { color: var(--muted); }
+.public-profile-focus-row {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
+}
+.public-profile-section {
+  display: flex; align-items: center; gap: 6px;
+  margin-top: 2px; margin-bottom: 8px;
+}
+.public-profile-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 22px 10px; color: var(--muted);
+  background: var(--s2); border: 1px dashed var(--border); border-radius: 10px;
+}
+.public-profile-empty-label {
+  font-size: 12px; text-align: center; line-height: 1.4; max-width: 320px;
+}
+
+.memory-board {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.memory-card {
+  position: relative;
+  background: var(--s2); border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 10px; padding: 10px 12px 10px 14px;
+  animation: fadeUp 0.2s ease both;
+}
+.memory-quote-icon {
+  position: absolute; top: 8px; right: 10px; opacity: 0.7;
+}
+.memory-message {
+  font-size: 13px; color: var(--text); line-height: 1.4;
+  font-style: italic; padding-right: 18px;
+}
+.memory-footer {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; font-family: 'Nunito', sans-serif;
+}
+.memory-sender {
+  flex: 1; min-width: 0; font-size: 11px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.memory-sender-handle {
+  font-size: 10px; font-weight: 500; color: var(--muted);
+}
+.memory-date {
+  font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted); white-space: nowrap;
+}
+
 /* ── Modal (motivate dialog) ─────────────────────────────────────────── */
 .modal-backdrop {
   position: fixed; inset: 0; background: rgba(0, 0, 0, 0.65);

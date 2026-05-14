@@ -298,6 +298,104 @@ def list_presets():
     return [{"id": k, "message": v} for k, v in PRESET_MESSAGES.items()]
 
 
+# ── Public profile ────────────────────────────────────────────────────────────
+
+@router.get("/profile/{user_id}", response_model=schemas.PublicProfileOut)
+def public_profile(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    target = db.query(models.User).filter(models.User.id == user_id).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    is_self = target.id == current_user.id
+    if is_self:
+        relationship = "self"
+    else:
+        rel_row = (
+            db.query(models.Buddy)
+            .filter(
+                models.Buddy.user_id == current_user.id,
+                models.Buddy.buddy_user_id == target.id,
+                models.Buddy.status == "accepted",
+            )
+            .first()
+        )
+        if not rel_row:
+            raise HTTPException(status_code=403, detail="Only buddies can view this profile")
+        relationship = "accepted"
+
+    sessions = (
+        db.query(models.WorkoutSession)
+        .filter(models.WorkoutSession.user_id == target.id)
+        .all()
+    )
+    workouts_total = len(sessions)
+    pr_count = (
+        db.query(models.PersonalRecord)
+        .filter(models.PersonalRecord.user_id == target.id)
+        .count()
+    )
+
+    dates = [s.date for s in sessions if s.date]
+    member_since = min(dates) if dates else None
+    last_workout = max(dates) if dates else None
+    streak = _streak(dates)
+
+    focus_counts: dict[str, int] = {}
+    for s in sessions:
+        if s.focus:
+            focus_counts[s.focus] = focus_counts.get(s.focus, 0) + 1
+    top_focuses = [
+        name for name, _ in sorted(focus_counts.items(), key=lambda kv: -kv[1])[:3]
+    ]
+
+    # Motivations received — the "board of memories". Limit to a reasonable
+    # number so the payload stays small; newest first.
+    motiv_rows = (
+        db.query(models.Notification, models.User)
+        .outerjoin(models.User, models.User.id == models.Notification.sender_user_id)
+        .filter(
+            models.Notification.user_id == target.id,
+            models.Notification.kind == "motivate",
+        )
+        .order_by(models.Notification.created_at.desc())
+        .limit(60)
+        .all()
+    )
+    memories: list[schemas.PublicProfileMemory] = []
+    for n, sender in motiv_rows:
+        memories.append(schemas.PublicProfileMemory(
+            id=n.id,
+            sender_user_id=sender.id if sender else None,
+            sender_username=sender.username if sender else None,
+            sender_name=sender.name if sender else None,
+            sender_primary_color=sender.primary_color if sender else None,
+            message=n.message,
+            created_at=n.created_at,
+        ))
+
+    return schemas.PublicProfileOut(
+        user_id=target.id,
+        username=target.username,
+        name=target.name,
+        primary_color=target.primary_color,
+        gender=target.gender,
+        is_trainer=bool(target.is_trainer),
+        is_self=is_self,
+        relationship=relationship,
+        member_since=member_since,
+        workouts_total=workouts_total,
+        pr_count=pr_count,
+        current_streak=streak,
+        last_workout=last_workout,
+        top_focuses=top_focuses,
+        memories=memories,
+    )
+
+
 # ── Scoreboard ────────────────────────────────────────────────────────────────
 
 def _streak(dates: list[str]) -> int:

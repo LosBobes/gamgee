@@ -463,6 +463,40 @@ class MotivateBody(BaseModel):
         return v
 
 
+class PublicProfileMemory(BaseModel):
+    """One motivation message someone received — surfaced on their public
+    profile as a 'board of memories'."""
+    id: int
+    sender_user_id: int | None = None
+    sender_username: str | None = None
+    sender_name: str | None = None
+    sender_primary_color: str | None = None
+    message: str
+    created_at: int = 0
+
+
+class PublicProfileOut(BaseModel):
+    """Profile of another user, visible to accepted buddies (and self).
+
+    The motivations board (`memories`) collects every `motivate` notification
+    the user has received, with sender info attached."""
+    user_id: int
+    username: str
+    name: str | None = None
+    primary_color: str | None = None
+    gender: str | None = None
+    is_trainer: bool = False
+    is_self: bool = False
+    relationship: str = "none"               # self | accepted | none
+    member_since: str | None = None          # ISO date of oldest workout
+    workouts_total: int = 0
+    pr_count: int = 0
+    current_streak: int = 0
+    last_workout: str | None = None
+    top_focuses: list[str] = []              # most-used focus labels, up to 3
+    memories: list[PublicProfileMemory] = []
+
+
 # ── Notifications ─────────────────────────────────────────────────────────────
 
 class NotificationOut(BaseModel):

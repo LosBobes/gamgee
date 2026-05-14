@@ -7,6 +7,7 @@ import type {
   Buddy, UserSearchResult, ScoreboardRow, MotivatePreset, LiveSession,
 } from "../../types";
 import { useTxt } from "../../context/ToneContext";
+import PublicProfileModal from "../PublicProfileModal";
 
 type Sub = "scoreboard" | "buddies" | "live" | "find";
 
@@ -36,6 +37,8 @@ export default function BuddiesTab({
   const [scoreboard, setScoreboard] = useState<ScoreboardRow[]>([]);
   const [loading, setLoading]       = useState(false);
   const [toast, setToast]           = useState<string | null>(null);
+  const [profileUserId, setProfileUserId] = useState<number | null>(null);
+  const openProfile = useCallback((userId: number) => setProfileUserId(userId), []);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -91,7 +94,7 @@ export default function BuddiesTab({
       )}
 
       {sub === "scoreboard" && (
-        <ScoreboardView rows={scoreboard} loading={loading} />
+        <ScoreboardView rows={scoreboard} loading={loading} onOpenProfile={openProfile} />
       )}
 
       {sub === "buddies" && (
@@ -101,6 +104,7 @@ export default function BuddiesTab({
           refresh={refreshBuddies}
           onToast={showToast}
           onLoading={setLoading}
+          onOpenProfile={openProfile}
         />
       )}
 
@@ -116,6 +120,7 @@ export default function BuddiesTab({
           endLiveSession={endLiveSession}
           joinLiveSession={joinLiveSession}
           onToast={showToast}
+          onOpenProfile={openProfile}
         />
       )}
 
@@ -124,6 +129,15 @@ export default function BuddiesTab({
           authFetch={authFetch}
           refresh={refreshBuddies}
           onToast={showToast}
+          onOpenProfile={openProfile}
+        />
+      )}
+
+      {profileUserId !== null && (
+        <PublicProfileModal
+          userId={profileUserId}
+          authFetch={authFetch}
+          onClose={() => setProfileUserId(null)}
         />
       )}
     </div>
@@ -132,8 +146,9 @@ export default function BuddiesTab({
 
 // ─── Scoreboard ────────────────────────────────────────────────────────────
 
-function ScoreboardView({ rows, loading }: {
+function ScoreboardView({ rows, loading, onOpenProfile }: {
   rows: ScoreboardRow[]; loading: boolean;
+  onOpenProfile: (userId: number) => void;
 }) {
   const t = useTxt();
   if (loading) {
@@ -159,7 +174,14 @@ function ScoreboardView({ rows, loading }: {
         const accent = r.primary_color ?? "var(--primary)";
         const initials = (r.name ?? r.username).slice(0, 2).toUpperCase();
         return (
-          <div key={r.user_id} className={`score-card${r.is_self ? " is-self" : ""}`}>
+          <div
+            key={r.user_id}
+            className={`score-card clickable${r.is_self ? " is-self" : ""}`}
+            onClick={() => onOpenProfile(r.user_id)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpenProfile(r.user_id); }}
+          >
             <div className="score-rank">#{i + 1}</div>
             <div className="score-avatar" style={{ background: accent }}>{initials}</div>
             <div className="score-main">
@@ -246,12 +268,13 @@ function IncomingRequests({ incoming, authFetch, refresh, onToast }: {
 
 // ─── Buddies list ─────────────────────────────────────────────────────────
 
-function BuddiesList({ buddies, authFetch, refresh, onToast, onLoading }: {
+function BuddiesList({ buddies, authFetch, refresh, onToast, onLoading, onOpenProfile }: {
   buddies: Buddy[];
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   refresh: () => Promise<void>;
   onToast: (m: string) => void;
   onLoading: (l: boolean) => void;
+  onOpenProfile: (userId: number) => void;
 }) {
   const t = useTxt();
   const accepted = buddies.filter(b => b.status === "accepted");
@@ -278,6 +301,7 @@ function BuddiesList({ buddies, authFetch, refresh, onToast, onLoading }: {
           onToast={onToast}
           onLoading={onLoading}
           onMotivate={() => setMotivateBuddy(b)}
+          onOpenProfile={() => onOpenProfile(b.user_id)}
         />
       ))}
       {pending.length > 0 && (
@@ -313,13 +337,14 @@ function BuddiesList({ buddies, authFetch, refresh, onToast, onLoading }: {
   );
 }
 
-function BuddyCard({ buddy, authFetch, refresh, onToast, onLoading, onMotivate }: {
+function BuddyCard({ buddy, authFetch, refresh, onToast, onLoading, onMotivate, onOpenProfile }: {
   buddy: Buddy;
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   refresh: () => Promise<void>;
   onToast: (m: string) => void;
   onLoading: (l: boolean) => void;
   onMotivate: () => void;
+  onOpenProfile: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const accent = buddy.primary_color ?? "var(--primary)";
@@ -345,11 +370,18 @@ function BuddyCard({ buddy, authFetch, refresh, onToast, onLoading, onMotivate }
   return (
     <div className="profile-card buddy-card">
       <div className="buddy-row">
-        <div className="score-avatar" style={{ background: accent }}>{initials}</div>
-        <div className="buddy-row-main">
-          <div className="buddy-row-name">{buddy.name ?? buddy.username}</div>
-          <div className="buddy-row-handle">@{buddy.username}</div>
-        </div>
+        <button
+          type="button"
+          className="buddy-row-clickable"
+          onClick={onOpenProfile}
+          aria-label={`View ${buddy.name ?? buddy.username}'s profile`}
+        >
+          <div className="score-avatar" style={{ background: accent }}>{initials}</div>
+          <div className="buddy-row-main">
+            <div className="buddy-row-name">{buddy.name ?? buddy.username}</div>
+            <div className="buddy-row-handle">@{buddy.username}</div>
+          </div>
+        </button>
         <button className="buddy-pill-btn motivate" onClick={onMotivate}>
           <Send size={13} /> Motivate
         </button>
@@ -468,10 +500,11 @@ function MotivateDialog({ buddy, authFetch, onClose, onToast }: {
 
 // ─── Find users ───────────────────────────────────────────────────────────
 
-function FindBuddies({ authFetch, refresh, onToast }: {
+function FindBuddies({ authFetch, refresh, onToast, onOpenProfile }: {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   refresh: () => Promise<void>;
   onToast: (m: string) => void;
+  onOpenProfile: (userId: number) => void;
 }) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<UserSearchResult[]>([]);
@@ -523,15 +556,36 @@ function FindBuddies({ authFetch, refresh, onToast }: {
         {results.length === 0 && q.trim() && !loading && (
           <div style={{ fontSize: 12, color: "var(--muted)" }}>No users found</div>
         )}
-        {results.map(r => (
+        {results.map(r => {
+          const canOpen = r.relationship === "accepted" || r.relationship === "self";
+          return (
           <div key={r.id} className="buddy-row">
-            <div className="score-avatar" style={{ background: r.primary_color ?? "var(--primary)" }}>
-              {(r.name ?? r.username).slice(0, 2).toUpperCase()}
-            </div>
-            <div className="buddy-row-main">
-              <div className="buddy-row-name">{r.name ?? r.username}</div>
-              <div className="buddy-row-handle">@{r.username}</div>
-            </div>
+            {canOpen ? (
+              <button
+                type="button"
+                className="buddy-row-clickable"
+                onClick={() => onOpenProfile(r.id)}
+                aria-label={`View ${r.name ?? r.username}'s profile`}
+              >
+                <div className="score-avatar" style={{ background: r.primary_color ?? "var(--primary)" }}>
+                  {(r.name ?? r.username).slice(0, 2).toUpperCase()}
+                </div>
+                <div className="buddy-row-main">
+                  <div className="buddy-row-name">{r.name ?? r.username}</div>
+                  <div className="buddy-row-handle">@{r.username}</div>
+                </div>
+              </button>
+            ) : (
+              <>
+                <div className="score-avatar" style={{ background: r.primary_color ?? "var(--primary)" }}>
+                  {(r.name ?? r.username).slice(0, 2).toUpperCase()}
+                </div>
+                <div className="buddy-row-main">
+                  <div className="buddy-row-name">{r.name ?? r.username}</div>
+                  <div className="buddy-row-handle">@{r.username}</div>
+                </div>
+              </>
+            )}
             {r.relationship === "self" && (
               <span className="buddy-status-tag">YOU</span>
             )}
@@ -550,7 +604,8 @@ function FindBuddies({ authFetch, refresh, onToast }: {
               </button>
             )}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -561,6 +616,7 @@ function FindBuddies({ authFetch, refresh, onToast }: {
 function LiveView({
   sessions, mine, workoutActive, workoutFocus, workoutDoneSets,
   refreshLive, startLiveSession, endLiveSession, joinLiveSession, onToast,
+  onOpenProfile,
 }: {
   sessions: LiveSession[];
   mine: LiveSession | null;
@@ -572,6 +628,7 @@ function LiveView({
   endLiveSession: () => Promise<void>;
   joinLiveSession: (id: string) => Promise<void>;
   onToast: (m: string) => void;
+  onOpenProfile: (userId: number) => void;
 }) {
   const t = useTxt();
   const [note, setNote] = useState("");
@@ -673,6 +730,7 @@ function LiveView({
               await refreshLive();
               onToast(`Joined ${s.owner_name ?? s.owner_username}`);
             }}
+            onOpenProfile={() => onOpenProfile(s.owner_id)}
           />
         ))
       )}
@@ -680,20 +738,31 @@ function LiveView({
   );
 }
 
-function BuddyLiveCard({ session: s, onJoin }: { session: LiveSession; onJoin: () => Promise<void> }) {
+function BuddyLiveCard({ session: s, onJoin, onOpenProfile }: {
+  session: LiveSession;
+  onJoin: () => Promise<void>;
+  onOpenProfile: () => void;
+}) {
   const accent = s.owner_primary_color ?? "var(--primary)";
   const initials = (s.owner_name ?? s.owner_username).slice(0, 2).toUpperCase();
   return (
     <div className="profile-card">
       <div className="buddy-row">
-        <div className="score-avatar" style={{ background: accent }}>{initials}</div>
-        <div className="buddy-row-main">
-          <div className="buddy-row-name">
-            <span className="live-dot" /> {s.owner_name ?? s.owner_username}
-            {s.focus && <span className="live-focus-tag">{s.focus}</span>}
+        <button
+          type="button"
+          className="buddy-row-clickable"
+          onClick={onOpenProfile}
+          aria-label={`View ${s.owner_name ?? s.owner_username}'s profile`}
+        >
+          <div className="score-avatar" style={{ background: accent }}>{initials}</div>
+          <div className="buddy-row-main">
+            <div className="buddy-row-name">
+              <span className="live-dot" /> {s.owner_name ?? s.owner_username}
+              {s.focus && <span className="live-focus-tag">{s.focus}</span>}
+            </div>
+            {s.note && <div className="buddy-row-handle">"{s.note}"</div>}
           </div>
-          {s.note && <div className="buddy-row-handle">"{s.note}"</div>}
-        </div>
+        </button>
         <button className="buddy-pill-btn accept" onClick={onJoin}>
           <Play size={13} /> Join
         </button>
