@@ -166,6 +166,7 @@ class UserPreferences(BaseModel):
 class UserProfileUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str | None = None
+    gender: Gender | None = None
 
     @field_validator("name")
     @classmethod

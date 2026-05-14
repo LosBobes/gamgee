@@ -161,6 +161,10 @@ def update_profile(
     current_user.email = body.email
     if email_changed:
         current_user.is_verified = False
+    # gender omitted in the payload means "no change" — only update when the
+    # client explicitly sends a value so name/email saves don't clobber it.
+    if body.gender is not None:
+        current_user.gender = body.gender
     db.commit()
     db.refresh(current_user)
     if email_changed and current_user.email:

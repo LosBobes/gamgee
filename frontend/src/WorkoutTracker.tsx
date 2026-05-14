@@ -18,6 +18,7 @@ import PRsTab from "./components/tabs/PRsTab";
 import HealthTab from "./components/tabs/HealthTab";
 import CoachTab from "./components/tabs/CoachTab";
 import ProfileTab from "./components/tabs/ProfileTab";
+import SettingsTab from "./components/tabs/SettingsTab";
 import ExercisesTab from "./components/tabs/ExercisesTab";
 import BuddiesTab from "./components/tabs/BuddiesTab";
 import NotificationsTab from "./components/tabs/NotificationsTab";
@@ -54,7 +55,7 @@ export default function WorkoutTracker({
 }: WorkoutTrackerProps = {}) {
   // UI
   const [tab,       setTab]       = useState<string>(() => {
-    const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile", "chat", "coaching", "trainees", "regimes"];
+    const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile", "settings", "chat", "coaching", "trainees", "regimes"];
     // A ?tab= query param takes precedence — push-notification clicks route
     // through the service worker to /?tab=notifications.
     const params = new URLSearchParams(window.location.search);
@@ -89,6 +90,7 @@ export default function WorkoutTracker({
   const [username,     setUsername]     = useState<string | null>(null);
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
+  const [gender,       setGender]       = useState<string | null>(null);
   const [isAdmin,      setIsAdmin]      = useState(false);
   const [isVerified,   setIsVerified]   = useState(true);
   const [isTrainer,    setIsTrainer]    = useState(false);
@@ -181,10 +183,11 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
+        setGender(d.gender ?? null);
         setIsAdmin(d.is_admin ?? false);
         setIsVerified(d.is_verified ?? true);
         setIsTrainer(d.is_trainer ?? false);
@@ -805,7 +808,8 @@ export default function WorkoutTracker({
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
-        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} authFetch={authFetch} />}
+        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (
