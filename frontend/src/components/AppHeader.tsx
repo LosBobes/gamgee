@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle, GraduationCap, MessagesSquare, Calendar } from "lucide-react";
+import { Zap, ClipboardList, Trophy, Heart, Brain, User, LogOut, Menu, X, Shield, Wrench, Users, Bell, MessageSquare, ChevronDown, HelpCircle, GraduationCap, MessagesSquare, Calendar, Settings } from "lucide-react";
 import { fmtClock } from "../utils";
 import { useTxt } from "../context/ToneContext";
 import { useOnboarding } from "../context/OnboardingContext";
@@ -57,6 +57,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { key: "exercises",     Icon: Wrench,        label: "EXERCISES",   badge: null,                    inMenuOnly: true },
     { key: "notifications", Icon: Bell,          label: "NOTIFICATIONS", badge: unreadNotif || null,   inMenuOnly: true  },
     { key: "profile",       Icon: User,          label: "PROFILE",     badge: null,                    inMenuOnly: false },
+    { key: "settings",      Icon: Settings,      label: "SETTINGS",    badge: null,                    inMenuOnly: true  },
   ];
 
   // Hamburger menu structure: top-level items (important) + collapsible groups.
@@ -74,6 +75,7 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
     { id: "coaching", label: isTrainer ? "Coaching" : "Coaching & Plans", items: coachingItems },
     { id: "tools",    label: "Tools",    items: [{ key: "coach" }, { key: "exercises" }] },
     { key: "profile" },
+    { key: "settings" },
   ];
 
   const tabByKey = Object.fromEntries(tabs.map(t => [t.key, t]));
