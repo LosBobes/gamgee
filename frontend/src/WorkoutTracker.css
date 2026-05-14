@@ -1175,6 +1175,10 @@ html, body { background: var(--bg); }
   display: flex; align-items: center; gap: 4px; padding: 0; transition: color 0.15s;
 }
 .health-load-more:hover { color: var(--text); }
+.recharts-wrapper,
+.recharts-surface,
+.recharts-wrapper *:focus,
+.recharts-surface *:focus { outline: none; }
 
 /* ── EMPTY ── */
 .empty { text-align: center; padding: 50px 20px; color: var(--muted); }
