@@ -1,7 +1,6 @@
 import { Brain, ChevronRight } from "lucide-react";
 import type { ExerciseDef, WorkoutSession, ProgressionSpeed } from "../../types";
 import { ALL_EX } from "../../data/exercises";
-import { useTips } from "../../hooks/useContentLibrary";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
 import { useTxt } from "../../context/ToneContext";
 
@@ -17,7 +16,6 @@ const STATUS_ORDER: Record<string, number> = {
 
 export default function CoachTab({ history, progressionSpeed }: Props) {
   const t = useTxt();
-  const tips = useTips();
   const coachData = ALL_EX
     .map(ex => ({ ex, a: analyzeEx(ex.id, history, progressionSpeed) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
@@ -29,8 +27,8 @@ export default function CoachTab({ history, progressionSpeed }: Props) {
         <>
           <div className="coach-intro">
             {t(
-              "Progression analysis from your logged history, sorted by exercises that need the most attention. Red = intervene, amber = ready for weight jump, green = moving forward.",
-              "Crunching your logged history and telling it like it is. Sorted by what needs attention most. Red = intervene now, amber = ready to jump weight, green = you're crushing it."
+              "What to work on next, sorted by what needs the most attention. Red = intervene, amber = ready for a weight jump, green = moving forward.",
+              "What to hit next, sorted by what needs you most. Red = intervene now, amber = jump that weight, green = you're crushing it."
             )}
           </div>
           {coachData.map(({ ex, a }) => {
@@ -99,21 +97,11 @@ export default function CoachTab({ history, progressionSpeed }: Props) {
           })}
         </>
       ) : (
-        <div className="empty" style={{ paddingBottom: 16 }}>
+        <div className="empty">
           <div className="empty-icon"><Brain size={40} /></div>
           <div className="empty-label">{t("Log sessions to unlock coaching", "Log some sessions and the coach wakes up", "Log a few sessions and the coach pulls up")}</div>
         </div>
       )}
-      <div className="coach-section-title">{t("General Principles", "Disciples of the Swoly Bible", "Sisterhood of Strength")}</div>
-      <div className="tips-grid">
-        {tips.map(tip => (
-          <div key={tip.title} className="tip-card">
-            <div className="tip-icon"><tip.icon size={20} /></div>
-            <div className="tip-title">{tip.title}</div>
-            <div className="tip-body">{t(tip.body, tip.bodyBro ?? tip.body, tip.bodyGrl ?? tip.bodyBro ?? tip.body)}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

@@ -70,10 +70,10 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
   if (isTrainer) coachingItems.push({ key: "trainees" });
   const menuStructure: MenuEntry[] = [
     { key: "workout" },
-    { id: "activity", label: "Activity", items: [{ key: "history" }, { key: "prs" }, { key: "health" }] },
+    { id: "progress", label: "Progress", items: [{ key: "history" }, { key: "prs" }, { key: "coach" }, { key: "health" }] },
     { id: "social",   label: "Social",   items: [{ key: "buddies" }, { key: "chat" }, { key: "notifications" }] },
     { id: "coaching", label: isTrainer ? "Coaching" : "Coaching & Plans", items: coachingItems },
-    { id: "tools",    label: "Tools",    items: [{ key: "coach" }, { key: "exercises" }] },
+    { key: "exercises" },
     { key: "profile" },
     { key: "settings" },
   ];
