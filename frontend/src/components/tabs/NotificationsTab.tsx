@@ -87,6 +87,22 @@ export default function NotificationsTab({
     return base.map(n => propsById.get(n.id) ?? n);
   }, [history, notifications]);
 
+  // Mirror parent mutations into local `history` so older items (beyond the
+  // latest-30 the parent tracks) reflect deletes / read-status changes
+  // without requiring a remount + re-fetch.
+  const handleDelete = async (id: number) => {
+    setHistory(h => h ? h.filter(n => n.id !== id) : h);
+    await onDelete(id);
+  };
+  const handleMarkRead = async (id: number) => {
+    setHistory(h => h ? h.map(n => n.id === id ? { ...n, read: true } : n) : h);
+    await onMarkRead(id);
+  };
+  const handleMarkAll = async () => {
+    setHistory(h => h ? h.map(n => ({ ...n, read: true })) : h);
+    await onMarkAll();
+  };
+
   const filtered = useMemo(() => {
     return merged
       .filter(n => filter === "all" ? true : !n.read)
@@ -96,7 +112,7 @@ export default function NotificationsTab({
   const groups = useMemo(() => groupByDay(filtered), [filtered]);
 
   const handleClick = async (n: AppNotification) => {
-    if (!n.read) await onMarkRead(n.id);
+    if (!n.read) await handleMarkRead(n.id);
     if ([
       "buddy_request", "buddy_accepted", "motivate",
       "live_started", "live_joined", "workout_done", "pr_set", "live_ended",
@@ -122,7 +138,7 @@ export default function NotificationsTab({
           </div>
         </div>
         {unreadCount > 0 && (
-          <button className="btn-primary notif-page-action" onClick={() => onMarkAll()}>
+          <button className="btn-primary notif-page-action" onClick={() => handleMarkAll()}>
             <CheckCheck size={14} /> Mark all read
           </button>
         )}
@@ -205,7 +221,7 @@ export default function NotificationsTab({
                   {!n.read && (
                     <button
                       className="notif-icon-btn"
-                      onClick={e => { e.stopPropagation(); onMarkRead(n.id); }}
+                      onClick={e => { e.stopPropagation(); handleMarkRead(n.id); }}
                       aria-label="Mark read"
                       title="Mark read"
                     >
@@ -214,7 +230,7 @@ export default function NotificationsTab({
                   )}
                   <button
                     className="notif-icon-btn"
-                    onClick={e => { e.stopPropagation(); onDelete(n.id); }}
+                    onClick={e => { e.stopPropagation(); handleDelete(n.id); }}
                     aria-label="Delete"
                     title="Delete"
                   >
