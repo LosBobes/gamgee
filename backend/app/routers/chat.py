@@ -14,7 +14,9 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
-from ..notifications import create_notification, now_ms, publish_chat_change
+from ..notifications import (
+    create_notification, now_ms, publish_chat_change, publish_notification_refresh,
+)
 from .trainers import is_trainer_of
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -223,6 +225,9 @@ def send_message(
         sender_user_id=current_user.id,
         message=f"{current_user.name or current_user.username}: {preview}",
         payload={"conversation_id": conv_id},
+        # Deep-link the system push so tapping it opens the conversation
+        # rather than landing on the notifications tab.
+        push_url=f"/?tab=chat&conv={conv_id}",
     )
     publish_chat_change(db, [current_user.id, other_id], conversation_id=conv_id)
     db.commit()
@@ -254,5 +259,25 @@ def mark_read(
         db.add(models.MessageRead(
             conversation_id=conv_id, user_id=current_user.id, last_read_at=now_ms(),
         ))
+    # Clear any unread chat_message notifications that point at this
+    # conversation so the bell stays in sync with the thread. Filter the
+    # JSON payload in Python — `payload["conversation_id"]` operators are
+    # Postgres-only, and the tests run on SQLite.
+    unread = (
+        db.query(models.Notification)
+        .filter(
+            models.Notification.user_id == current_user.id,
+            models.Notification.kind == "chat_message",
+            models.Notification.read.is_(False),
+        )
+        .all()
+    )
+    changed = False
+    for n in unread:
+        if isinstance(n.payload, dict) and n.payload.get("conversation_id") == conv_id:
+            n.read = True
+            changed = True
+    if changed:
+        publish_notification_refresh(db, current_user.id, kind="chat_message")
     publish_chat_change(db, [current_user.id], conversation_id=conv_id)
     db.commit()

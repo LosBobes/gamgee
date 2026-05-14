@@ -34,6 +34,10 @@ _PUSH_TITLE = {
     "live_started":   "Live workout started",
     "live_joined":    "Joined live workout",
     "live_ended":     "Live workout ended",
+    "chat_message":   "New message",
+    "trainer_link_request":  "Coaching request",
+    "trainer_link_accepted": "Coaching accepted",
+    "regime_assigned":       "New plan assigned",
 }
 
 
@@ -42,16 +46,26 @@ def _queue_event(db: Session, user_id: int, event_type: str, data: dict | None =
     pending.append((user_id, event_type, data or {}))
 
 
-def _queue_push(db: Session, *, user_id: int, kind: str, message: str, notification_id_thunk) -> None:
+def _queue_push(
+    db: Session,
+    *,
+    user_id: int,
+    kind: str,
+    message: str,
+    notification_id_thunk,
+    url: str | None = None,
+) -> None:
     """Queue a web push to fire after commit. ``notification_id_thunk`` is a
     zero-arg callable that returns the notification id once SQLAlchemy assigns
-    it (after flush)."""
+    it (after flush). ``url`` overrides the default deep-link target so kinds
+    like ``chat_message`` can open the relevant conversation directly."""
     pending: list = db.info.setdefault("_pending_push", [])
     pending.append({
         "user_id": user_id,
         "kind": kind,
         "message": message,
         "id_thunk": notification_id_thunk,
+        "url": url,
     })
 
 
@@ -76,6 +90,7 @@ def _drain_after_commit(session: Session) -> None:
                 "body":            item["message"],
                 "kind":            item["kind"],
                 "notification_id": nid,
+                "url":             item.get("url"),
             })
         push.dispatch_batch_async(dispatch)
 
@@ -94,6 +109,7 @@ def create_notification(
     message: str,
     sender_user_id: int | None = None,
     payload: dict | None = None,
+    push_url: str | None = None,
 ) -> models.Notification:
     n = models.Notification(
         user_id=user_id,
@@ -107,7 +123,14 @@ def create_notification(
     db.add(n)
     db.flush()  # assign n.id so the push payload can reference it
     _queue_event(db, user_id, "notification", {"kind": kind})
-    _queue_push(db, user_id=user_id, kind=kind, message=message, notification_id_thunk=lambda: n.id)
+    _queue_push(
+        db,
+        user_id=user_id,
+        kind=kind,
+        message=message,
+        notification_id_thunk=lambda: n.id,
+        url=push_url,
+    )
     return n
 
 
@@ -185,6 +208,14 @@ def publish_chat_change(db: Session, user_ids: Iterable[int], *, conversation_id
     data = {"conversation_id": conversation_id} if conversation_id else {}
     for uid in set(user_ids):
         _queue_event(db, uid, "chat", data)
+
+
+def publish_notification_refresh(db: Session, user_id: int, *, kind: str | None = None) -> None:
+    """Tell ``user_id`` that their notification list has changed (a new item
+    arrived, or one was marked read / deleted on the server). The frontend
+    refetches /api/notifications when this fires."""
+    data = {"kind": kind} if kind else {}
+    _queue_event(db, user_id, "notification", data)
 
 
 def publish_trainer_change(db: Session, user_ids: Iterable[int]) -> None:

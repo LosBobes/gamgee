@@ -13,6 +13,7 @@ interface Props {
   onMarkAll:      () => Promise<void>;
   onDelete:       (id: number) => Promise<void>;
   onGoToBuddies:  () => void;
+  onGoToChat:     (conversationId?: number) => void;
   refresh:        () => Promise<void>;
   authFetch:      (url: string, opts?: RequestInit) => Promise<Response>;
 }
@@ -57,7 +58,7 @@ const KINDS: NotificationKind[] = [
 
 export default function NotificationsTab({
   notifications, unreadCount,
-  onMarkRead, onMarkAll, onDelete, onGoToBuddies, refresh, authFetch,
+  onMarkRead, onMarkAll, onDelete, onGoToBuddies, onGoToChat, refresh, authFetch,
 }: Props) {
   const t = useTxt();
   const [filter, setFilter]   = useState<Filter>("all");
@@ -113,6 +114,10 @@ export default function NotificationsTab({
 
   const handleClick = async (n: AppNotification) => {
     if (!n.read) await handleMarkRead(n.id);
+    if (n.kind === "chat_message") {
+      onGoToChat(readConvId(n.payload));
+      return;
+    }
     if ([
       "buddy_request", "buddy_accepted", "motivate",
       "live_started", "live_joined", "workout_done", "pr_set", "live_ended",
@@ -247,6 +252,14 @@ export default function NotificationsTab({
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
+
+function readConvId(payload: unknown): number | undefined {
+  if (payload && typeof payload === "object" && "conversation_id" in payload) {
+    const v = (payload as { conversation_id?: unknown }).conversation_id;
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return undefined;
+}
 
 function groupByDay(items: AppNotification[]): Array<{ label: string; items: AppNotification[] }> {
   if (items.length === 0) return [];
