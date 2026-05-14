@@ -1,21 +1,30 @@
 """Direct 1:1 chat (peer DMs and trainer-trainee coaching channels).
 
-Real-time delivery is via the SSE bus (`chat` event type). The frontend
-listens for ``chat`` events and refetches the affected thread.
+Real-time delivery is over a dedicated WebSocket (``/api/chat/ws``). The
+frontend opens one socket per session; every new message, conversation, or
+read receipt is fanned out to both peers' open sockets so threads update
+without polling. REST endpoints still cover bootstrap (listing conversations,
+fetching history, sending messages).
 """
 from __future__ import annotations
 
+import asyncio
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect,
+    status,
+)
+from jose import JWTError, jwt
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
-from .. import models, schemas
-from ..auth import get_current_user
+from .. import chat_ws, models, schemas
+from ..auth import ALGORITHM, SECRET_KEY, get_current_user
 from ..database import get_db
 from ..notifications import (
-    create_notification, now_ms, publish_chat_change, publish_notification_refresh,
+    create_notification, now_ms, publish_chat_conversation, publish_chat_message,
+    publish_chat_read, publish_notification_refresh,
 )
 from .trainers import is_trainer_of
 
@@ -161,7 +170,7 @@ def open_conversation(
     db.add(conv)
     db.commit()
     db.refresh(conv)
-    publish_chat_change(db, [current_user.id, other.id], conversation_id=conv.id)
+    publish_chat_conversation(db, [current_user.id, other.id], conversation_id=conv.id)
     db.commit()
     return _conv_out(db, conv, current_user.id)
 
@@ -216,6 +225,7 @@ def send_message(
         body=body.body, created_at=ts,
     )
     db.add(msg)
+    db.flush()  # assign msg.id so the WS payload can reference it
     conv.last_message_at = ts
     # Notify recipient (counts as a notification + chat event so they see a badge
     # even when the chat tab isn't open).
@@ -229,10 +239,11 @@ def send_message(
         # rather than landing on the notifications tab.
         push_url=f"/?tab=chat&conv={conv_id}",
     )
-    publish_chat_change(db, [current_user.id, other_id], conversation_id=conv_id)
+    out = _msg_out(db, msg)
+    publish_chat_message(db, [current_user.id, other_id], out.model_dump())
+    publish_chat_conversation(db, [current_user.id, other_id], conversation_id=conv_id)
     db.commit()
-    db.refresh(msg)
-    return _msg_out(db, msg)
+    return out
 
 
 @router.post("/conversations/{conv_id}/read", status_code=204)
@@ -279,5 +290,76 @@ def mark_read(
             changed = True
     if changed:
         publish_notification_refresh(db, current_user.id, kind="chat_message")
-    publish_chat_change(db, [current_user.id], conversation_id=conv_id)
+    publish_chat_read(db, [current_user.id], conversation_id=conv_id, reader_user_id=current_user.id)
     db.commit()
+
+
+# ── WebSocket ────────────────────────────────────────────────────────────────
+
+WS_HEARTBEAT_INTERVAL = 25.0  # seconds — keep proxies / load balancers from idle-closing
+
+
+def _resolve_user_id(token: str, db: Session) -> int | None:
+    """Decode a JWT query-param token and return the user id, or ``None`` if
+    the token is missing / invalid / unknown."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return None
+    except JWTError:
+        return None
+    user = db.query(models.User).filter(models.User.username == username).first()
+    return user.id if user else None
+
+
+@router.websocket("/ws")
+async def chat_socket(
+    websocket: WebSocket,
+    token: str = Query(..., description="JWT access token"),
+    db: Session = Depends(get_db),
+):
+    user_id = _resolve_user_id(token, db)
+    if user_id is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.accept()
+    queue = await chat_ws.subscribe(user_id)
+
+    async def send_loop() -> None:
+        # Forward every queued chat event to the client. A heartbeat ping keeps
+        # the connection alive through proxies that drop idle TCP after ~60 s.
+        while True:
+            try:
+                payload = await asyncio.wait_for(queue.get(), timeout=WS_HEARTBEAT_INTERVAL)
+                await websocket.send_text(payload)
+            except asyncio.TimeoutError:
+                await websocket.send_text('{"type":"ping","data":{}}')
+
+    async def recv_loop() -> None:
+        # We don't accept inbound traffic — the client still POSTs messages
+        # over REST. Reading anyway lets us notice disconnects promptly and
+        # gives the client a place to send keep-alive frames if needed.
+        while True:
+            await websocket.receive_text()
+
+    send_task = asyncio.create_task(send_loop())
+    recv_task = asyncio.create_task(recv_loop())
+    try:
+        done, pending = await asyncio.wait(
+            {send_task, recv_task}, return_when=asyncio.FIRST_COMPLETED,
+        )
+        for t in pending:
+            t.cancel()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        send_task.cancel()
+        recv_task.cancel()
+        await chat_ws.unsubscribe(user_id, queue)
+        try:
+            await websocket.close()
+        except RuntimeError:
+            # already closed by the peer
+            pass

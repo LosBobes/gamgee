@@ -33,9 +33,9 @@ export default defineConfig({
         importScripts: ['/push-handlers.js'],
         runtimeCaching: [
           {
-            // Never cache the SSE stream — it's a long-lived response and
-            // Workbox would otherwise try to read/clone the body.
-            urlPattern: /^\/api\/events\//,
+            // Never cache the SSE stream or the chat WebSocket upgrade — both
+            // are long-lived responses Workbox would otherwise try to clone.
+            urlPattern: /^\/api\/(events|chat\/ws)/,
             handler: 'NetworkOnly',
           },
           {
@@ -58,6 +58,9 @@ export default defineConfig({
       '/api': {
         target: backendUrl,
         changeOrigin: true,
+        // Forward WebSocket upgrade requests (used by /api/chat/ws) to the
+        // backend, otherwise the dev server returns 404 for the upgrade.
+        ws: true,
       },
     },
   },

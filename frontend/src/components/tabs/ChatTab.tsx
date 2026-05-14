@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Send, MessageSquarePlus, GraduationCap, Users, ArrowLeft } from "lucide-react";
 import type { ChatMessage, Conversation, Buddy, TrainerLink } from "../../types";
 import { fmtDate } from "../../utils";
@@ -12,6 +12,9 @@ interface Props {
   currentUserId: number | null;
   buddies: Buddy[];
   trainerLinks: TrainerLink[];
+  /** WorkoutTracker owns the chat WebSocket; ChatTab registers a callback in
+   *  this set so each incoming message is appended to the active thread. */
+  messageSubscribersRef: MutableRefObject<Set<(m: ChatMessage) => void>>;
 }
 
 type ContactKind = "buddy" | "coach" | "trainee";
@@ -25,7 +28,7 @@ interface Contact {
 export default function ChatTab({
   authFetch, conversations, refreshConversations,
   activeConvId, setActiveConvId, currentUserId,
-  buddies, trainerLinks,
+  buddies, trainerLinks, messageSubscribersRef,
 }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -186,20 +189,26 @@ export default function ChatTab({
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
+  // Real-time delivery: the chat WebSocket pushes each new message to a
+  // subscriber set on WorkoutTracker. We register here while the tab is
+  // mounted, append messages destined for the open thread (deduped by id),
+  // and mark them read so the unread badge clears on the sender's side too.
   useEffect(() => {
-    if (!activeConvId) return;
-    const conv = conversations.find(c => c.id === activeConvId);
-    if (!conv) return;
-    const lastKnown = messages[messages.length - 1]?.created_at ?? 0;
-    if (conv.last_message_at > lastKnown) {
-      authFetch(`/api/chat/conversations/${activeConvId}/messages?limit=80`)
-        .then(r => r.ok ? r.json() : [])
-        .then((data: ChatMessage[]) => setMessages(data))
-        .then(() => authFetch(`/api/chat/conversations/${activeConvId}/read`, { method: "POST" }))
-        .then(() => refreshConversations())
-        .catch(() => {});
-    }
-  }, [conversations, activeConvId, messages, authFetch, refreshConversations]);
+    const onMessage = (m: ChatMessage) => {
+      if (m.conversation_id !== activeConvId) return;
+      setMessages(prev => {
+        if (prev.some(x => x.id === m.id)) return prev;
+        return [...prev, m];
+      });
+      if (m.sender_id !== currentUserId) {
+        authFetch(`/api/chat/conversations/${activeConvId}/read`, { method: "POST" })
+          .catch(() => {});
+      }
+    };
+    const subs = messageSubscribersRef.current;
+    subs.add(onMessage);
+    return () => { subs.delete(onMessage); };
+  }, [activeConvId, currentUserId, authFetch, messageSubscribersRef]);
 
   const sendMessage = async () => {
     if (!activeConvId || !input.trim() || sending) return;

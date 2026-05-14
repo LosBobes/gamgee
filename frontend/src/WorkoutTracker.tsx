@@ -4,7 +4,7 @@ import type {
   CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession,
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
-  TrainerLink, RegimeAssignment, Conversation, ProgressionSpeed,
+  TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
 } from "./types";
 import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
@@ -34,6 +34,7 @@ import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
+import { useChatSocket } from "./hooks/useChatSocket";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { registerServiceWorker } from "./push";
@@ -118,6 +119,9 @@ export default function WorkoutTracker({
   const [assignments,    setAssignments]    = useState<RegimeAssignment[]>([]);
   const [conversations,  setConversations]  = useState<Conversation[]>([]);
   const [activeConvId,   setActiveConvId]   = useState<number | null>(null);
+  // ChatTab registers a handler here so we can hand it real-time messages
+  // from the WebSocket without piping new state through this whole component.
+  const chatMessageSubscribersRef = useRef<Set<(m: ChatMessage) => void>>(new Set());
   const [viewedLiveSession, setViewedLiveSession] = useState<LiveSession | null>(null);
   const [liveViewerKey,  setLiveViewerKey]  = useState(0);
   // Bumped whenever the user creates or deletes a custom exercise; forces the
@@ -337,10 +341,21 @@ export default function WorkoutTracker({
       refreshLive();
     } else if (ev.type === "trainer") {
       refreshTrainers();
-    } else if (ev.type === "chat") {
+    }
+  }, [refreshNotifications, refreshBuddies, refreshLive, refreshTrainers]));
+
+  // Chat traffic flows over its own WebSocket so threads can update without
+  // refetching: ``message`` events carry the full payload, ``conversation``
+  // and ``read`` events tell us to re-pull the conversation list so unread
+  // counts and last-message previews stay accurate.
+  useChatSocket(token, useCallback((ev) => {
+    if (ev.type === "message") {
+      chatMessageSubscribersRef.current.forEach(fn => fn(ev.data));
+      refreshConversations();
+    } else if (ev.type === "conversation" || ev.type === "read") {
       refreshConversations();
     }
-  }, [refreshNotifications, refreshBuddies, refreshLive, refreshTrainers, refreshConversations]));
+  }, [refreshConversations]));
 
   // ── Live broadcast: progress + set events ──
   // Track which sets have already been broadcast so we only POST each one once.
@@ -799,6 +814,7 @@ export default function WorkoutTracker({
             currentUserId={currentUserId}
             buddies={buddies}
             trainerLinks={trainerLinks}
+            messageSubscribersRef={chatMessageSubscribersRef}
           />
         )}
         {!completed && tab === "coaching" && (

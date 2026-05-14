@@ -17,7 +17,7 @@ from typing import Iterable
 from sqlalchemy import event as sa_event
 from sqlalchemy.orm import Session
 
-from . import models, push
+from . import chat_ws, models, push
 from .events import publish_one
 
 
@@ -76,6 +76,11 @@ def _drain_after_commit(session: Session) -> None:
         for user_id, event_type, data in realtime:
             publish_one(user_id, event_type, data)
 
+    chat_events = session.info.pop("_pending_chat_ws", None)
+    if chat_events:
+        for user_ids, event_type, data in chat_events:
+            chat_ws.publish(user_ids, event_type, data)
+
     push_items = session.info.pop("_pending_push", None)
     if push_items:
         dispatch = []
@@ -98,6 +103,7 @@ def _drain_after_commit(session: Session) -> None:
 @sa_event.listens_for(Session, "after_rollback")
 def _discard_after_rollback(session: Session) -> None:
     session.info.pop("_pending_realtime_events", None)
+    session.info.pop("_pending_chat_ws", None)
     session.info.pop("_pending_push", None)
 
 
@@ -202,12 +208,30 @@ def publish_live_change(db: Session, user_ids: Iterable[int], *, session_id: str
         _queue_event(db, uid, "live", data)
 
 
-def publish_chat_change(db: Session, user_ids: Iterable[int], *, conversation_id: int | None = None) -> None:
-    """Tell each listed user that the chat conversation list / message thread
-    has new content."""
-    data = {"conversation_id": conversation_id} if conversation_id else {}
-    for uid in set(user_ids):
-        _queue_event(db, uid, "chat", data)
+def _queue_chat_ws(db: Session, user_ids: Iterable[int], event_type: str, data: dict) -> None:
+    pending: list = db.info.setdefault("_pending_chat_ws", [])
+    pending.append((list(set(user_ids)), event_type, data))
+
+
+def publish_chat_message(db: Session, user_ids: Iterable[int], message: dict) -> None:
+    """Push a freshly-sent chat message (full ``MessageOut`` payload) to every
+    listed user's open chat WebSocket(s)."""
+    _queue_chat_ws(db, user_ids, "message", message)
+
+
+def publish_chat_conversation(db: Session, user_ids: Iterable[int], *, conversation_id: int) -> None:
+    """Tell each listed user that the conversation list should be refetched
+    (a new conversation was opened, or the last-message preview changed)."""
+    _queue_chat_ws(db, user_ids, "conversation", {"conversation_id": conversation_id})
+
+
+def publish_chat_read(db: Session, user_ids: Iterable[int], *, conversation_id: int, reader_user_id: int) -> None:
+    """Tell each listed user that ``reader_user_id`` just marked ``conversation_id``
+    as read — used so the reader's other devices clear their unread badge."""
+    _queue_chat_ws(db, user_ids, "read", {
+        "conversation_id": conversation_id,
+        "user_id": reader_user_id,
+    })
 
 
 def publish_notification_refresh(db: Session, user_id: int, *, kind: str | None = None) -> None:
