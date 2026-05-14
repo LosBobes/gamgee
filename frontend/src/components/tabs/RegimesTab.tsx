@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { Plus, Calendar, Trash2, Wand2 } from "lucide-react";
-import type { Regime, WeeklyPlan, WeekPlanDay } from "../../types";
+import type { Regime, WeeklyPlan, WeekPlanDay, ProgressionSpeed } from "../../types";
 import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
 
 interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   weeklyPlan: WeeklyPlan | null;
   setWeeklyPlan: (plan: WeeklyPlan) => void;
+  progressionSpeed: ProgressionSpeed;
+  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
 }
 
 const WEEK_LABELS: Record<string, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
-export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeeklyPlan }: Props) {
+export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange }: Props) {
   void _weeklyPlan;
   const [regimes, setRegimes] = useState<Regime[]>([]);
   const [building, setBuilding] = useState(false);
@@ -62,6 +64,8 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
         <RegimeQuestionnairePanel
           authFetch={authFetch}
           onSaved={r => { refresh(); applyToWeek(r); }}
+          progressionSpeed={progressionSpeed}
+          onProgressionSpeedChange={onProgressionSpeedChange}
         />
       )}
 

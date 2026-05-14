@@ -1,4 +1,4 @@
-import type { WorkoutSession, StatusDef } from "./types";
+import type { WorkoutSession, StatusDef, ProgressionSpeed } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1 } from "./utils";
 
@@ -13,7 +13,11 @@ export interface AnalysisResult {
   reason: string;
 }
 
-export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResult | null {
+// Scales the default jump size when recommending the next weight. "moderate"
+// keeps the legacy 2.5kg upper / 5kg lower behaviour.
+const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fast: 2 };
+
+export function analyzeEx(exId: string, history: WorkoutSession[], speed: ProgressionSpeed = "moderate"): AnalysisResult | null {
   const sessions: SessionSummary[] = [];
   [...history].reverse().forEach(w => {
     const f = w.exercises.find(e => e.id === exId);
@@ -29,7 +33,7 @@ export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResu
   const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
   const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
   const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  const step   = UPPER_IDS.has(exId) ? 2.5 : 5;
+  const step   = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed];
 
   let status: StatusDef;
   let nextWeight: number;

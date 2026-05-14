@@ -1,16 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Moon, Wrench } from "lucide-react";
-import type { WeekPlanDay, WeeklyPlan, DayPlan } from "../../types";
+import { ArrowLeft, Check, Moon, Wrench, Sparkles } from "lucide-react";
+import type { WeekPlanDay, WeeklyPlan, DayPlan, ProgressionSpeed, Regime } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
+import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
 
 interface Props {
   initial:   WeeklyPlan | null;
   onPersist: (plan: WeeklyPlan) => void;
   onDone:    () => void;
+  progressionSpeed: ProgressionSpeed;
+  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
+  authFetch?: (url: string, opts?: RequestInit) => Promise<Response>;
 }
+
+const PROGRESSION_OPTIONS: Array<{ id: ProgressionSpeed; label: string; desc: string }> = [
+  { id: "slow",     label: "Slow & Steady", desc: "Smaller weight jumps (1.25/2.5 kg)." },
+  { id: "moderate", label: "Moderate",      desc: "Standard 2.5/5 kg jumps." },
+  { id: "fast",     label: "Aggressive",    desc: "Bigger jumps (5/10 kg)." },
+];
 
 const DEFAULT_FOCUS = Object.keys(FOCUS)[0];
 
@@ -18,8 +28,9 @@ function makeDayPlan(enabled: boolean): DayPlan {
   return { focus: DEFAULT_FOCUS, exerciseIds: [], enabled };
 }
 
-export default function WizardWeeklySetup({ initial, onPersist, onDone }: Props) {
+export default function WizardWeeklySetup({ initial, onPersist, onDone, progressionSpeed, onProgressionSpeedChange, authFetch }: Props) {
   const t = useTxt();
+  const [showGenerator, setShowGenerator] = useState(false);
 
   const [plan, setPlan] = useState<WeeklyPlan>(() => {
     if (initial) return { ...initial };
@@ -29,6 +40,16 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone }: Props)
     });
     return p;
   });
+
+  const applyGeneratedRegime = (regime: Regime) => {
+    const next: WeeklyPlan = {};
+    (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[]).forEach(k => {
+      const d = regime.days?.[k];
+      if (d) next[k] = { focus: d.focus, exerciseIds: d.exerciseIds, enabled: d.enabled };
+    });
+    setPlan(next);
+    setShowGenerator(false);
+  };
 
   // Persist edits to the parent on every change so back-navigation
   // (in-app BACK button or mobile back gesture) never discards user work.
@@ -73,6 +94,55 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone }: Props)
           "Lock in each day. Leave exercises empty and the app picks for you, or control every rep.",
           "Lock in each day, bestie. Leave it blank to let us cook, or curate every move yourself."
         )}
+      </div>
+
+      {/* Auto-generate entry point — opens the regime questionnaire and
+          replaces the current plan with the generated one when saved. */}
+      {authFetch && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0 12px" }}>
+          <button
+            type="button"
+            className="btn-sec"
+            onClick={() => setShowGenerator(s => !s)}
+          >
+            <Sparkles size={13} /> {showGenerator ? "Close generator" : "Auto-generate from questions"}
+          </button>
+        </div>
+      )}
+      {showGenerator && authFetch && (
+        <RegimeQuestionnairePanel
+          authFetch={authFetch}
+          onSaved={applyGeneratedRegime}
+          progressionSpeed={progressionSpeed}
+          onProgressionSpeedChange={onProgressionSpeedChange}
+        />
+      )}
+
+      {/* Progression speed — written through to user prefs immediately. */}
+      <div style={{ margin: "4px 0 12px" }}>
+        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+          {t("Progression speed", "Progression speed", "Progression speed")}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {PROGRESSION_OPTIONS.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => onProgressionSpeedChange(p.id)}
+              className={`chip ${progressionSpeed === p.id ? "active" : ""}`}
+              style={{
+                padding: "6px 10px",
+                border: `1px solid ${progressionSpeed === p.id ? "var(--accent)" : "var(--ad)"}`,
+                borderRadius: 999,
+                background: progressionSpeed === p.id ? "var(--ad2)" : "transparent",
+                color: "inherit", cursor: "pointer",
+              }}
+              title={p.desc}
+            >
+              <span style={{ fontWeight: 600 }}>{p.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Day tabs */}

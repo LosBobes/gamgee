@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -24,6 +24,9 @@ interface Props {
   doneSets:        number;
   weeklyPlan:      WeeklyPlan | null;
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
+  progressionSpeed: ProgressionSpeed;
+  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
+  authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
   addExercise:     (ex: ExerciseDef) => void;
@@ -39,7 +42,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout,
 }: Props) {
@@ -115,6 +118,9 @@ export default function WorkoutTab({
             initial={weeklyPlan}
             onPersist={setWeeklyPlan}
             onDone={() => setWStep(1)}
+            progressionSpeed={progressionSpeed}
+            onProgressionSpeedChange={onProgressionSpeedChange}
+            authFetch={authFetch}
           />
         </div>
       )}
@@ -127,6 +133,7 @@ export default function WorkoutTab({
             prs={prs}
             history={history}
             doneSets={doneSets}
+            progressionSpeed={progressionSpeed}
             onFinish={finishWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}

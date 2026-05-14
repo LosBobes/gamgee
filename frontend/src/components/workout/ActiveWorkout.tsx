@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Dumbbell } from "lucide-react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession } from "../../types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
@@ -12,6 +12,7 @@ interface Props {
   prs:            PRDict;
   history:        WorkoutSession[];
   doneSets:       number;
+  progressionSpeed: ProgressionSpeed;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -22,7 +23,7 @@ interface Props {
   isNewPr:        (exId: string, weight: string) => boolean;
 }
 
-export default function ActiveWorkout({ exercises, prs, history, doneSets, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
+export default function ActiveWorkout({ exercises, prs, history, doneSets, progressionSpeed, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [showPick, setShowPick] = useState(false);
   const t = useTxt();
 
@@ -58,7 +59,7 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, onFin
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={analyzeEx(ex.id, history)}
+          analysis={analyzeEx(ex.id, history, progressionSpeed)}
           onRemove={() => removeExercise(ex.uid)}
           updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
           toggleSet={(idx) => toggleSet(ex.uid, idx)}
