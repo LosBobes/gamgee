@@ -78,6 +78,7 @@ class UserOut(BaseModel):
     email: str | None = None
     gender: str | None = None
     primary_color: str | None = None
+    progression_speed: str | None = None
     is_admin: bool = False
     is_verified: bool = False
     is_trainer: bool = False
@@ -152,6 +153,7 @@ class TrainerProfileUpdate(BaseModel):
 
 class UserPreferences(BaseModel):
     primary_color: str | None = None
+    progression_speed: Literal["slow", "moderate", "fast"] | None = None
 
     @field_validator("primary_color")
     @classmethod

@@ -184,11 +184,22 @@ def _generate_plan(
     for key in WEEK_KEYS:
         days[key] = {"focus": "Rest", "exerciseIds": [], "enabled": False}
 
+    # All canonical muscle groups so we can fall back to "anything not in avoid"
+    # when a template day's target list is entirely off-limits.
+    all_groups = set(mid_to_group.values()) - {""}
+    fallback_targets = [g for g in (sorted(focus) or sorted(all_groups)) if g not in avoid]
+
     for slot, (focus_id, target_groups) in zip(schedule, template):
         key = WEEK_KEYS[slot]
-        ex_ids = _pick_for_day(target_groups, per_day, focus, avoid, q.equipment or [], pool, mid_to_group, rng)
-        # If the user wants cardio, sprinkle one cardio item into the last
-        # working slot of the week so they get at least one conditioning day.
+        # Drop any target group the user asked us to skip. If the template's
+        # whole focus is on the avoid list (e.g. a 3-day plan that skips every
+        # leg muscle), swap in the user's focus areas so the day still
+        # produces exercises instead of rendering as Rest.
+        effective_targets = [g for g in target_groups if g not in avoid]
+        if not effective_targets and fallback_targets:
+            effective_targets = fallback_targets
+            focus_id = "upper"
+        ex_ids = _pick_for_day(effective_targets, per_day, focus, avoid, q.equipment or [], pool, mid_to_group, rng)
         days[key] = {"focus": focus_id, "exerciseIds": ex_ids, "enabled": True}
 
     if q.include_cardio:

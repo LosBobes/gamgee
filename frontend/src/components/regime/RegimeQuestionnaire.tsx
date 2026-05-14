@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Sparkles, RefreshCw, Save, Calendar } from "lucide-react";
-import type { RegimeQuestionnaire, RegimeDraft, Regime } from "../../types";
+import { Sparkles, RefreshCw, Save, Calendar, Check } from "lucide-react";
+import type { RegimeQuestionnaire, RegimeDraft, Regime, ProgressionSpeed } from "../../types";
 
 const GOALS: Array<{ id: RegimeQuestionnaire["goal"]; label: string; desc: string }> = [
   { id: "strength",    label: "Strength",     desc: "Heavier weights, lower reps." },
@@ -19,6 +19,12 @@ const LEVELS: Array<{ id: RegimeQuestionnaire["experience"]; label: string }> = 
 const FOCUS_GROUPS = ["Chest", "Back", "Shoulders", "Biceps", "Triceps", "Core", "Quads", "Hamstrings", "Glutes", "Calves"];
 const EQUIPMENT = ["barbell", "dumbbell", "machine", "bodyweight"];
 
+const PROGRESSION_OPTIONS: Array<{ id: ProgressionSpeed; label: string; desc: string }> = [
+  { id: "slow",     label: "Slow & Steady", desc: "Smaller weight jumps (1.25/2.5 kg)." },
+  { id: "moderate", label: "Moderate",      desc: "Standard 2.5/5 kg jumps." },
+  { id: "fast",     label: "Aggressive",    desc: "Bigger jumps (5/10 kg)." },
+];
+
 const WEEK_LABELS: Record<string, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
@@ -26,9 +32,11 @@ const WEEK_LABELS: Record<string, string> = {
 interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   onSaved?: (regime: Regime) => void;
+  progressionSpeed: ProgressionSpeed;
+  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
 }
 
-export default function RegimeQuestionnairePanel({ authFetch, onSaved }: Props) {
+export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressionSpeed, onProgressionSpeedChange }: Props) {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<RegimeQuestionnaire["goal"]>("general");
   const [experience, setExperience] = useState<RegimeQuestionnaire["experience"]>("beginner");
@@ -232,9 +240,43 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved }: Props) 
           </div>
         </div>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-          <input type="checkbox" checked={includeCardio} onChange={e => setIncludeCardio(e.target.checked)} />
-          Include a cardio block
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+            Progression speed
+          </label>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {PROGRESSION_OPTIONS.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onProgressionSpeedChange(p.id)}
+                className={`chip ${progressionSpeed === p.id ? "active" : ""}`}
+                style={{
+                  padding: "6px 10px",
+                  border: `1px solid ${progressionSpeed === p.id ? "var(--accent)" : "var(--ad)"}`,
+                  borderRadius: 999,
+                  background: progressionSpeed === p.id ? "var(--ad2)" : "transparent",
+                  color: "inherit", cursor: "pointer", textAlign: "left",
+                }}
+                title={p.desc}
+              >
+                <span style={{ fontWeight: 600 }}>{p.label}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4 }}>
+            {PROGRESSION_OPTIONS.find(p => p.id === progressionSpeed)?.desc}
+          </div>
+        </div>
+
+        <label
+          className={`rq-toggle${includeCardio ? " active" : ""}`}
+          onClick={() => setIncludeCardio(v => !v)}
+        >
+          <span className={`rq-toggle-box${includeCardio ? " on" : ""}`}>
+            {includeCardio && <Check size={12} />}
+          </span>
+          <span>Include a cardio block</span>
         </label>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

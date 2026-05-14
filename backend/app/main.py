@@ -22,6 +22,7 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gender VARCHAR(20)"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100)"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS primary_color VARCHAR(7)"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS progression_speed VARCHAR(20)"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE"))
         # is_verified: new column defaults to FALSE for fresh inserts, but
         # existing users (registered before email verification existed) are

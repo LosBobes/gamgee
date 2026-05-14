@@ -4,7 +4,7 @@ import type {
   CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession,
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
-  TrainerLink, RegimeAssignment, Conversation,
+  TrainerLink, RegimeAssignment, Conversation, ProgressionSpeed,
 } from "./types";
 import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
@@ -98,6 +98,9 @@ export default function WorkoutTracker({
   const [primaryColor, setPrimaryColor] = useState<string>(
     () => localStorage.getItem("gamgee_primary_color") ?? "#28D1FF"
   );
+  const [progressionSpeed, setProgressionSpeed] = useState<ProgressionSpeed>(
+    () => (localStorage.getItem("gamgee_progression_speed") as ProgressionSpeed | null) ?? "moderate"
+  );
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
@@ -147,6 +150,19 @@ export default function WorkoutTracker({
   }, [primaryColor]);
 
   useEffect(() => {
+    localStorage.setItem("gamgee_progression_speed", progressionSpeed);
+  }, [progressionSpeed]);
+
+  const updateProgressionSpeed = useCallback((speed: ProgressionSpeed) => {
+    setProgressionSpeed(speed);
+    authFetch("/api/auth/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ progression_speed: speed }),
+    }).catch(() => { /* best-effort; localStorage already updated */ });
+  }, [authFetch]);
+
+  useEffect(() => {
     localStorage.setItem("gamgee_tone", toneMode);
   }, [toneMode]);
 
@@ -165,7 +181,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -174,6 +190,9 @@ export default function WorkoutTracker({
         setIsTrainer(d.is_trainer ?? false);
         setCurrentUserId(d.id ?? null);
         if (d.primary_color) setPrimaryColor(d.primary_color);
+        if (d.progression_speed === "slow" || d.progression_speed === "moderate" || d.progression_speed === "fast") {
+          setProgressionSpeed(d.progression_speed);
+        }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -604,7 +623,7 @@ export default function WorkoutTracker({
 
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
-  const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history) !== null).length;
+  const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history, progressionSpeed) !== null).length;
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
 
@@ -704,6 +723,8 @@ export default function WorkoutTracker({
             exercises={exercises} prs={prs} history={history}
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
+            progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
+            authFetch={authFetch}
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
@@ -777,10 +798,12 @@ export default function WorkoutTracker({
             authFetch={authFetch}
             weeklyPlan={weeklyPlan}
             setWeeklyPlan={setWeeklyPlan}
+            progressionSpeed={progressionSpeed}
+            onProgressionSpeedChange={updateProgressionSpeed}
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"     && <CoachTab history={history} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} email={email} history={history} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e) => { setName(n); setEmail(e); }} toneMode={toneMode} onToneChange={setToneMode} isAdmin={isAdmin} authFetch={authFetch} />}
       </div>
