@@ -1183,13 +1183,18 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
     <div className="adm-page">
       <div className="adm-page-header">
         <h1 className="adm-page-title">Motion animations ({items.length})</h1>
-        <a className="adm-btn-primary" href="/exercise-graphics" target="_blank" rel="noreferrer">
-          Open gallery →
-        </a>
+        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+          <a className="adm-btn-primary" href="/exercise-editor" target="_blank" rel="noreferrer">
+            Open animation editor →
+          </a>
+          <a className="adm-btn-ghost" href="/exercise-graphics" target="_blank" rel="noreferrer">
+            Open gallery →
+          </a>
+        </div>
       </div>
       <p style={{ color: "var(--muted)", marginTop: 0 }}>
-        Each row is one stick-figure animation persisted in the database. Use the in-app keyframe editor (link below)
-        to drag joints; saving from there writes back to this table.
+        Each row is one stick-figure animation persisted in the database. Click <strong>Open animation editor</strong>
+        {" "}to launch the full keyframe / equipment editor, or use the per-row edit link to jump straight to a motion.
       </p>
 
       <table className="adm-table">

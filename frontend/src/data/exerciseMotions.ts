@@ -14,7 +14,7 @@
 // All figures are drawn side-on, facing right (+x).
 
 import type { Frame } from "../components/exercise/ExerciseAnimation";
-import type { Pose, RigConfig } from "../components/exercise/StickFigure";
+import type { Pose, RigConfig, Equipment } from "../components/exercise/StickFigure";
 
 // Neutral standing pose — reused as a base for upright exercises.
 const STAND: Pose = {
@@ -724,6 +724,12 @@ export interface ExerciseMotion {
   floor?:    boolean;
   category?: string;
   rig?:      RigConfig;
+  // Optional list of stage-level equipment (barbells, benches, cables). Each
+  // entry has fixed geometry (length, plate size, etc.); per-frame position
+  // overrides live in `frame.equipment[id]`. Backwards-compatible with old
+  // motions that have no equipment array — the legacy `bench` and `frame.bar`
+  // continue to render.
+  equipment?: Equipment[];
 }
 
 // Default rigs reused below. Most upright/symmetric movements look best with

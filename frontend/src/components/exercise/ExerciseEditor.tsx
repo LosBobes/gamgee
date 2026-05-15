@@ -1,10 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft, Copy, Pause, Play, Plus, RotateCcw, Save, Trash2,
+  ArrowLeft, Copy, FlipHorizontal2, Layers, Pause, Play, Plus, RotateCcw,
+  Save, Trash2, Wand2,
 } from "lucide-react";
 import {
-  HEAD_R, VB_H, VB_W, lerpPose, lerpPt,
-  type Point, type Pose,
+  DEFAULT_BARBELL_HUB_R,
+  DEFAULT_BARBELL_LENGTH,
+  DEFAULT_BARBELL_PLATE_R,
+  DEFAULT_BARBELL_THICKNESS,
+  DEFAULT_BENCH_H,
+  DEFAULT_BENCH_LEG_H,
+  DEFAULT_BENCH_LEG_INSET,
+  DEFAULT_BENCH_POS,
+  DEFAULT_BENCH_W,
+  DEFAULT_WIRE_SAG,
+  DEFAULT_WIRE_THICKNESS,
+  FigureBody,
+  VB_H, VB_W,
+  lerpFrameEquip,
+  lerpPose,
+  lerpPt,
+  type BarbellEquipment,
+  type BenchEquipment,
+  type Equipment,
+  type FrameEquipState,
+  type Point,
+  type Pose,
+  type WireEquipment,
 } from "./StickFigure";
 import ExerciseAnimation, { type Frame } from "./ExerciseAnimation";
 import { MOTIONS, type ExerciseMotion } from "../../data/exerciseMotions";
@@ -22,15 +44,34 @@ function authFetch(url: string, opts: RequestInit = {}): Promise<Response> {
 }
 
 // Keyframe editor — drag joints with the mouse, scrub through the cycle,
-// add/delete frames, then save to localStorage. The /exercise-graphics demo
+// add/delete frames, then save to the backend. The /exercise-graphics demo
 // reads the same store so edits show up there immediately.
 
-const JOINT_KEYS = [
+const PRIMARY_JOINT_KEYS = [
   "head", "neck", "shoulder", "elbow", "hand",
   "hip", "knee", "ankle", "toe",
 ] as const;
-type JointKey = typeof JOINT_KEYS[number];
-type HandleKey = JointKey | "bar";
+type PrimaryJointKey = typeof PRIMARY_JOINT_KEYS[number];
+
+const ARM2_KEYS = ["arm2_shoulder", "arm2_elbow", "arm2_hand"] as const;
+const LEG2_KEYS = ["leg2_hip", "leg2_knee", "leg2_ankle", "leg2_toe"] as const;
+type Arm2HandleKey = typeof ARM2_KEYS[number];
+type Leg2HandleKey = typeof LEG2_KEYS[number];
+
+// HandleKey covers every draggable handle on the editor stage:
+//  - primary joints
+//  - arm2_* / leg2_* (only shown when the rig mode is "independent")
+//  - "bar"             — the legacy single-bar handle
+//  - "eq:<id>:<part>"  — per-equipment handles. parts:
+//        barbell → "pos" (center) and "tip" (right plate; encodes length+angle)
+//        bench   → "pos" (top-left corner) and "size" (bottom-right corner)
+//        wire    → "from" / "to"
+type HandleKey =
+  | PrimaryJointKey
+  | Arm2HandleKey
+  | Leg2HandleKey
+  | "bar"
+  | `eq:${string}:${string}`;
 
 const HANDLE_R = 4.5;
 const HANDLE_R_ACTIVE = 6;
@@ -52,6 +93,18 @@ export default function ExerciseEditor() {
   const [dirty, setDirty] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
 
+  // Onion-skin toggles. Default: previous frame ghost ON, next frame OFF.
+  const [showPrevGhost, setShowPrevGhost] = useState<boolean>(true);
+  const [showNextGhost, setShowNextGhost] = useState<boolean>(false);
+  const [ghostOpacity, setGhostOpacity] = useState<number>(0.22);
+
+  // Inspector focus — which piece of equipment is currently selected for
+  // geometry editing.
+  const [selectedEquipId, setSelectedEquipId] = useState<string | null>(null);
+
+  // Snap-to-grid toggle for joint dragging.
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+
   // Pull the latest motions from the backend on mount so the snapshot above
   // gets upgraded as soon as the network responds.
   useEffect(() => {
@@ -68,13 +121,14 @@ export default function ExerciseEditor() {
     setSelectedFrame(0);
     setPreviewT(fresh.frames[0]?.t ?? 0);
     setDirty(false);
+    setSelectedEquipId(null);
   }, [exerciseId]);
 
   // Drive the preview-t while playing.
   useEffect(() => {
     if (!playing) return;
     let raf: number;
-    let start = performance.now();
+    const start = performance.now();
     const dur = motion.duration ?? 2400;
     const baseT = previewT;
     const tick = (now: number) => {
@@ -90,8 +144,21 @@ export default function ExerciseEditor() {
   // ── Derived values ───────────────────────────────────────────────────────
   const frame = motion.frames[selectedFrame] ?? motion.frames[0];
   const isAtSelected = Math.abs(previewT - (frame?.t ?? 0)) < 1e-3;
-  const displayedPose = isAtSelected ? frame.pose : sampleFrames(motion.frames, previewT).pose;
-  const displayedBar = isAtSelected ? frame.bar : sampleFrames(motion.frames, previewT).bar;
+  const sampled = isAtSelected
+    ? { pose: frame.pose, bar: frame.bar, equipment: frame.equipment }
+    : sampleFrames(motion.frames, previewT);
+  const displayedPose = sampled.pose;
+  const displayedBar = sampled.bar;
+  const displayedEquip = sampled.equipment;
+
+  const prevGhostFrame: Frame | undefined =
+    showPrevGhost && motion.frames.length > 1
+      ? motion.frames[(selectedFrame - 1 + motion.frames.length) % motion.frames.length]
+      : undefined;
+  const nextGhostFrame: Frame | undefined =
+    showNextGhost && motion.frames.length > 1
+      ? motion.frames[(selectedFrame + 1) % motion.frames.length]
+      : undefined;
 
   // ── Mutations ────────────────────────────────────────────────────────────
   const mutateFrame = useCallback((mut: (f: Frame) => Frame) => {
@@ -104,20 +171,118 @@ export default function ExerciseEditor() {
   }, [selectedFrame]);
 
   const moveHandle = useCallback((key: HandleKey, x: number, y: number) => {
-    // Snap to 0.5 viewBox units to keep numbers tidy.
-    const sx = Math.round(x * 2) / 2;
-    const sy = Math.round(y * 2) / 2;
+    // Snap to 0.5 viewBox units to keep numbers tidy (when snap is on).
+    const sx = snapEnabled ? Math.round(x * 2) / 2 : Math.round(x * 10) / 10;
+    const sy = snapEnabled ? Math.round(y * 2) / 2 : Math.round(y * 10) / 10;
+
+    if (key === "bar") {
+      mutateFrame(f => ({ ...f, bar: [sx, sy] as Point }));
+      return;
+    }
+
+    if (key.startsWith("eq:")) {
+      const [, id, part] = key.split(":");
+      moveEquipHandle(id, part, sx, sy);
+      return;
+    }
+
+    if (key.startsWith("arm2_")) {
+      const joint = key.slice("arm2_".length) as "shoulder" | "elbow" | "hand";
+      mutateFrame(f => ({
+        ...f,
+        pose: { ...f.pose, arm2: { ...(f.pose.arm2 ?? {}), [joint]: [sx, sy] as Point } },
+      }));
+      return;
+    }
+    if (key.startsWith("leg2_")) {
+      const joint = key.slice("leg2_".length) as "hip" | "knee" | "ankle" | "toe";
+      mutateFrame(f => ({
+        ...f,
+        pose: { ...f.pose, leg2: { ...(f.pose.leg2 ?? {}), [joint]: [sx, sy] as Point } },
+      }));
+      return;
+    }
+
+    mutateFrame(f => ({
+      ...f,
+      pose: { ...f.pose, [key]: [sx, sy] as Point },
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutateFrame, snapEnabled]);
+
+  // Equipment handle moves are slightly more involved — the "tip" handle on a
+  // barbell encodes both length and rotation; the "size" handle on a bench
+  // sets width & height; wires have two endpoints.
+  const moveEquipHandle = useCallback((id: string, part: string, sx: number, sy: number) => {
+    const eq = (motion.equipment ?? []).find(e => e.id === id);
+    if (!eq) return;
+
+    if (eq.kind === "barbell") {
+      const curState = frame.equipment?.[id];
+      const curPos: Point = curState?.pos ?? eq.pos ?? [50, 60];
+      if (part === "pos") {
+        setFrameEquip(id, { pos: [sx, sy] });
+      } else if (part === "tip") {
+        const dx = sx - curPos[0];
+        const dy = sy - curPos[1];
+        const length = Math.max(4, Math.hypot(dx, dy) * 2);
+        const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+        // Length and angle live on the equipment definition (geometry); pos
+        // stays as a per-frame override.
+        setMotion(m => {
+          const list = (m.equipment ?? []).map(e =>
+            e.id === id && e.kind === "barbell"
+              ? { ...e, length: Math.round(length * 2) / 2 }
+              : e,
+          );
+          return { ...m, equipment: list };
+        });
+        setFrameEquip(id, { angle: Math.round(angle * 10) / 10 });
+        setDirty(true);
+      }
+      return;
+    }
+
+    if (eq.kind === "bench") {
+      const curState = frame.equipment?.[id];
+      const curPos: Point = curState?.pos ?? eq.pos ?? DEFAULT_BENCH_POS;
+      if (part === "pos") {
+        setFrameEquip(id, { pos: [sx, sy] });
+      } else if (part === "size") {
+        const w = Math.max(10, sx - curPos[0]);
+        const h = Math.max(2,  sy - curPos[1]);
+        setMotion(m => {
+          const list = (m.equipment ?? []).map(e =>
+            e.id === id && e.kind === "bench"
+              ? { ...e, width: Math.round(w * 2) / 2, height: Math.round(h * 2) / 2 }
+              : e,
+          );
+          return { ...m, equipment: list };
+        });
+        setDirty(true);
+      }
+      return;
+    }
+
+    if (eq.kind === "wire") {
+      if (part === "from") setFrameEquip(id, { from: [sx, sy] });
+      else if (part === "to") setFrameEquip(id, { to: [sx, sy] });
+      return;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [motion.equipment, frame]);
+
+  const setFrameEquip = useCallback((id: string, patch: Partial<FrameEquipState>) => {
     mutateFrame(f => {
-      if (key === "bar") return { ...f, bar: [sx, sy] };
-      return { ...f, pose: { ...f.pose, [key]: [sx, sy] as Point } };
+      const cur = { ...(f.equipment ?? {}) };
+      cur[id] = { ...cur[id], ...patch };
+      return { ...f, equipment: cur };
     });
   }, [mutateFrame]);
 
   const addFrame = () => {
     setMotion(m => {
       const frames = m.frames.slice();
-      // Insert a new frame just after the selected one, halfway to the next
-      // (or at +0.1 if it's the last frame).
       const cur = frames[selectedFrame];
       const next = frames[selectedFrame + 1];
       const newT = next ? clamp01((cur.t + next.t) / 2) : clamp01(cur.t + 0.1);
@@ -125,8 +290,26 @@ export default function ExerciseEditor() {
         t: newT,
         pose: clone(cur.pose),
         bar: cur.bar ? [...cur.bar] as Point : undefined,
+        equipment: cur.equipment ? clone(cur.equipment) : undefined,
       };
       frames.splice(selectedFrame + 1, 0, newFrame);
+      return { ...m, frames };
+    });
+    setSelectedFrame(i => i + 1);
+    setDirty(true);
+  };
+
+  const duplicateFrame = () => {
+    setMotion(m => {
+      const frames = m.frames.slice();
+      const cur = frames[selectedFrame];
+      const dup: Frame = {
+        t: clamp01(cur.t + 0.001),
+        pose: clone(cur.pose),
+        bar: cur.bar ? [...cur.bar] as Point : undefined,
+        equipment: cur.equipment ? clone(cur.equipment) : undefined,
+      };
+      frames.splice(selectedFrame + 1, 0, dup);
       return { ...m, frames };
     });
     setSelectedFrame(i => i + 1);
@@ -154,13 +337,110 @@ export default function ExerciseEditor() {
     setDirty(true);
   };
 
+  const copyFromPrevFrame = () => {
+    if (selectedFrame === 0) return;
+    setMotion(m => {
+      const frames = m.frames.slice();
+      const src = frames[selectedFrame - 1];
+      const dst = frames[selectedFrame];
+      frames[selectedFrame] = {
+        ...dst,
+        pose: clone(src.pose),
+        bar: src.bar ? [...src.bar] as Point : undefined,
+        equipment: src.equipment ? clone(src.equipment) : undefined,
+      };
+      return { ...m, frames };
+    });
+    setDirty(true);
+  };
+
+  // Mirror the current frame's pose & equipment across the vertical centre
+  // line (x = 50). Useful for symmetric exercises.
+  const flipFrameHorizontally = () => {
+    const flip = (p: Point): Point => [VB_W - p[0], p[1]];
+    mutateFrame(f => {
+      const fp: Pose = {
+        head:     flip(f.pose.head),
+        neck:     flip(f.pose.neck),
+        shoulder: flip(f.pose.shoulder),
+        elbow:    flip(f.pose.elbow),
+        hand:     flip(f.pose.hand),
+        hip:      flip(f.pose.hip),
+        knee:     flip(f.pose.knee),
+        ankle:    flip(f.pose.ankle),
+        toe:      flip(f.pose.toe),
+      };
+      if (f.pose.arm2) {
+        fp.arm2 = {
+          shoulder: f.pose.arm2.shoulder ? flip(f.pose.arm2.shoulder) : undefined,
+          elbow:    f.pose.arm2.elbow    ? flip(f.pose.arm2.elbow)    : undefined,
+          hand:     f.pose.arm2.hand     ? flip(f.pose.arm2.hand)     : undefined,
+        };
+      }
+      if (f.pose.leg2) {
+        fp.leg2 = {
+          hip:   f.pose.leg2.hip   ? flip(f.pose.leg2.hip)   : undefined,
+          knee:  f.pose.leg2.knee  ? flip(f.pose.leg2.knee)  : undefined,
+          ankle: f.pose.leg2.ankle ? flip(f.pose.leg2.ankle) : undefined,
+          toe:   f.pose.leg2.toe   ? flip(f.pose.leg2.toe)   : undefined,
+        };
+      }
+      const equipPatch = f.equipment
+        ? Object.fromEntries(Object.entries(f.equipment).map(([id, st]) => [id, {
+            ...st,
+            pos:  st.pos  ? flip(st.pos)  : undefined,
+            from: st.from ? flip(st.from) : undefined,
+            to:   st.to   ? flip(st.to)   : undefined,
+            angle: st.angle !== undefined ? -st.angle : undefined,
+          }]))
+        : undefined;
+      return {
+        ...f,
+        pose: fp,
+        bar: f.bar ? flip(f.bar) : undefined,
+        equipment: equipPatch,
+      };
+    });
+  };
+
+  // Copy primary arm/leg coordinates into arm2/leg2 for every keyframe so the
+  // secondary limbs are immediately editable across the whole animation.
+  const seedSecondLimbs = () => {
+    setMotion(m => {
+      const frames = m.frames.map(f => {
+        const pose = clone(f.pose);
+        if (!pose.arm2) {
+          pose.arm2 = {
+            shoulder: [pose.shoulder[0] + 3, pose.shoulder[1]],
+            elbow:    [pose.elbow[0]    + 3, pose.elbow[1]],
+            hand:     [pose.hand[0]     + 3, pose.hand[1]],
+          };
+        }
+        if (!pose.leg2) {
+          pose.leg2 = {
+            hip:   [pose.hip[0]   + 3, pose.hip[1]],
+            knee:  [pose.knee[0]  + 3, pose.knee[1]],
+            ankle: [pose.ankle[0] + 3, pose.ankle[1]],
+            toe:   [pose.toe[0]   + 3, pose.toe[1]],
+          };
+        }
+        return { ...f, pose };
+      });
+      return {
+        ...m,
+        rig: { ...(m.rig ?? {}), arm2: "independent", leg2: "independent" },
+        frames,
+      };
+    });
+    setDirty(true);
+  };
+
   const toggleBar = () => {
     mutateFrame(f => {
       if (f.bar) {
-        const { bar, ...rest } = f;
-        return rest as Frame;
+        const out: Frame = { t: f.t, pose: f.pose, equipment: f.equipment };
+        return out;
       }
-      // Place a fresh bar near the hands.
       return { ...f, bar: [...f.pose.hand] as Point };
     });
   };
@@ -177,6 +457,80 @@ export default function ExerciseEditor() {
 
   const toggleBench = () => {
     setMotion(m => ({ ...m, bench: !m.bench }));
+    setDirty(true);
+  };
+
+  // ── Equipment library ─────────────────────────────────────────────────────
+  const addEquipment = (kind: Equipment["kind"]) => {
+    setMotion(m => {
+      const existing = m.equipment ?? [];
+      const id = nextEquipmentId(kind, existing);
+      let eq: Equipment;
+      if (kind === "barbell") {
+        eq = {
+          id, kind: "barbell",
+          length: DEFAULT_BARBELL_LENGTH,
+          plateR: DEFAULT_BARBELL_PLATE_R,
+          hubR:   DEFAULT_BARBELL_HUB_R,
+          thickness: DEFAULT_BARBELL_THICKNESS,
+          pos: [50, 60],
+          angle: 0,
+        };
+      } else if (kind === "bench") {
+        eq = {
+          id, kind: "bench",
+          width:     DEFAULT_BENCH_W,
+          height:    DEFAULT_BENCH_H,
+          legHeight: DEFAULT_BENCH_LEG_H,
+          legInset:  DEFAULT_BENCH_LEG_INSET,
+          pos: [...DEFAULT_BENCH_POS] as Point,
+          angle: 0,
+        };
+      } else {
+        eq = {
+          id, kind: "wire",
+          thickness: DEFAULT_WIRE_THICKNESS,
+          sag: DEFAULT_WIRE_SAG,
+          from: [50, 10],
+          to: [50, 80],
+        };
+      }
+      return { ...m, equipment: [...existing, eq] };
+    });
+    setSelectedEquipId(null);  // useEffect below will pick the new last one
+    setDirty(true);
+  };
+
+  // Whenever equipment count changes, focus the most recently added piece.
+  useEffect(() => {
+    const eqs = motion.equipment ?? [];
+    if (eqs.length === 0) { setSelectedEquipId(null); return; }
+    if (!selectedEquipId || !eqs.some(e => e.id === selectedEquipId)) {
+      setSelectedEquipId(eqs[eqs.length - 1].id);
+    }
+  }, [motion.equipment, selectedEquipId]);
+
+  const removeEquipment = (id: string) => {
+    setMotion(m => {
+      const list = (m.equipment ?? []).filter(e => e.id !== id);
+      const frames = m.frames.map(f => {
+        if (!f.equipment) return f;
+        const eq = { ...f.equipment };
+        delete eq[id];
+        return { ...f, equipment: Object.keys(eq).length > 0 ? eq : undefined };
+      });
+      return { ...m, equipment: list, frames };
+    });
+    setDirty(true);
+  };
+
+  const patchEquipment = (id: string, patch: Partial<Equipment>) => {
+    setMotion(m => {
+      const list = (m.equipment ?? []).map(e =>
+        e.id === id ? ({ ...e, ...patch } as Equipment) : e,
+      );
+      return { ...m, equipment: list };
+    });
     setDirty(true);
   };
 
@@ -281,10 +635,10 @@ export default function ExerciseEditor() {
       {/* Main */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) 280px",
+        gridTemplateColumns: "minmax(0, 1fr) 320px",
         gap: 20,
         padding: 20,
-        maxWidth: 1200, margin: "0 auto",
+        maxWidth: 1280, margin: "0 auto",
       }}>
         {/* Stage */}
         <div>
@@ -293,6 +647,17 @@ export default function ExerciseEditor() {
             bar={displayedBar}
             bench={!!motion.bench}
             floor={!!motion.floor}
+            rig={motion.rig}
+            equipment={motion.equipment}
+            frameEquip={displayedEquip}
+            ghosts={[
+              ...(prevGhostFrame
+                ? [{ frame: prevGhostFrame, opacity: ghostOpacity, color: "var(--accent)" }]
+                : []),
+              ...(nextGhostFrame
+                ? [{ frame: nextGhostFrame, opacity: ghostOpacity * 0.75, color: "var(--warning, #f4a256)" }]
+                : []),
+            ]}
             editable={isAtSelected}
             onMove={moveHandle}
           />
@@ -311,7 +676,6 @@ export default function ExerciseEditor() {
             onScrub={t => {
               setPreviewT(t);
               setPlaying(false);
-              // Auto-select the frame whose t we're near, if any.
               const idx = motion.frames.findIndex(f => Math.abs(f.t - t) < 0.01);
               if (idx >= 0) setSelectedFrame(idx);
             }}
@@ -328,7 +692,10 @@ export default function ExerciseEditor() {
               {playing ? <Pause size={12} /> : <Play size={12} />} {playing ? "Pause" : "Play"}
             </button>
             <button type="button" onClick={addFrame} style={ghostBtn}>
-              <Plus size={12} /> Add frame after
+              <Plus size={12} /> Add frame
+            </button>
+            <button type="button" onClick={duplicateFrame} style={ghostBtn} title="Duplicate the selected frame">
+              <Copy size={12} /> Duplicate
             </button>
             <button
               type="button"
@@ -337,12 +704,57 @@ export default function ExerciseEditor() {
               disabled={motion.frames.length <= 1}
               title={motion.frames.length <= 1 ? "Cannot remove the only frame" : "Delete frame"}
             >
-              <Trash2 size={12} /> Delete frame
+              <Trash2 size={12} /> Delete
+            </button>
+            <button type="button" onClick={copyFromPrevFrame} style={ghostBtn}
+                    disabled={selectedFrame === 0}
+                    title="Copy pose + equipment from the previous frame">
+              <Wand2 size={12} /> Copy from prev
+            </button>
+            <button type="button" onClick={flipFrameHorizontally} style={ghostBtn}
+                    title="Mirror this frame horizontally">
+              <FlipHorizontal2 size={12} /> Flip
             </button>
             <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>
               {motion.frames.length} keyframe{motion.frames.length === 1 ? "" : "s"} ·
               Frame {selectedFrame + 1} at t={frame.t.toFixed(3)}
             </span>
+          </div>
+
+          {/* Onion-skin controls */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap",
+            padding: "8px 12px",
+            background: "var(--s1)", border: "1px solid var(--border)", borderRadius: 8,
+          }}>
+            <span style={{ fontSize: 10, color: "var(--muted)", letterSpacing: 1, textTransform: "uppercase",
+                           display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Layers size={12} /> Onion-skin
+            </span>
+            <label style={inlineCheck}>
+              <input type="checkbox" checked={showPrevGhost} onChange={e => setShowPrevGhost(e.target.checked)} />
+              Prev (cyan)
+            </label>
+            <label style={inlineCheck}>
+              <input type="checkbox" checked={showNextGhost} onChange={e => setShowNextGhost(e.target.checked)} />
+              Next (amber)
+            </label>
+            <label style={{ ...inlineCheck, marginLeft: "auto" }}>
+              Opacity
+              <input
+                type="range" min={0.05} max={0.6} step={0.01}
+                value={ghostOpacity}
+                onChange={e => setGhostOpacity(Number(e.target.value))}
+                style={{ width: 80 }}
+              />
+              <span style={{ fontSize: 11, color: "var(--muted)", width: 28, textAlign: "right" }}>
+                {ghostOpacity.toFixed(2)}
+              </span>
+            </label>
+            <label style={inlineCheck}>
+              <input type="checkbox" checked={snapEnabled} onChange={e => setSnapEnabled(e.target.checked)} />
+              Snap ½
+            </label>
           </div>
         </div>
 
@@ -353,6 +765,8 @@ export default function ExerciseEditor() {
           borderRadius: 10,
           padding: 14,
           fontSize: 12,
+          maxHeight: "calc(100vh - 110px)",
+          overflowY: "auto",
         }}>
           <SectionLabel>Motion settings</SectionLabel>
           <FieldRow label="Duration">
@@ -371,7 +785,7 @@ export default function ExerciseEditor() {
               {motion.floor ? "ON" : "off"}
             </button>
           </FieldRow>
-          <FieldRow label="Bench">
+          <FieldRow label="Bench (legacy)">
             <button type="button" onClick={toggleBench} style={toggleBtn(!!motion.bench)}>
               {motion.bench ? "ON" : "off"}
             </button>
@@ -411,6 +825,23 @@ export default function ExerciseEditor() {
               <option value="independent">independent</option>
             </select>
           </FieldRow>
+          <button type="button" onClick={seedSecondLimbs} style={{ ...ghostBtn, width: "100%", marginTop: 4 }}
+                  title="Switch rig to independent and seed arm2 / leg2 from the primary side">
+            Enable full 4 limbs
+          </button>
+
+          {/* Equipment library */}
+          <SectionLabel style={{ marginTop: 16 }}>Equipment</SectionLabel>
+          <EquipmentLibrary
+            motion={motion}
+            frame={frame}
+            selectedId={selectedEquipId}
+            onSelect={setSelectedEquipId}
+            onAdd={addEquipment}
+            onRemove={removeEquipment}
+            onPatch={patchEquipment}
+            onPatchFrameState={(id, patch) => setFrameEquip(id, patch)}
+          />
 
           <SectionLabel style={{ marginTop: 16 }}>Selected frame</SectionLabel>
           <FieldRow label="t (0..1)">
@@ -424,26 +855,63 @@ export default function ExerciseEditor() {
               style={inputStyle}
             />
           </FieldRow>
-          <FieldRow label="Bar">
+          <FieldRow label="Legacy bar">
             <button type="button" onClick={toggleBar} style={toggleBtn(!!frame.bar)}>
               {frame.bar ? "ON" : "off"}
             </button>
           </FieldRow>
 
           <SectionLabel style={{ marginTop: 16 }}>Joints</SectionLabel>
-          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", rowGap: 4, columnGap: 8 }}>
-            {JOINT_KEYS.map(k => (
-              <JointReadout key={k} label={k} point={frame.pose[k]} />
+          <div style={{ display: "grid", gridTemplateColumns: "auto 1fr 1fr", rowGap: 4, columnGap: 6 }}>
+            <code style={readoutHeader}>name</code>
+            <code style={readoutHeader}>x</code>
+            <code style={readoutHeader}>y</code>
+            {PRIMARY_JOINT_KEYS.map(k => (
+              <JointEditor
+                key={k}
+                label={k}
+                point={frame.pose[k]}
+                onChange={(x, y) => mutateFrame(f => ({
+                  ...f, pose: { ...f.pose, [k]: [x, y] as Point },
+                }))}
+              />
             ))}
-            {frame.bar && <JointReadout label="bar" point={frame.bar} />}
+            {motion.rig?.arm2 === "independent" && frame.pose.arm2 && (
+              <>
+                {(["shoulder", "elbow", "hand"] as const).map(j => (
+                  <JointEditor
+                    key={`a2_${j}`}
+                    label={`arm2.${j}`}
+                    point={frame.pose.arm2![j] ?? frame.pose[j]}
+                    onChange={(x, y) => mutateFrame(f => ({
+                      ...f, pose: { ...f.pose, arm2: { ...(f.pose.arm2 ?? {}), [j]: [x, y] as Point } },
+                    }))}
+                  />
+                ))}
+              </>
+            )}
+            {motion.rig?.leg2 === "independent" && frame.pose.leg2 && (
+              <>
+                {(["hip", "knee", "ankle", "toe"] as const).map(j => (
+                  <JointEditor
+                    key={`l2_${j}`}
+                    label={`leg2.${j}`}
+                    point={frame.pose.leg2![j] ?? frame.pose[j]}
+                    onChange={(x, y) => mutateFrame(f => ({
+                      ...f, pose: { ...f.pose, leg2: { ...(f.pose.leg2 ?? {}), [j]: [x, y] as Point } },
+                    }))}
+                  />
+                ))}
+              </>
+            )}
           </div>
 
           <SectionLabel style={{ marginTop: 16 }}>Tips</SectionLabel>
           <p style={{ color: "var(--muted)", lineHeight: 1.6, margin: 0 }}>
-            Drag the coloured dots to move joints. Scrub the timeline to preview
+            Drag coloured dots to move joints. Scrub the timeline to preview
             between keyframes — joints are only editable when the scrubber sits
-            exactly on a keyframe. Press <kbd>←</kbd>/<kbd>→</kbd> to step
-            between frames.
+            on a keyframe. <kbd>←</kbd>/<kbd>→</kbd> step frames; <kbd>Space</kbd>
+            toggles playback; <kbd>D</kbd> duplicates the frame.
           </p>
         </aside>
       </div>
@@ -462,9 +930,12 @@ export default function ExerciseEditor() {
           setPreviewT(motion.frames[next].t);
           setPlaying(false);
         }}
+        onTogglePlay={() => setPlaying(p => !p)}
+        onDuplicate={duplicateFrame}
+        onDelete={removeFrame}
       />
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 20px 40px" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 20px 40px" }}>
         <SectionLabel>Live preview</SectionLabel>
         <div style={{
           background: "var(--s2)",
@@ -480,6 +951,7 @@ export default function ExerciseEditor() {
             bench={motion.bench}
             floor={motion.floor}
             rig={motion.rig}
+            equipment={motion.equipment}
             width={220}
             height={280}
           />
@@ -491,13 +963,23 @@ export default function ExerciseEditor() {
 
 // ── Editor stage ───────────────────────────────────────────────────────────
 
+interface GhostInput {
+  frame: Frame;
+  opacity: number;
+  color?: string;
+}
+
 function EditorStage({
-  pose, bar, bench, floor, editable, onMove,
+  pose, bar, bench, floor, rig, equipment, frameEquip, ghosts, editable, onMove,
 }: {
   pose: Pose;
   bar?: Point;
   bench: boolean;
   floor: boolean;
+  rig?: ExerciseMotion["rig"];
+  equipment?: Equipment[];
+  frameEquip?: Record<string, FrameEquipState>;
+  ghosts: GhostInput[];
   editable: boolean;
   onMove: (key: HandleKey, x: number, y: number) => void;
 }) {
@@ -537,10 +1019,48 @@ function EditorStage({
     }
   };
 
-  const handles: { key: HandleKey; pos: Point }[] = [
-    ...JOINT_KEYS.map(k => ({ key: k as HandleKey, pos: pose[k] as Point })),
-  ];
-  if (bar) handles.push({ key: "bar", pos: bar });
+  // Collect every visible handle in this frame.
+  const handles: { key: HandleKey; pos: Point; tint: "joint" | "bar" | "eq" | "arm2" | "leg2" }[] = [];
+  PRIMARY_JOINT_KEYS.forEach(k => handles.push({ key: k, pos: pose[k] as Point, tint: "joint" }));
+  if (rig?.arm2 === "independent" && pose.arm2) {
+    if (pose.arm2.shoulder) handles.push({ key: "arm2_shoulder", pos: pose.arm2.shoulder, tint: "arm2" });
+    if (pose.arm2.elbow)    handles.push({ key: "arm2_elbow",    pos: pose.arm2.elbow,    tint: "arm2" });
+    if (pose.arm2.hand)     handles.push({ key: "arm2_hand",     pos: pose.arm2.hand,     tint: "arm2" });
+  }
+  if (rig?.leg2 === "independent" && pose.leg2) {
+    if (pose.leg2.hip)   handles.push({ key: "leg2_hip",   pos: pose.leg2.hip,   tint: "leg2" });
+    if (pose.leg2.knee)  handles.push({ key: "leg2_knee",  pos: pose.leg2.knee,  tint: "leg2" });
+    if (pose.leg2.ankle) handles.push({ key: "leg2_ankle", pos: pose.leg2.ankle, tint: "leg2" });
+    if (pose.leg2.toe)   handles.push({ key: "leg2_toe",   pos: pose.leg2.toe,   tint: "leg2" });
+  }
+  if (bar) handles.push({ key: "bar", pos: bar, tint: "bar" });
+
+  // Equipment handles (center + a second handle that encodes geometry).
+  for (const eq of equipment ?? []) {
+    const st = frameEquip?.[eq.id];
+    if (eq.kind === "barbell") {
+      const pos: Point = st?.pos ?? eq.pos ?? [50, 60];
+      handles.push({ key: `eq:${eq.id}:pos`, pos, tint: "eq" });
+      const length = eq.length ?? DEFAULT_BARBELL_LENGTH;
+      const angle  = (st?.angle ?? eq.angle ?? 0) * Math.PI / 180;
+      const tip: Point = [
+        pos[0] + Math.cos(angle) * length / 2,
+        pos[1] + Math.sin(angle) * length / 2,
+      ];
+      handles.push({ key: `eq:${eq.id}:tip`, pos: tip, tint: "eq" });
+    } else if (eq.kind === "bench") {
+      const pos: Point = st?.pos ?? eq.pos ?? DEFAULT_BENCH_POS;
+      handles.push({ key: `eq:${eq.id}:pos`, pos, tint: "eq" });
+      const w = eq.width ?? DEFAULT_BENCH_W;
+      const h = eq.height ?? DEFAULT_BENCH_H;
+      handles.push({ key: `eq:${eq.id}:size`, pos: [pos[0] + w, pos[1] + h], tint: "eq" });
+    } else if (eq.kind === "wire") {
+      const from: Point = st?.from ?? eq.from ?? [50, 10];
+      const to:   Point = st?.to   ?? eq.to   ?? [50, 80];
+      handles.push({ key: `eq:${eq.id}:from`, pos: from, tint: "eq" });
+      handles.push({ key: `eq:${eq.id}:to`,   pos: to,   tint: "eq" });
+    }
+  }
 
   return (
     <div style={{
@@ -578,21 +1098,63 @@ function EditorStage({
           ))}
         </g>
 
-        {/* Render figure (non-interactive). */}
+        {floor && (
+          <line
+            x1={4} y1={VB_H - 4} x2={VB_W - 4} y2={VB_H - 4}
+            stroke="currentColor" strokeWidth={1.2} strokeDasharray="2 4" opacity={0.4}
+          />
+        )}
+
+        {/* Onion-skin ghosts. */}
+        {ghosts.map((g, i) => (
+          <g key={`ghost-${i}`} opacity={g.opacity} style={{ color: g.color ?? "var(--accent)" }} pointerEvents="none">
+            <FigureBody
+              pose={g.frame.pose}
+              bar={g.frame.bar}
+              plateR={5.5}
+              hubR={2}
+              hubColor="var(--bg)"
+              bench={false}
+              rig={rig}
+              color="currentColor"
+              equipment={equipment}
+              frameEquip={g.frame.equipment}
+              ghost
+            />
+          </g>
+        ))}
+
+        {/* Live figure (non-interactive — handles sit over the top). */}
         <g pointerEvents="none">
-          <StickFigureInner pose={pose} bar={bar} bench={bench} floor={floor} />
+          <FigureBody
+            pose={pose}
+            bar={bar}
+            plateR={5.5}
+            hubR={2}
+            hubColor="var(--bg)"
+            bench={bench}
+            rig={rig}
+            color="currentColor"
+            equipment={equipment}
+            frameEquip={frameEquip}
+          />
         </g>
 
         {/* Interactive handles */}
-        {handles.map(({ key, pos }) => {
+        {handles.map(({ key, pos, tint }) => {
           const active = dragKey === key || hoverKey === key;
-          const isBar = key === "bar";
+          const fill =
+            tint === "bar"  ? "var(--warning, #f4a256)" :
+            tint === "eq"   ? "var(--warning, #f4a256)" :
+            tint === "arm2" ? "#9b87f5" :
+            tint === "leg2" ? "#5dd6a8" :
+                              "var(--accent)";
           return (
             <g key={key}>
               <circle
                 cx={pos[0]} cy={pos[1]}
                 r={active ? HANDLE_R_ACTIVE : HANDLE_R}
-                fill={isBar ? "var(--warning, #f4a256)" : "var(--accent)"}
+                fill={fill}
                 fillOpacity={editable ? (active ? 0.95 : 0.6) : 0.25}
                 stroke="var(--bg)"
                 strokeWidth={1.2}
@@ -630,47 +1192,225 @@ function EditorStage({
   );
 }
 
-// Renders the same SVG content as StickFigure but expects to be embedded
-// inside an outer <svg>, so it just emits <g> contents.
-function StickFigureInner({ pose, bar, bench, floor }: { pose: Pose; bar?: Point; bench: boolean; floor: boolean }) {
-  const [hx, hy] = pose.head;
-  const [nx, ny] = pose.neck;
-  const dx = nx - hx, dy = ny - hy;
-  const dist = Math.hypot(dx, dy) || 1;
-  const neckStartX = hx + (dx / dist) * HEAD_R;
-  const neckStartY = hy + (dy / dist) * HEAD_R;
-  const poly = (...pts: Point[]) => pts.map(p => `${p[0]},${p[1]}`).join(" ");
-  const color = "currentColor";
+// ── Equipment library panel ────────────────────────────────────────────────
+
+function EquipmentLibrary({
+  motion, frame, selectedId, onSelect, onAdd, onRemove, onPatch, onPatchFrameState,
+}: {
+  motion: ExerciseMotion;
+  frame: Frame;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  onAdd: (kind: Equipment["kind"]) => void;
+  onRemove: (id: string) => void;
+  onPatch: (id: string, patch: Partial<Equipment>) => void;
+  onPatchFrameState: (id: string, patch: Partial<FrameEquipState>) => void;
+}) {
+  const eqs = motion.equipment ?? [];
+  const selected = eqs.find(e => e.id === selectedId);
+  const st = selected ? frame.equipment?.[selected.id] : undefined;
 
   return (
+    <div>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => onAdd("barbell")} style={{ ...ghostBtn, flex: 1, minWidth: 80 }}>
+          <Plus size={11} /> Barbell
+        </button>
+        <button type="button" onClick={() => onAdd("bench")} style={{ ...ghostBtn, flex: 1, minWidth: 80 }}>
+          <Plus size={11} /> Bench
+        </button>
+        <button type="button" onClick={() => onAdd("wire")} style={{ ...ghostBtn, flex: 1, minWidth: 80 }}>
+          <Plus size={11} /> Wire
+        </button>
+      </div>
+
+      {eqs.length === 0 && (
+        <p style={{ color: "var(--muted)", fontSize: 11, marginTop: 8, marginBottom: 0 }}>
+          No stage equipment yet. Add a barbell, bench, or cable above.
+        </p>
+      )}
+
+      {eqs.length > 0 && (
+        <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+          {eqs.map(eq => (
+            <div
+              key={eq.id}
+              onClick={() => onSelect(eq.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "4px 8px",
+                border: `1px solid ${selectedId === eq.id ? "var(--accent)" : "var(--border)"}`,
+                borderRadius: 6,
+                cursor: "pointer",
+                background: selectedId === eq.id ? "var(--ad, transparent)" : "transparent",
+              }}
+            >
+              <code style={{ fontSize: 11, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {eq.kind} · {eq.id}
+              </code>
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onRemove(eq.id); }}
+                style={{ ...ghostBtn, padding: "2px 6px", fontSize: 10 }}
+                title="Remove equipment"
+              >
+                <Trash2 size={10} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {selected && (
+        <div style={{
+          marginTop: 10, padding: 8,
+          border: "1px solid var(--border)", borderRadius: 8,
+          background: "var(--s2)",
+        }}>
+          <SectionLabel>{selected.kind} geometry</SectionLabel>
+          {selected.kind === "barbell" && (
+            <BarbellInspector
+              eq={selected as BarbellEquipment}
+              state={st}
+              onPatch={p => onPatch(selected.id, p)}
+              onPatchFrame={p => onPatchFrameState(selected.id, p)}
+            />
+          )}
+          {selected.kind === "bench" && (
+            <BenchInspector
+              eq={selected as BenchEquipment}
+              state={st}
+              onPatch={p => onPatch(selected.id, p)}
+              onPatchFrame={p => onPatchFrameState(selected.id, p)}
+            />
+          )}
+          {selected.kind === "wire" && (
+            <WireInspector
+              eq={selected as WireEquipment}
+              state={st}
+              onPatch={p => onPatch(selected.id, p)}
+              onPatchFrame={p => onPatchFrameState(selected.id, p)}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BarbellInspector({
+  eq, state, onPatch, onPatchFrame,
+}: {
+  eq: BarbellEquipment;
+  state?: FrameEquipState;
+  onPatch: (p: Partial<BarbellEquipment>) => void;
+  onPatchFrame: (p: Partial<FrameEquipState>) => void;
+}) {
+  const pos = state?.pos ?? eq.pos ?? [50, 60];
+  const angle = state?.angle ?? eq.angle ?? 0;
+  return (
     <>
-      {floor && (
-        <line
-          x1={4} y1={VB_H - 4} x2={VB_W - 4} y2={VB_H - 4}
-          stroke={color} strokeWidth={1.2} strokeDasharray="2 4" opacity={0.4}
-        />
-      )}
-      {bench && (
-        <g opacity={0.5}>
-          <rect x={28} y={86} width={58} height={5} rx={1.2} fill={color} stroke="none" />
-          <line x1={32} y1={91} x2={32} y2={108} stroke={color} strokeWidth={2} strokeLinecap="round" />
-          <line x1={82} y1={91} x2={82} y2={108} stroke={color} strokeWidth={2} strokeLinecap="round" />
-        </g>
-      )}
-      <g stroke={color} strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" fill="none">
-        <circle cx={hx} cy={hy} r={HEAD_R} fill={color} stroke="none" />
-        <line x1={neckStartX} y1={neckStartY} x2={nx} y2={ny} />
-        <polyline points={poly(pose.neck, pose.shoulder, pose.hip)} />
-        <polyline points={poly(pose.shoulder, pose.elbow, pose.hand)} />
-        <polyline points={poly(pose.hip, pose.knee, pose.ankle)} />
-        <line x1={pose.ankle[0]} y1={pose.ankle[1]} x2={pose.toe[0]} y2={pose.toe[1]} />
-      </g>
-      {bar && (
-        <g stroke="none">
-          <circle cx={bar[0]} cy={bar[1]} r={5.5} fill={color} />
-          <circle cx={bar[0]} cy={bar[1]} r={2} fill="var(--bg)" />
-        </g>
-      )}
+      <FieldRow label="Length">
+        <NumInput value={eq.length ?? DEFAULT_BARBELL_LENGTH} min={4} max={90} step={0.5}
+                  onChange={v => onPatch({ length: v })} />
+      </FieldRow>
+      <FieldRow label="Plate R">
+        <NumInput value={eq.plateR ?? DEFAULT_BARBELL_PLATE_R} min={1} max={20} step={0.5}
+                  onChange={v => onPatch({ plateR: v })} />
+      </FieldRow>
+      <FieldRow label="Hub R">
+        <NumInput value={eq.hubR ?? DEFAULT_BARBELL_HUB_R} min={0} max={10} step={0.25}
+                  onChange={v => onPatch({ hubR: v })} />
+      </FieldRow>
+      <FieldRow label="Bar thick">
+        <NumInput value={eq.thickness ?? DEFAULT_BARBELL_THICKNESS} min={0.4} max={6} step={0.1}
+                  onChange={v => onPatch({ thickness: v })} />
+      </FieldRow>
+      <FieldRow label="Pos (this frame)">
+        <PointInputs point={pos} onChange={p => onPatchFrame({ pos: p })} />
+      </FieldRow>
+      <FieldRow label="Angle°">
+        <NumInput value={angle} min={-180} max={180} step={1}
+                  onChange={v => onPatchFrame({ angle: v })} />
+      </FieldRow>
+    </>
+  );
+}
+
+function BenchInspector({
+  eq, state, onPatch, onPatchFrame,
+}: {
+  eq: BenchEquipment;
+  state?: FrameEquipState;
+  onPatch: (p: Partial<BenchEquipment>) => void;
+  onPatchFrame: (p: Partial<FrameEquipState>) => void;
+}) {
+  const pos = state?.pos ?? eq.pos ?? DEFAULT_BENCH_POS;
+  const angle = state?.angle ?? eq.angle ?? 0;
+  return (
+    <>
+      <FieldRow label="Width">
+        <NumInput value={eq.width ?? DEFAULT_BENCH_W} min={10} max={100} step={0.5}
+                  onChange={v => onPatch({ width: v })} />
+      </FieldRow>
+      <FieldRow label="Pad height">
+        <NumInput value={eq.height ?? DEFAULT_BENCH_H} min={2} max={30} step={0.5}
+                  onChange={v => onPatch({ height: v })} />
+      </FieldRow>
+      <FieldRow label="Leg height">
+        <NumInput value={eq.legHeight ?? DEFAULT_BENCH_LEG_H} min={0} max={60} step={0.5}
+                  onChange={v => onPatch({ legHeight: v })} />
+      </FieldRow>
+      <FieldRow label="Leg inset">
+        <NumInput value={eq.legInset ?? DEFAULT_BENCH_LEG_INSET} min={0} max={30} step={0.5}
+                  onChange={v => onPatch({ legInset: v })} />
+      </FieldRow>
+      <FieldRow label="Opacity">
+        <NumInput value={eq.opacity ?? 0.5} min={0} max={1} step={0.05}
+                  onChange={v => onPatch({ opacity: v })} />
+      </FieldRow>
+      <FieldRow label="Pos (this frame)">
+        <PointInputs point={pos} onChange={p => onPatchFrame({ pos: p })} />
+      </FieldRow>
+      <FieldRow label="Angle°">
+        <NumInput value={angle} min={-90} max={90} step={1}
+                  onChange={v => onPatchFrame({ angle: v })} />
+      </FieldRow>
+    </>
+  );
+}
+
+function WireInspector({
+  eq, state, onPatch, onPatchFrame,
+}: {
+  eq: WireEquipment;
+  state?: FrameEquipState;
+  onPatch: (p: Partial<WireEquipment>) => void;
+  onPatchFrame: (p: Partial<FrameEquipState>) => void;
+}) {
+  const from = state?.from ?? eq.from ?? [50, 10];
+  const to   = state?.to   ?? eq.to   ?? [50, 80];
+  return (
+    <>
+      <FieldRow label="Thickness">
+        <NumInput value={eq.thickness ?? DEFAULT_WIRE_THICKNESS} min={0.2} max={6} step={0.1}
+                  onChange={v => onPatch({ thickness: v })} />
+      </FieldRow>
+      <FieldRow label="Sag">
+        <NumInput value={eq.sag ?? DEFAULT_WIRE_SAG} min={-20} max={20} step={0.5}
+                  onChange={v => onPatch({ sag: v })} />
+      </FieldRow>
+      <FieldRow label="Dashed">
+        <button type="button" onClick={() => onPatch({ dashed: !eq.dashed })} style={toggleBtn(!!eq.dashed)}>
+          {eq.dashed ? "ON" : "off"}
+        </button>
+      </FieldRow>
+      <FieldRow label="From (this frame)">
+        <PointInputs point={from} onChange={p => onPatchFrame({ from: p })} />
+      </FieldRow>
+      <FieldRow label="To (this frame)">
+        <PointInputs point={to} onChange={p => onPatchFrame({ to: p })} />
+      </FieldRow>
     </>
   );
 }
@@ -720,15 +1460,11 @@ function Timeline({
       <div
         ref={trackRef}
         onPointerDown={e => {
-          // Capture to the track so move events keep firing here even when
-          // the cursor leaves it.
           const el = trackRef.current;
           if (el) {
             el.setPointerCapture?.(e.pointerId);
             (el as HTMLElement & { _capturedId?: number })._capturedId = e.pointerId;
           }
-          // If the user grabbed a keyframe dot, the dot's onPointerDown will
-          // have already set `dragging` to the frame index — leave it alone.
           if (dragging === null) {
             setDragging("scrub");
             onScrub(xToT(e.clientX));
@@ -784,14 +1520,9 @@ function Timeline({
             key={i}
             type="button"
             onPointerDown={e => {
-              // Let the event bubble to the track so the track's pointer
-              // capture covers move/up. We only mark this dot as the active
-              // drag target here.
               e.stopPropagation();
               setDragging(i);
               onSelect(i);
-              // Manually re-dispatch a pointerdown on the track so it can
-              // capture the pointer. Easier: do the capture directly here.
               trackRef.current?.setPointerCapture?.(e.pointerId);
             }}
             title={`Frame ${i + 1} at t=${f.t.toFixed(3)}`}
@@ -822,17 +1553,33 @@ function Timeline({
 
 // ── Misc UI helpers ────────────────────────────────────────────────────────
 
-function KeyboardNav({ framesCount, onPrev, onNext }: { framesCount: number; onPrev: () => void; onNext: () => void; }) {
+function KeyboardNav({
+  framesCount, onPrev, onNext, onTogglePlay, onDuplicate, onDelete,
+}: {
+  framesCount: number;
+  onPrev: () => void;
+  onNext: () => void;
+  onTogglePlay: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+}) {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "SELECT" || target.tagName === "TEXTAREA")) return;
-      if (e.key === "ArrowLeft") { e.preventDefault(); onPrev(); }
+      if (e.key === "ArrowLeft")  { e.preventDefault(); onPrev(); }
       if (e.key === "ArrowRight") { e.preventDefault(); onNext(); }
+      if (e.key === " ")          { e.preventDefault(); onTogglePlay(); }
+      if (e.key === "d" || e.key === "D") { e.preventDefault(); onDuplicate(); }
+      if (e.key === "Delete" || e.key === "Backspace") {
+        // Only handle Delete; Backspace would steal regular text input but we
+        // already guard against INPUT focus above.
+        if (e.key === "Delete") { e.preventDefault(); onDelete(); }
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [framesCount, onPrev, onNext]);
+  }, [framesCount, onPrev, onNext, onTogglePlay, onDuplicate, onDelete]);
   return null;
 }
 
@@ -854,16 +1601,51 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
       gap: 8, marginBottom: 6,
     }}>
       <span style={{ color: "var(--text)" }}>{label}</span>
-      <span style={{ display: "inline-flex", alignItems: "center" }}>{children}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{children}</span>
     </div>
   );
 }
 
-function JointReadout({ label, point }: { label: string; point: Point }) {
+function JointEditor({
+  label, point, onChange,
+}: { label: string; point: Point; onChange: (x: number, y: number) => void }) {
   return (
     <>
-      <code style={{ color: "var(--muted)", fontSize: 11 }}>{label}</code>
-      <code style={{ fontSize: 11 }}>{point[0].toFixed(1)}, {point[1].toFixed(1)}</code>
+      <code style={{ color: "var(--muted)", fontSize: 11, alignSelf: "center" }}>{label}</code>
+      <NumInput value={point[0]} step={0.5} compact onChange={x => onChange(x, point[1])} />
+      <NumInput value={point[1]} step={0.5} compact onChange={y => onChange(point[0], y)} />
+    </>
+  );
+}
+
+function NumInput({
+  value, onChange, min, max, step = 0.5, compact,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  min?: number; max?: number;
+  step?: number;
+  compact?: boolean;
+}) {
+  return (
+    <input
+      type="number"
+      value={Number.isFinite(value) ? value : 0}
+      min={min} max={max} step={step}
+      onChange={e => {
+        const n = Number(e.target.value);
+        if (Number.isFinite(n)) onChange(n);
+      }}
+      style={{ ...inputStyle, width: compact ? 56 : 80 }}
+    />
+  );
+}
+
+function PointInputs({ point, onChange }: { point: Point; onChange: (p: Point) => void }) {
+  return (
+    <>
+      <NumInput value={point[0]} step={0.5} compact onChange={x => onChange([x, point[1]])} />
+      <NumInput value={point[1]} step={0.5} compact onChange={y => onChange([point[0], y])} />
     </>
   );
 }
@@ -896,9 +1678,13 @@ const clamp01 = (n: number) => clamp(n, 0, 1);
 
 const ease = (t: number) => 0.5 - 0.5 * Math.cos(t * Math.PI);
 
-function sampleFrames(frames: Frame[], t: number): { pose: Pose; bar?: Point } {
+function sampleFrames(frames: Frame[], t: number): {
+  pose: Pose; bar?: Point; equipment?: Record<string, FrameEquipState>;
+} {
   if (frames.length === 0) throw new Error("no frames");
-  if (frames.length === 1) return { pose: frames[0].pose, bar: frames[0].bar };
+  if (frames.length === 1) {
+    return { pose: frames[0].pose, bar: frames[0].bar, equipment: frames[0].equipment };
+  }
   for (let i = 0; i < frames.length - 1; i++) {
     const a = frames[i], b = frames[i + 1];
     if (t >= a.t && t <= b.t) {
@@ -907,11 +1693,22 @@ function sampleFrames(frames: Frame[], t: number): { pose: Pose; bar?: Point } {
       return {
         pose: lerpPose(a.pose, b.pose, local),
         bar: a.bar && b.bar ? lerpPt(a.bar, b.bar, local) : a.bar ?? b.bar,
+        equipment: lerpFrameEquip(a.equipment, b.equipment, local),
       };
     }
   }
   const last = frames[frames.length - 1];
-  return { pose: last.pose, bar: last.bar };
+  return { pose: last.pose, bar: last.bar, equipment: last.equipment };
+}
+
+function nextEquipmentId(kind: Equipment["kind"], existing: Equipment[]): string {
+  // Find the lowest unused integer suffix for this kind.
+  const used = new Set(existing
+    .filter(e => e.id.startsWith(kind))
+    .map(e => Number(e.id.slice(kind.length).replace(/^_?/, ""))));
+  let i = 1;
+  while (used.has(i)) i++;
+  return `${kind}_${i}`;
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────
@@ -982,3 +1779,15 @@ const toggleBtn = (on: boolean): React.CSSProperties => ({
   cursor: "pointer",
   fontFamily: "inherit",
 });
+
+const inlineCheck: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 4,
+  fontSize: 11, color: "var(--text)",
+};
+
+const readoutHeader: React.CSSProperties = {
+  fontSize: 9,
+  color: "var(--muted)",
+  letterSpacing: 1,
+  textTransform: "uppercase",
+};

@@ -90,6 +90,9 @@ export interface MotionRow {
   floor: boolean;
   rig: NonNullable<ExerciseMotion["rig"]>;
   frames: ExerciseMotion["frames"];
+  // Optional stage equipment. Backend stores this inside the rig JSONB blob
+  // (so no schema migration is required) — see motionFromRow / saveMotion.
+  equipment?: ExerciseMotion["equipment"];
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -117,6 +120,19 @@ export const Content = {
 // the renderer / editor. The DB stores frames as plain JSON; the renderer is
 // happy to consume that directly.
 export function motionFromRow(row: MotionRow): ExerciseMotion {
+  // Equipment piggy-backs on the rig JSONB blob so we can ship new gear without
+  // a backend migration. Pull it out and present the rig as the renderer
+  // expects.
+  const rig = (row.rig ?? {}) as NonNullable<ExerciseMotion["rig"]> & {
+    equipment?: ExerciseMotion["equipment"];
+  };
+  const equipment = row.equipment ?? rig.equipment;
+  const cleanRig: NonNullable<ExerciseMotion["rig"]> = {
+    feet: rig.feet,
+    arm2: rig.arm2,
+    leg2: rig.leg2,
+    mirrorOffset: rig.mirrorOffset,
+  };
   return {
     name: row.name,
     frames: row.frames as ExerciseMotion["frames"],
@@ -124,7 +140,8 @@ export function motionFromRow(row: MotionRow): ExerciseMotion {
     bench: row.bench,
     floor: row.floor,
     category: row.category ?? undefined,
-    rig: row.rig,
+    rig: cleanRig,
+    equipment,
   };
 }
 

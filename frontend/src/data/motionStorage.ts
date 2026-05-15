@@ -66,6 +66,12 @@ export async function saveMotion(
   id: string,
   motion: ExerciseMotion,
 ): Promise<void> {
+  const baseRig = motion.rig ?? { feet: "oval", arm2: "none", leg2: "none" };
+  // Equipment rides inside `rig` so we don't need a backend migration. The
+  // frontend pulls it back out in motionFromRow.
+  const rigWithEquip = motion.equipment && motion.equipment.length > 0
+    ? { ...baseRig, equipment: motion.equipment }
+    : baseRig;
   const row: MotionRow = {
     exercise_id: id,
     name: motion.name,
@@ -73,8 +79,9 @@ export async function saveMotion(
     duration: motion.duration ?? null,
     bench: !!motion.bench,
     floor: !!motion.floor,
-    rig: motion.rig ?? { feet: "oval", arm2: "none", leg2: "none" },
+    rig: rigWithEquip,
     frames: motion.frames,
+    equipment: motion.equipment,
   };
   await ContentAdmin.upsertMotion(authFetch, row);
   await refreshMotions();
