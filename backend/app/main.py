@@ -9,6 +9,7 @@ from .routers import (
     items, workouts, prs, auth, health, admin, buddies, notifications, live,
     feedback, events, content, trainers, regimes, assignments, chat,
 )
+from .version import __version__
 
 Base.metadata.create_all(bind=engine)
 
@@ -63,7 +64,7 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_sets_planned INTEGER"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_exercises_planned INTEGER"))
 
-app = FastAPI(title="Gamgee API", version="0.1.0", redirect_slashes=False)
+app = FastAPI(title="Gamgee API", version=__version__, redirect_slashes=False)
 
 _extra_origins = [o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
 _app_base = os.environ.get("APP_BASE_URL", "").strip()
@@ -116,3 +117,8 @@ except Exception as _exc:
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/version")
+def version():
+    return {"version": __version__}

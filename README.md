@@ -2,6 +2,8 @@
 
 A self-hosted workout tracking app. Log sessions, track personal records, visualise muscle coverage, and get progression coaching — all behind a per-user JWT auth wall.
 
+> **Just want to use the app?** See the [User Guide](docs/user-guide.md) for a walkthrough of every feature.
+
 ## Stack
 
 | Layer    | Technology                        |
