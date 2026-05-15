@@ -3,12 +3,16 @@ import { Eye, Plus, Check } from "lucide-react";
 import type { SuggCardProps } from "../types";
 import { MI } from "../data/muscles";
 import { EXERCISE_INFO } from "../data/exerciseInfo";
+import { snapshotMotion } from "../data/motionStorage";
+import ExerciseAnimation from "./exercise/ExerciseAnimation";
 
 export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeave }: SuggCardProps) {
   const newP = ex.newP ?? [];
   const ovP  = ex.ovP  ?? [];
   const newS = (ex.newS ?? []).slice(0, 3);
   const info = EXERCISE_INFO[ex.id];
+  const motion = snapshotMotion(ex.id);
+  const hasDetails = !!info || !!motion;
 
   const [open, setOpen] = useState(false);
 
@@ -33,7 +37,7 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
           </div>
         </div>
 
-        {info && (
+        {hasDetails && (
           <button
             type="button"
             className={`sugg-info-btn ${open ? "open" : ""}`}
@@ -55,13 +59,31 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
         </button>
       </div>
 
-      {info && (
+      {hasDetails && (
         <div className={`sugg-info-wrap ${open ? "open" : ""}`} aria-hidden={!open}>
           <div className="sugg-info">
             <div className="sugg-info-inner" onClick={e => e.stopPropagation()}>
-              <div className="sugg-info-row"><span className="label">Setup</span><span>{info.setup}</span></div>
-              <div className="sugg-info-row"><span className="label">Execute</span><span>{info.execute}</span></div>
-              <div className="sugg-info-row"><span className="label">Cue</span><span>{info.cue}</span></div>
+              {motion && open && (
+                <div className="sugg-info-anim">
+                  <ExerciseAnimation
+                    frames={motion.frames}
+                    duration={motion.duration}
+                    bench={motion.bench}
+                    floor={motion.floor}
+                    rig={motion.rig}
+                    equipment={motion.equipment}
+                    width={140}
+                    height={170}
+                  />
+                </div>
+              )}
+              {info && (
+                <>
+                  <div className="sugg-info-row"><span className="label">Setup</span><span>{info.setup}</span></div>
+                  <div className="sugg-info-row"><span className="label">Execute</span><span>{info.execute}</span></div>
+                  <div className="sugg-info-row"><span className="label">Cue</span><span>{info.cue}</span></div>
+                </>
+              )}
             </div>
           </div>
         </div>

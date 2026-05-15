@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
+import { snapshotMotion } from "../../data/motionStorage";
+import { EXERCISE_INFO } from "../../data/exerciseInfo";
+import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 
 interface Props {
   ex:         WorkoutExercise;
@@ -94,8 +97,10 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
 export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
+  const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
   const m      = EM[ex.id] || { p: [], s: [] };
+  const canInspect = !!snapshotMotion(ex.id) || !!EXERCISE_INFO[ex.id];
 
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
@@ -128,6 +133,7 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
   };
 
   return (
+    <>
     <div className="ex-card">
       <div className="ex-hdr">
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -150,7 +156,20 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             {m.s.slice(0, 2).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
           </div>
         </div>
-        <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
+        <div className="ex-hdr-actions">
+          {canInspect && (
+            <button
+              type="button"
+              className="btn-icon btn-inspect"
+              onClick={() => setInspectOpen(true)}
+              aria-label="Show how-to and animation"
+              title="How-to & animation"
+            >
+              <Eye size={14} />
+            </button>
+          )}
+          <button className="btn-icon" onClick={onRemove} aria-label="Remove exercise"><X size={14} /></button>
+        </div>
       </div>
 
       {showDeload && (
@@ -262,5 +281,13 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
         <button className="btn-add-set" onClick={addSet}>+ add set</button>
       </div>
     </div>
+    {inspectOpen && (
+      <ExerciseInspectModal
+        exerciseId={ex.id}
+        exerciseName={ex.name}
+        onClose={() => setInspectOpen(false)}
+      />
+    )}
+    </>
   );
 }

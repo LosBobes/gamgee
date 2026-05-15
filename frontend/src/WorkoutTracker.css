@@ -671,6 +671,72 @@ html, body { background: var(--bg); }
   font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
   color: var(--muted); text-transform: uppercase; padding-top: 2px;
 }
+.sugg-info-anim {
+  display: flex; justify-content: center;
+  padding: 4px 0 6px;
+  color: var(--accent);
+}
+
+/* ── EXERCISE INSPECT MODAL ── */
+.ex-inspect-modal { gap: 14px; }
+.ex-inspect-hdr {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.ex-inspect-name {
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--text);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ex-inspect-close {
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 7px;
+  cursor: pointer; padding: 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ex-inspect-close:hover { color: var(--text); border-color: var(--muted); }
+.ex-inspect-anim-wrap {
+  position: relative;
+  display: flex; justify-content: center; align-items: center;
+  padding: 12px;
+  background: var(--s2);
+  border: 1px solid var(--border); border-radius: 10px;
+  color: var(--accent);
+}
+.ex-inspect-playpause {
+  position: absolute; top: 8px; right: 8px;
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--s1); color: var(--muted);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; padding: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+.ex-inspect-playpause:hover { color: var(--accent); border-color: var(--accent); }
+.ex-inspect-no-anim {
+  padding: 18px 12px;
+  text-align: center; font-size: 12px; color: var(--muted);
+  background: var(--s2); border: 1px dashed var(--border); border-radius: 10px;
+}
+.ex-inspect-info {
+  display: grid; gap: 8px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+.ex-inspect-row {
+  display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: start;
+  font-size: 12px; line-height: 1.55; color: var(--text);
+}
+.ex-inspect-row .label {
+  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
+  color: var(--muted); text-transform: uppercase; padding-top: 3px;
+}
+
+/* Inspect button in active-workout exercise card header */
+.ex-hdr-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.btn-icon.btn-inspect:hover { color: var(--accent); border-color: var(--accent); }
 
 /* ── PLANNED LIST ── */
 .planned-card { display: flex; align-items: center; justify-content: space-between; background: var(--s2); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; margin-bottom: 5px; animation: fadeUp 0.18s ease both; }
