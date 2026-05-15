@@ -1494,7 +1494,7 @@ html, body { background: var(--bg); }
   display: flex; justify-content: space-between; align-items: center;
   font-size: 0.78rem; color: var(--muted); letter-spacing: 0.3px;
 }
-.auth-field input,
+.auth-field input:not([type="checkbox"]):not([type="radio"]),
 .auth-field select,
 .auth-field textarea {
   background: var(--s2); border: 1px solid var(--border); border-radius: 8px;
@@ -1502,11 +1502,16 @@ html, body { background: var(--bg); }
   transition: border-color 0.18s;
   font-family: inherit;
 }
-.auth-field input:focus,
+.auth-field input:not([type="checkbox"]):not([type="radio"]):focus,
 .auth-field select:focus,
 .auth-field textarea:focus { border-color: var(--accent); }
 .auth-field select { appearance: none; cursor: pointer; }
 .auth-field textarea { resize: vertical; min-height: 5.5rem; line-height: 1.4; }
+.auth-field input[type="checkbox"],
+.auth-field input[type="radio"] {
+  accent-color: var(--primary);
+  width: 1.1rem; height: 1.1rem; flex: 0 0 auto; cursor: pointer;
+}
 .auth-hint { font-size: 0.78rem; margin-top: 0.15rem; }
 .auth-hint-warn { color: var(--red); }
 .auth-hint-ok   { color: #2e7d32; }

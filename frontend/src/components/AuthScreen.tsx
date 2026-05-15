@@ -446,7 +446,6 @@ export default function AuthScreen({ onLogin, initialView = "login", initialToke
                     type="checkbox"
                     checked={asTrainer}
                     onChange={e => setAsTrainer(e.target.checked)}
-                    style={{ width: "auto", margin: 0 }}
                   />
                   <span style={{ marginBottom: 0 }}>I'm signing up as a trainer / coach</span>
                 </label>
