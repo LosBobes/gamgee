@@ -864,15 +864,21 @@ def seed_if_empty():
             ])
             db.commit()
 
-        if db.query(models.ExerciseMotion).count() == 0:
-            db.add_all([
-                models.ExerciseMotion(
-                    exercise_id=ex_id, name=name, category=category,
-                    duration=duration, bench=bench, floor=floor,
-                    rig=rig, frames=frames,
-                )
-                for ex_id, name, category, duration, bench, floor, rig, frames in MOTIONS
-            ])
+        # Motions are upserted by id (insert only when missing) rather than a
+        # whole-table seed. That way new entries added to MOTIONS show up on
+        # the next restart while admin edits to existing rows are preserved.
+        existing_motion_ids = {row[0] for row in db.query(models.ExerciseMotion.exercise_id).all()}
+        new_motions = [
+            models.ExerciseMotion(
+                exercise_id=ex_id, name=name, category=category,
+                duration=duration, bench=bench, floor=floor,
+                rig=rig, frames=frames,
+            )
+            for ex_id, name, category, duration, bench, floor, rig, frames in MOTIONS
+            if ex_id not in existing_motion_ids
+        ]
+        if new_motions:
+            db.add_all(new_motions)
             db.commit()
     finally:
         db.close()

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import "./AdminApp.css";
+import { MOTIONS as BUNDLED_MOTIONS } from "../data/exerciseMotions";
+import { saveMotion } from "../data/motionStorage";
 
 type Page = "users" | "exercises" | "workouts" | "prs" | "feedback" | "quotes" | "tips" | "motions";
 type AuthFetch = (url: string, opts?: RequestInit) => Promise<Response>;
@@ -1208,6 +1210,7 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
   const [pickedEx,    setPickedEx]    = useState<string>("");
   const [searchEx,    setSearchEx]    = useState<string>("");
   const [busy,        setBusy]        = useState(false);
+  const [syncing,     setSyncing]     = useState(false);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -1360,9 +1363,44 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
     }
   };
 
+  // Push every bundled motion that isn't already in the DB. Pulls straight
+  // from the frontend's BUNDLED_MOTIONS so the data is sourced from one place.
+  const syncBundled = async () => {
+    const bundledIds = Object.keys(BUNDLED_MOTIONS);
+    const missing = bundledIds.filter(id => !motionByExId.has(id));
+    if (missing.length === 0) {
+      alert("Every bundled motion is already in the database.");
+      return;
+    }
+    if (!confirm(
+      `Push ${missing.length} bundled motion${missing.length === 1 ? "" : "s"} to the database? ` +
+      "Existing motions will not be overwritten.",
+    )) return;
+    setSyncing(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const id of missing) {
+        try {
+          await saveMotion(authFetch, id, BUNDLED_MOTIONS[id]);
+          ok++;
+        } catch (err) {
+          console.error(`syncBundled: ${id} failed`, err);
+          fail++;
+        }
+      }
+      refresh();
+      alert(`Synced ${ok} motion${ok === 1 ? "" : "s"}${fail > 0 ? ` (${fail} failed — see console)` : ""}.`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Counts for the header — bundled-but-not-in-DB and exercises with no motion.
+  const bundledOnlyCount = Object.keys(BUNDLED_MOTIONS).filter(id => !motionByExId.has(id)).length;
+
   if (loading) return <div className="adm-center">Loading…</div>;
 
-  // Quick stats for the header — how many exercises still need a motion.
   const missingMotionCount = exercises.filter(e => !motionByExId.has(e.id)).length;
 
   return (
@@ -1373,6 +1411,16 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
           <button className="adm-btn-primary" onClick={openCreate}>
             + Link motion to exercise
           </button>
+          {bundledOnlyCount > 0 && (
+            <button
+              className="adm-btn-ghost"
+              onClick={syncBundled}
+              disabled={syncing}
+              title="Push every bundled animation that isn't yet persisted to the database."
+            >
+              {syncing ? "Syncing…" : `↓ Sync ${bundledOnlyCount} bundled motion${bundledOnlyCount === 1 ? "" : "s"}`}
+            </button>
+          )}
           <a className="adm-btn-ghost" href="/exercise-editor" target="_blank" rel="noreferrer">
             Open animation editor →
           </a>
@@ -1386,6 +1434,10 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
         Use <strong>+ Link motion to exercise</strong> to start a new motion against any exercise
         ({missingMotionCount} exercise{missingMotionCount === 1 ? "" : "s"} still without one),
         or <strong>Reassign</strong> on a row to move an existing motion to a different exercise.
+        {bundledOnlyCount > 0 && (
+          <> The app currently ships <strong>{bundledOnlyCount}</strong> bundled animation{bundledOnlyCount === 1 ? "" : "s"}
+          that aren't yet in the database — click <strong>Sync bundled motions</strong> to publish them all in one shot.</>
+        )}
       </p>
 
       <table className="adm-table">
