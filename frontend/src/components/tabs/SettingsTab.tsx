@@ -6,6 +6,7 @@ import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
+import { APP_VERSION } from "../../version";
 
 type Gender = "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
 
@@ -583,6 +584,38 @@ export default function SettingsTab({
 
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
+
+      <AboutCard authFetch={authFetch} />
     </div>
+  );
+}
+
+function AboutCard({ authFetch }: { authFetch: (url: string, opts?: RequestInit) => Promise<Response> }) {
+  const t = useTxt();
+  const [apiVersion, setApiVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    authFetch("/api/version")
+      .then(r => (r.ok ? r.json() : null))
+      .then(j => { if (!cancelled && j?.version) setApiVersion(j.version); })
+      .catch(() => { /* offline: leave blank */ });
+    return () => { cancelled = true; };
+  }, [authFetch]);
+
+  return (
+    <>
+      <div className="profile-section">{t("About", "About", "About")}</div>
+      <div className="profile-card">
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)" }}>
+          <span>App version</span>
+          <span style={{ fontFamily: "monospace", color: "var(--text)" }}>{APP_VERSION}</span>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--muted)", marginTop: 6 }}>
+          <span>API version</span>
+          <span style={{ fontFamily: "monospace", color: "var(--text)" }}>{apiVersion ?? "—"}</span>
+        </div>
+      </div>
+    </>
   );
 }
