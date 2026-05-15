@@ -392,27 +392,78 @@ html, body { background: var(--bg); }
   display: flex; gap: 3px; margin-bottom: 16px;
   background: var(--s2); border-radius: 8px; padding: 4px;
 }
+.ww-day-tabs-sticky { /* sticky overrides applied at narrow-screen breakpoint */ }
 .ww-day-tab {
-  flex: 1; padding: 7px 2px; border: none; background: transparent; border-radius: 5px;
-  font-size: 9px; font-weight: 700; letter-spacing: 1px; color: var(--muted);
+  position: relative;
+  flex: 1; min-height: 40px; padding: 7px 2px;
+  border: none; background: transparent; border-radius: 5px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--muted);
   cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif; text-transform: uppercase;
+  display: inline-flex; align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
 }
 .ww-day-tab.active { background: var(--accent); color: #0a0804; }
 .ww-day-tab.rest { opacity: 0.45; }
 .ww-day-tab.rest.active { background: var(--s3); color: var(--muted); opacity: 1; }
+.ww-day-tab-letter { display: none; }
+.ww-day-tab-dot {
+  position: absolute; top: 4px; right: 6px;
+  width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 0 2px var(--s2);
+}
+.ww-day-tab.active .ww-day-tab-dot { background: #0a0804; box-shadow: 0 0 0 2px var(--accent); }
 .ww-day-editor {
   background: var(--s2); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
 }
-.ww-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.ww-day-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 10px; }
 .ww-day-name { font-family: 'Nunito', sans-serif; font-size: 20px; font-weight: 900; color: var(--text); }
+.ww-day-count { font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 6px; letter-spacing: 0.5px; }
 .ww-rest-toggle {
-  display: flex; align-items: center; gap: 5px;
-  padding: 5px 10px; background: transparent; border: 1px solid var(--border);
-  border-radius: 6px; color: var(--muted); font-size: 9px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 5px;
+  min-height: 36px; padding: 7px 12px; background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; color: var(--muted); font-size: 10px; font-weight: 700;
   letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
   font-family: 'Nunito', sans-serif; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent; flex-shrink: 0;
 }
 .ww-rest-toggle.active { background: var(--s3); border-color: var(--muted); color: var(--text); }
+/* Search inside the day editor */
+.ww-search-wrap {
+  position: relative;
+  margin: 12px 0 4px;
+}
+.ww-search-icon {
+  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  color: var(--muted); pointer-events: none;
+}
+.ww-search-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 34px 10px 30px; min-height: 40px;
+  color: var(--text); font-family: 'Nunito', sans-serif; font-size: 13px;
+  outline: none; transition: border-color 0.15s;
+}
+.ww-search-input:focus { border-color: var(--accent); }
+.ww-search-input::placeholder { color: var(--muted); }
+.ww-search-clear {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: none; color: var(--muted);
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border-radius: 6px;
+  -webkit-tap-highlight-color: transparent;
+}
+.ww-search-clear:hover { color: var(--text); background: var(--ad); }
+/* Cardio badge inside exercise rows */
+.ww-ex-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  margin-left: auto; flex-shrink: 0;
+  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(76,168,124,0.13);
+  color: rgba(76,168,124,0.95);
+  border: 1px solid rgba(76,168,124,0.28);
+}
 .ww-section-label {
   font-size: 10px; font-weight: 700; letter-spacing: 2px; color: var(--muted);
   text-transform: uppercase; margin-bottom: 8px;
@@ -427,21 +478,22 @@ html, body { background: var(--bg); }
   cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif;
 }
 .ww-focus-chip.selected { background: var(--ad); border-color: var(--ad2); color: var(--accent); }
-.ww-exercise-list { display: flex; flex-direction: column; gap: 2px; }
+.ww-exercise-list { display: flex; flex-direction: column; gap: 4px; }
 .ww-ex-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 10px; background: var(--s1); border: 1px solid transparent;
-  border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  min-height: 44px; padding: 10px 12px; background: var(--s1); border: 1px solid transparent;
+  border-radius: 8px; cursor: pointer; transition: all 0.15s;
   font-family: 'Nunito', sans-serif; text-align: left; width: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 .ww-ex-row.checked { background: var(--ad); border-color: var(--ad2); }
 .ww-ex-check {
-  width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--border);
+  width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border);
   background: var(--s2); display: flex; align-items: center; justify-content: center;
   flex-shrink: 0; color: var(--accent); transition: all 0.15s;
 }
 .ww-ex-row.checked .ww-ex-check { background: var(--accent); border-color: var(--accent); color: #0a0804; }
-.ww-ex-name { font-size: 13px; color: var(--text); }
+.ww-ex-name { font-size: 14px; color: var(--text); flex: 1; min-width: 0; }
 .ww-auto-note { font-size: 11px; color: var(--muted); font-style: italic; padding: 10px 0; }
 .ww-rest-msg {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -692,6 +744,31 @@ html, body { background: var(--bg); }
     z-index: 49;
     background: var(--bg);
     padding: 6px 0 2px;
+  }
+  /* Weekly setup — sticky day tabs + 1-letter labels for thumb reach */
+  .ww-day-tabs-sticky {
+    position: sticky;
+    top: calc(var(--hdr-h) + 54px);
+    z-index: 48;
+    background: var(--bg);
+    margin: 0 -4px 12px;
+    padding: 6px 4px;
+  }
+  .ww-day-tab { font-size: 11px; padding: 9px 2px; min-height: 44px; }
+  .ww-day-tab-short { display: none; }
+  .ww-day-tab-letter { display: inline; font-size: 13px; font-weight: 800; letter-spacing: 0; }
+  .ww-day-editor { padding: 12px; }
+  .ww-day-name { font-size: 18px; }
+  .ww-day-count { display: block; margin-left: 0; font-size: 10px; }
+  .ww-focus-chip { padding: 8px 12px; font-size: 12px; min-height: 36px; }
+  /* sticky search bar within the day editor */
+  .ww-day-editor .ww-search-wrap {
+    position: sticky;
+    top: calc(var(--hdr-h) + 54px + 56px);
+    z-index: 47;
+    background: var(--s2);
+    margin: 12px -12px 4px;
+    padding: 6px 12px 4px;
   }
 }
 

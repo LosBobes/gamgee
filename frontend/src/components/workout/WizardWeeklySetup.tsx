@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Check, Moon, Wrench, Sparkles } from "lucide-react";
-import type { WeekPlanDay, WeeklyPlan, DayPlan, ProgressionSpeed, Regime } from "../../types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart } from "lucide-react";
+import type { WeekPlanDay, WeeklyPlan, DayPlan, ProgressionSpeed, Regime, ExerciseDef } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
@@ -48,7 +48,8 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
       if (d) next[k] = { focus: d.focus, exerciseIds: d.exerciseIds, enabled: d.enabled };
     });
     setPlan(next);
-    setShowGenerator(false);
+    // closeOnSave on the questionnaire flips showGenerator back to false,
+    // so this just commits the generated plan to local state.
   };
 
   // Persist edits to the parent on every change so back-navigation
@@ -62,11 +63,15 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
   }, [plan, onPersist]);
 
   const [activeDay, setActiveDay] = useState<WeekPlanDay>("mon");
+  const [query, setQuery] = useState("");
+
+  // Reset search when switching days so each day starts fresh.
+  useEffect(() => { setQuery(""); }, [activeDay]);
 
   const day        = plan[activeDay] ?? makeDayPlan(true);
   const focusDef   = getFocusDef(day.focus);
   const focusIds   = focusDef?.exIds ?? [];
-  const customExs  = ALL_EX.filter(e => isCustomExerciseId(e.id));
+  const customExs  = useMemo(() => ALL_EX.filter(e => isCustomExerciseId(e.id)), []);
 
   const setDay = (updates: Partial<DayPlan>) =>
     setPlan(p => ({ ...p, [activeDay]: { ...(p[activeDay] ?? makeDayPlan(true)), ...updates } }));
@@ -77,9 +82,59 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
     setDay({ exerciseIds: next });
   };
 
+  // Search filters across every known exercise, so users can pull in moves
+  // that aren't in the current focus's pool (e.g. add cardio to a strength day).
+  const searchResults = useMemo<ExerciseDef[] | null>(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+    return ALL_EX
+      .filter(e => e.name.toLowerCase().includes(q) || e.id.toLowerCase().includes(q))
+      .slice(0, 80);
+  }, [query]);
+
+  const renderExerciseRow = (ex: ExerciseDef) => {
+    const checked = day.exerciseIds.includes(ex.id);
+    return (
+      <button
+        key={ex.id}
+        className={`ww-ex-row${checked ? " checked" : ""}`}
+        onClick={() => toggleExercise(ex.id)}
+      >
+        <span className="ww-ex-check">
+          {checked && <Check size={11} />}
+        </span>
+        <span className="ww-ex-name">{ex.name}</span>
+        {ex.type === "cardio" && (
+          <span className="ww-ex-badge" title="Cardio">
+            <Heart size={10} /> CARDIO
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const pickedCount = day.exerciseIds.length;
+
+  // Auto-generate runs as its own dedicated page — it replaces the day
+  // editor entirely so the user isn't scrolling past two stacked UIs on
+  // mobile. Saving the regime closes the page and returns here.
+  if (showGenerator && authFetch) {
+    return (
+      <RegimeQuestionnairePanel
+        authFetch={authFetch}
+        onSaved={applyGeneratedRegime}
+        progressionSpeed={progressionSpeed}
+        onProgressionSpeedChange={onProgressionSpeedChange}
+        onCancel={() => setShowGenerator(false)}
+        backLabel={t("BACK TO PLAN", "BACK TO PROGRAM", "BACK TO ERA")}
+        closeOnSave
+      />
+    );
+  }
+
   return (
     <>
-      <div className="wz-hdr">
+      <div className="wz-hdr wz-hdr-sticky">
         <button className="wz-back" onClick={onDone}><ArrowLeft size={13} /> BACK</button>
         <span className="wz-focus-label">{t("WEEKLY PLAN", "THE PROGRAM", "WEEKLY ERA")}</span>
         <button className="wz-next" onClick={onDone}>
@@ -96,26 +151,17 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
         )}
       </div>
 
-      {/* Auto-generate entry point — opens the regime questionnaire and
-          replaces the current plan with the generated one when saved. */}
+      {/* Auto-generate entry point — opens a dedicated questionnaire page. */}
       {authFetch && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "8px 0 12px" }}>
           <button
             type="button"
             className="btn-sec"
-            onClick={() => setShowGenerator(s => !s)}
+            onClick={() => setShowGenerator(true)}
           >
-            <Sparkles size={13} /> {showGenerator ? "Close generator" : "Auto-generate from questions"}
+            <Sparkles size={13} /> Auto-generate from questions
           </button>
         </div>
-      )}
-      {showGenerator && authFetch && (
-        <RegimeQuestionnairePanel
-          authFetch={authFetch}
-          onSaved={applyGeneratedRegime}
-          progressionSpeed={progressionSpeed}
-          onProgressionSpeedChange={onProgressionSpeedChange}
-        />
       )}
 
       {/* Progression speed — written through to user prefs immediately. */}
@@ -145,17 +191,21 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
         </div>
       </div>
 
-      {/* Day tabs */}
-      <div className="ww-day-tabs">
+      {/* Day tabs — sticky so the active day stays visible while scrolling. */}
+      <div className="ww-day-tabs ww-day-tabs-sticky">
         {WEEK_DAYS.map(d => {
           const dp = plan[d.key];
+          const count = dp?.enabled ? (dp.exerciseIds?.length ?? 0) : 0;
           return (
             <button
               key={d.key}
               className={`ww-day-tab${activeDay === d.key ? " active" : ""}${!dp?.enabled ? " rest" : ""}`}
               onClick={() => setActiveDay(d.key)}
+              aria-label={d.label}
             >
-              {d.short}
+              <span className="ww-day-tab-short">{d.short}</span>
+              <span className="ww-day-tab-letter">{d.short[0]}</span>
+              {count > 0 && <span className="ww-day-tab-dot" aria-hidden="true" />}
             </button>
           );
         })}
@@ -164,7 +214,12 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
       {/* Day editor */}
       <div className="ww-day-editor">
         <div className="ww-day-header">
-          <div className="ww-day-name">{WEEK_DAYS.find(d => d.key === activeDay)?.label}</div>
+          <div className="ww-day-name">
+            {WEEK_DAYS.find(d => d.key === activeDay)?.label}
+            {day.enabled && pickedCount > 0 && (
+              <span className="ww-day-count">· {pickedCount} picked</span>
+            )}
+          </div>
           <button
             className={`ww-rest-toggle${!day.enabled ? " active" : ""}`}
             onClick={() => setDay({ enabled: !day.enabled })}
@@ -175,7 +230,8 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
 
         {day.enabled && (
           <>
-            {/* Focus picker */}
+            {/* Focus picker — Cardio is one of the focuses, so picking it
+                turns the day into a cardio day with cardio-only suggestions. */}
             <div className="ww-section-label">{t("Focus", "Focus")}</div>
             <div className="ww-focus-row">
               {Object.entries(FOCUS).map(([k, f]) => (
@@ -189,10 +245,53 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
               ))}
             </div>
 
-            {/* Exercise checklist */}
-            {focusIds.length > 0 ? (
+            {/* Search — filters across every exercise so you can pull cardio
+                into a strength day, or any move you can't see in the focus pool. */}
+            <div className="ww-search-wrap">
+              <Search size={13} className="ww-search-icon" />
+              <input
+                className="ww-search-input"
+                type="search"
+                inputMode="search"
+                placeholder={t(`Search ${ALL_EX.length} exercises…`, `Search ${ALL_EX.length} lifts…`)}
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {query && (
+                <button
+                  className="ww-search-clear"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear search"
+                  type="button"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+
+            {searchResults ? (
+              searchResults.length > 0 ? (
+                <>
+                  <div className="ww-section-label" style={{ marginTop: 12 }}>
+                    {searchResults.length} {searchResults.length === 1 ? "match" : "matches"}
+                    <span className="ww-section-hint">
+                      {t("any exercise — strength or cardio", "any move — iron or cardio")}
+                    </span>
+                  </div>
+                  <div className="ww-exercise-list">
+                    {searchResults.map(renderExerciseRow)}
+                  </div>
+                </>
+              ) : (
+                <div className="ww-auto-note">
+                  {t(`No exercises match "${query}".`, `Nothing matches "${query}". Try another term.`)}
+                </div>
+              )
+            ) : focusIds.length > 0 ? (
               <>
-                <div className="ww-section-label" style={{ marginTop: 16 }}>
+                <div className="ww-section-label" style={{ marginTop: 12 }}>
                   {t("Exercises", "Exercises")}
                   <span className="ww-section-hint">
                     {t("blank = auto-pick", "blank = app picks")}
@@ -200,21 +299,8 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
                 </div>
                 <div className="ww-exercise-list">
                   {focusIds.map(id => {
-                    const ex      = ALL_EX.find(e => e.id === id);
-                    if (!ex) return null;
-                    const checked = day.exerciseIds.includes(id);
-                    return (
-                      <button
-                        key={id}
-                        className={`ww-ex-row${checked ? " checked" : ""}`}
-                        onClick={() => toggleExercise(id)}
-                      >
-                        <span className="ww-ex-check">
-                          {checked && <Check size={10} />}
-                        </span>
-                        <span className="ww-ex-name">{ex.name}</span>
-                      </button>
-                    );
+                    const ex = ALL_EX.find(e => e.id === id);
+                    return ex ? renderExerciseRow(ex) : null;
                   })}
                 </div>
                 {customExs.length > 0 && (
@@ -224,21 +310,7 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
                       {t("Your Custom Exercises", "Your Custom Lifts", "Your Custom Moves")}
                     </div>
                     <div className="ww-exercise-list">
-                      {customExs.map(ex => {
-                        const checked = day.exerciseIds.includes(ex.id);
-                        return (
-                          <button
-                            key={ex.id}
-                            className={`ww-ex-row${checked ? " checked" : ""}`}
-                            onClick={() => toggleExercise(ex.id)}
-                          >
-                            <span className="ww-ex-check">
-                              {checked && <Check size={10} />}
-                            </span>
-                            <span className="ww-ex-name">{ex.name}</span>
-                          </button>
-                        );
-                      })}
+                      {customExs.map(renderExerciseRow)}
                     </div>
                   </>
                 )}

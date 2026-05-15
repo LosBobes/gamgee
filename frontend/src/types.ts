@@ -194,6 +194,7 @@ export interface RegimeQuestionnaire {
   goal: RegimeGoal;
   experience: RegimeExperience;
   days_per_week: number;
+  available_days: WeekPlanDay[];
   focus_areas: string[];
   avoid_muscles: string[];
   equipment: string[];

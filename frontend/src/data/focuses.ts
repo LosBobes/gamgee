@@ -93,6 +93,17 @@ export const FOCUS: Record<string, FocusDef> = {
       "roman", "w_roman",
     ],
   },
+  cardio: {
+    name: "Cardio Day",
+    icon: Heart,
+    desc: "Running · Cycling · HIIT · Erg",
+    exIds: [
+      "run", "incline_walk", "sprint", "hill_sprint", "shuttle_run",
+      "cycle", "elliptical", "row_erg", "ski_erg", "stair", "assault",
+      "jump_rope", "swim", "sled_push", "prowler", "battle_rope",
+      "burpees", "hiit",
+    ],
+  },
 };
 
 export const ICON_OPTIONS: { name: string; icon: LucideIcon }[] = [

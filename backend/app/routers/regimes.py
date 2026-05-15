@@ -163,21 +163,43 @@ def _pick_for_day(
     return [ex.id for ex in chosen[:target_count]]
 
 
+def _resolve_schedule(days_per_week: int, available_days: list[str]) -> tuple[int, list[int]]:
+    """Pick which week-slots to schedule training on.
+
+    Honours ``available_days`` when supplied — the generator only places
+    sessions on days the user said they could train. If the user picked
+    fewer days than ``days_per_week`` asks for, sessions are capped at
+    the available count.
+    """
+    avail = [d for d in (available_days or []) if d in WEEK_KEYS]
+    if not avail:
+        return days_per_week, list(_DAY_SCHEDULES.get(days_per_week, _DAY_SCHEDULES[3]))
+    avail_slots = sorted({WEEK_KEYS.index(d) for d in avail})
+    effective = max(1, min(days_per_week, len(avail_slots)))
+    if effective >= len(avail_slots):
+        return effective, avail_slots
+    # Spread N sessions evenly across the available days.
+    step = len(avail_slots) / effective
+    picked = [avail_slots[int(i * step)] for i in range(effective)]
+    return effective, picked
+
+
 def _generate_plan(
     db: Session,
     q: schemas.RegimeQuestionnaire,
 ) -> dict[str, dict]:
     mid_to_group = _muscle_groups_for(db)
     pool = db.query(models.Exercise).all()
-    template = _TEMPLATES.get(q.days_per_week, _TEMPLATES[3])
-    schedule = _DAY_SCHEDULES.get(q.days_per_week, _DAY_SCHEDULES[3])
+    effective_days, schedule = _resolve_schedule(q.days_per_week, q.available_days or [])
+    template = _TEMPLATES.get(effective_days, _TEMPLATES[3])
     focus = set(q.focus_areas or [])
     avoid = set(q.avoid_muscles or [])
     # Seed RNG from the input so re-generating with the same answers is stable
     # (the user re-rolls explicitly by tweaking inputs or hitting "regenerate").
-    rng = random.Random(hash((q.goal, q.experience, q.days_per_week,
+    rng = random.Random(hash((q.goal, q.experience, effective_days,
                               tuple(sorted(focus)), tuple(sorted(avoid)),
-                              tuple(sorted(q.equipment or [])))))
+                              tuple(sorted(q.equipment or [])),
+                              tuple(sorted(q.available_days or [])))))
     per_day = _EX_PER_DAY.get(q.experience, 5)
 
     days: dict[str, dict] = {}
@@ -241,11 +263,16 @@ def generate(
     """Run the rule-based generator and return a draft regime. The caller
     decides whether to save it (POST /regimes) or tweak the answers first."""
     days = _generate_plan(db, body)
-    name = body.name or _name_for(body)
-    desc = _describe(body)
+    # Cap days_per_week to whatever the resolver actually scheduled so the
+    # saved regime reflects reality (matters when the user picks fewer
+    # available days than days_per_week).
+    effective_days, _ = _resolve_schedule(body.days_per_week, body.available_days or [])
+    effective_body = body.model_copy(update={"days_per_week": effective_days})
+    name = body.name or _name_for(effective_body)
+    desc = _describe(effective_body)
     return schemas.RegimeCreate(
         name=name, description=desc, goal=body.goal, experience=body.experience,
-        days_per_week=body.days_per_week,
+        days_per_week=effective_days,
         focus_areas=body.focus_areas, avoid_muscles=body.avoid_muscles,
         equipment=body.equipment,
         days={k: schemas.DayPlanIn(**v) for k, v in days.items()},
