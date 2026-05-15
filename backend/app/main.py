@@ -63,6 +63,9 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS last_reps INTEGER"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_sets_planned INTEGER"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS total_exercises_planned INTEGER"))
+        # Exercise description column — added so each exercise can carry a
+        # short summary independent of the setup/execute/cue coaching script.
+        _conn.execute(text("ALTER TABLE exercises ADD COLUMN IF NOT EXISTS description TEXT"))
 
 app = FastAPI(title="Gamgee API", version=__version__, redirect_slashes=False)
 
@@ -112,6 +115,16 @@ except Exception as _exc:
     # operator runs `python -m app.content_seed` manually.
     import logging
     logging.getLogger(__name__).warning("Content seed skipped: %s", _exc)
+
+# Backfill exercise descriptions on existing rows so the description column
+# isn't full of NULLs on a database that pre-dates the field. New exercises are
+# only inserted if missing; existing rows keep their other columns untouched.
+try:
+    from . import seed as exercise_seed
+    exercise_seed.seed()
+except Exception as _exc:
+    import logging
+    logging.getLogger(__name__).warning("Exercise seed/backfill skipped: %s", _exc)
 
 
 @app.get("/health")

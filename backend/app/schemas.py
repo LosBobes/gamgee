@@ -351,6 +351,7 @@ class ExerciseOut(BaseModel):
     name: str
     category: str
     type: str
+    description: str | None = None
     primary_muscles: list[str] = []
     secondary_muscles: list[str] = []
 
@@ -362,6 +363,7 @@ class ExerciseCreate(BaseModel):
     name: str
     category: str
     type: str = "strength"
+    description: str | None = None
     primary_muscles: list[str] = []
     secondary_muscles: list[str] = []
 
@@ -370,6 +372,7 @@ class ExerciseUpdate(BaseModel):
     name: str | None = None
     category: str | None = None
     type: str | None = None
+    description: str | None = None
     primary_muscles: list[str] | None = None
     secondary_muscles: list[str] | None = None
 
