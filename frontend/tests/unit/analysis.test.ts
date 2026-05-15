@@ -1,0 +1,130 @@
+import { describe, expect, it } from "vitest";
+import { analyzeEx } from "../../src/analysis";
+import type { WorkoutSession } from "../../src/types";
+
+const session = (date: string, weight: string, reps: string): WorkoutSession => ({
+  id: date,
+  date,
+  duration: 0,
+  exercises: [
+    {
+      id: "bench",
+      name: "Bench Press",
+      type: "strength",
+      uid: `bench_${date}`,
+      sets: [{ weight, reps, done: true }],
+    },
+  ],
+});
+
+describe("analyzeEx", () => {
+  it("returns null when there is no history for the exercise", () => {
+    expect(analyzeEx("bench", [])).toBeNull();
+    expect(analyzeEx("bench", [session("2026-05-01", "", "")])).toBeNull();
+  });
+
+  it("flags the first session as NEW and suggests a small bump", () => {
+    const res = analyzeEx("bench", [session("2026-05-01", "60", "8")])!;
+    expect(res.status.label).toBe("NEW");
+    // bench is in UPPER_IDS so step is 2.5kg
+    expect(res.nextWeight).toBe(62.5);
+    expect(res.nextReps).toBe(8);
+    expect(res.est1RM).toBe(76); // 60 * (1 + 8/30) = 76
+  });
+
+  // `analyzeEx` reverses its input, so callers pass newest-first (matching
+  // the API which returns history ordered by date DESC). Helper below
+  // constructs that order so the first arg is the most recent session.
+  const history = (...sessions: WorkoutSession[]): WorkoutSession[] => sessions;
+
+  it("flags weight increase as PROGRESSING", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8"), session("2026-05-01", "60", "8")),
+    )!;
+    expect(res.status.label).toBe("PROGRESSING");
+    expect(res.nextWeight).toBe(65);
+  });
+
+  it("flags rep gains under 12 as BUILDING REPS", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "60", "9"), session("2026-05-01", "60", "8")),
+    )!;
+    expect(res.status.label).toBe("BUILDING REPS");
+    expect(res.nextWeight).toBe(60);
+    expect(res.nextReps).toBe(10);
+  });
+
+  it("flags 12+ reps as READY TO JUMP", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "60", "12"), session("2026-05-01", "60", "10")),
+    )!;
+    expect(res.status.label).toBe("READY TO JUMP");
+    expect(res.nextWeight).toBe(62.5);
+  });
+
+  it("flags identical back-to-back sessions as PLATEAU", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "60", "8"), session("2026-05-01", "60", "8")),
+    )!;
+    expect(res.status.label).toBe("PLATEAU");
+    expect(res.nextReps).toBe(9);
+  });
+
+  it("flags weight regression as STALLED", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "60", "8"), session("2026-05-01", "62.5", "8")),
+    )!;
+    expect(res.status.label).toBe("STALLED");
+    expect(res.nextWeight).toBe(62.5);
+  });
+
+  it("flags three identical-weight sessions as DELOAD", () => {
+    const res = analyzeEx(
+      "bench",
+      history(
+        session("2026-05-05", "60", "8"),
+        session("2026-05-03", "60", "8"),
+        session("2026-05-01", "60", "8"),
+      ),
+    )!;
+    expect(res.status.label).toBe("DELOAD");
+    // round(60 * 0.85 / 2.5) * 2.5 = 50
+    expect(res.nextWeight).toBe(50);
+    expect(res.nextReps).toBe(10);
+  });
+
+  it("uses a 5kg step for lower-body lifts", () => {
+    const sq = (date: string, w: string, r: string): WorkoutSession => ({
+      ...session(date, w, r),
+      exercises: [
+        { id: "squat", name: "Squat", type: "strength", uid: `squat_${date}`, sets: [{ weight: w, reps: r, done: true }] },
+      ],
+    });
+    const res = analyzeEx("squat", [sq("2026-05-01", "100", "5")])!;
+    expect(res.status.label).toBe("NEW");
+    expect(res.nextWeight).toBe(105);
+  });
+
+  it("skips sets with no parsable weight", () => {
+    const empty: WorkoutSession = {
+      id: "x",
+      date: "2026-05-01",
+      duration: 0,
+      exercises: [
+        {
+          id: "bench",
+          name: "Bench Press",
+          type: "strength",
+          uid: "bench_x",
+          sets: [{ weight: "abc", reps: "8", done: false }],
+        },
+      ],
+    };
+    expect(analyzeEx("bench", [empty])).toBeNull();
+  });
+});

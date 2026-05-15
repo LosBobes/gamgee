@@ -20,7 +20,7 @@ export default defineConfig({
         display: 'standalone',
         start_url: '/',
         scope: '/',
-        orientation: 'portrait',
+        orientation: 'any',
         icons: [
           { src: 'icon-192.png',          sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png',          sizes: '512x512', type: 'image/png' },
@@ -29,7 +29,15 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        navigateFallbackDenylist: [/^\/api\//],
+        importScripts: ['/push-handlers.js'],
         runtimeCaching: [
+          {
+            // Never cache the SSE stream or the chat WebSocket upgrade — both
+            // are long-lived responses Workbox would otherwise try to clone.
+            urlPattern: /^\/api\/(events|chat\/ws)/,
+            handler: 'NetworkOnly',
+          },
           {
             urlPattern: /^\/api\//,
             handler: 'NetworkFirst',
@@ -50,6 +58,9 @@ export default defineConfig({
       '/api': {
         target: backendUrl,
         changeOrigin: true,
+        // Forward WebSocket upgrade requests (used by /api/chat/ws) to the
+        // backend, otherwise the dev server returns 404 for the upgrade.
+        ws: true,
       },
     },
   },

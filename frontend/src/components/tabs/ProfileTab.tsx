@@ -1,105 +1,49 @@
-import { useState } from "react";
-import { User } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { User, Settings } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
+import { useTxt, useToneMode } from "../../context/ToneContext";
 
 interface Props {
-  username: string | null;
-  history:  WorkoutSession[];
-  token:    string | null;
+  username:     string | null;
+  name:         string | null;
+  history:      WorkoutSession[];
+  isAdmin?:     boolean;
+  onOpenSettings: () => void;
 }
 
-function ChangePasswordCard({ token }: { token: string | null }) {
-  const [open,    setOpen]    = useState(false);
-  const [current, setCurrent] = useState("");
-  const [next,    setNext]    = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [err,     setErr]     = useState("");
-  const [ok,      setOk]      = useState(false);
-  const [loading, setLoading] = useState(false);
+export default function ProfileTab({ username, name, history, isAdmin, onOpenSettings }: Props) {
+  const t = useTxt();
 
-  const reset = () => { setCurrent(""); setNext(""); setConfirm(""); setErr(""); setOk(false); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(""); setOk(false);
-    if (next !== confirm) { setErr("New passwords do not match"); return; }
-    if (next.length < 8)  { setErr("New password must be at least 8 characters"); return; }
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/change-password", {
-        method:  "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ current_password: current, new_password: next }),
-      });
-      if (!res.ok) { setErr((await res.json()).detail ?? "Failed"); return; }
-      setOk(true);
-      reset();
-      setOpen(false);
-    } catch {
-      setErr("Network error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="profile-card" style={{ marginTop: 12 }}>
-      {ok && <p style={{ color: "var(--green)", fontSize: 12, marginBottom: 8 }}>Password changed successfully.</p>}
-      {!open ? (
-        <button className="auth-toggle" style={{ width: "100%", textAlign: "left" }} onClick={() => { setOpen(true); setOk(false); }}>
-          Change Password
-        </button>
-      ) : (
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <input
-            type="password"
-            placeholder="Current password"
-            value={current}
-            onChange={e => setCurrent(e.target.value)}
-            autoComplete="current-password"
-            required
-          />
-          <input
-            type="password"
-            placeholder="New password (min 8 chars)"
-            value={next}
-            onChange={e => setNext(e.target.value)}
-            autoComplete="new-password"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Confirm new password"
-            value={confirm}
-            onChange={e => setConfirm(e.target.value)}
-            autoComplete="new-password"
-            required
-          />
-          {err && <p className="auth-err">{err}</p>}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" className="auth-submit" disabled={loading} style={{ flex: 1 }}>
-              {loading ? "Saving…" : "Save"}
-            </button>
-            <button type="button" className="auth-toggle" onClick={() => { setOpen(false); reset(); }}>
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
-    </div>
+  const settingsButton = (
+    <button
+      type="button"
+      className="auth-toggle"
+      onClick={onOpenSettings}
+      style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+    >
+      <Settings size={14} />
+      <span>{t("Open Settings", "Open Settings", "Open Settings")}</span>
+    </button>
   );
-}
 
-export default function ProfileTab({ username, history, token }: Props) {
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><User size={40} /></div><div className="empty-label">Log your first workout to build your profile</div></div>
-        <div className="profile-section">Account</div>
-        <ChangePasswordCard token={token} />
+        <div className="empty">
+          <div className="empty-icon"><User size={40} /></div>
+          <div className="empty-label">
+            {t(
+              "Log your first workout to build your profile",
+              "Drop your first session and this page goes hard",
+              "Log your first session, bestie. This page goes off.",
+            )}
+          </div>
+        </div>
+        <div className="profile-card">{settingsButton}</div>
+        <Duck isAdmin={isAdmin} />
       </div>
     );
   }
@@ -151,7 +95,8 @@ export default function ProfileTab({ username, history, token }: Props) {
     return count;
   });
 
-  const initials = username ? username.slice(0, 2).toUpperCase() : "?";
+  const displayName = name ?? username ?? "—";
+  const initials = displayName !== "—" ? displayName.slice(0, 2).toUpperCase() : "?";
 
   const fmtVol = (kg: number) =>
     kg >= 1000 ? `${(kg / 1000).toFixed(1)}t` : `${Math.round(kg)}kg`;
@@ -161,17 +106,18 @@ export default function ProfileTab({ username, history, token }: Props) {
       <div className="profile-hero">
         <div className="profile-avatar">{initials}</div>
         <div>
-          <div className="profile-name">{username ?? "—"}</div>
+          <div className="profile-name">{displayName}</div>
+          {username && <div className="profile-username">@{username}</div>}
           {memberSince && <div className="profile-since">MEMBER SINCE {memberSince.toUpperCase()}</div>}
         </div>
       </div>
 
       <div className="profile-stats-grid">
         {[
-          { v: history.length,             l: "Workouts"    },
-          { v: fmtVol(totalVolume),         l: "Vol Lifted"  },
-          { v: fmtDur(totalTime),           l: "Time Logged" },
-          { v: totalSets.toLocaleString(),  l: "Total Sets"  },
+          { v: history.length,             l: t("Workouts",    "Sessions",    "Sessions Served") },
+          { v: fmtVol(totalVolume),         l: t("Vol Lifted",  "Iron Moved",  "Volume Slayed")   },
+          { v: fmtDur(totalTime),           l: t("Time Logged", "Time In",     "Time Thriving")   },
+          { v: totalSets.toLocaleString(),  l: t("Total Sets",  "Sets Fired",  "Sets Served")     },
         ].map(({ v, l }) => (
           <div key={l} className="profile-stat">
             <div className="profile-stat-val">{v}</div>
@@ -180,7 +126,7 @@ export default function ProfileTab({ username, history, token }: Props) {
         ))}
       </div>
 
-      <div className="profile-section">Activity — Last 16 Weeks</div>
+      <div className="profile-section">{t("Activity: Last 16 Weeks", "Grind Log: Last 16 Weeks", "Glow-Up Log: Last 16 Weeks")}</div>
       <div className="profile-card">
         <div className="heatmap-grid">
           {weeks.map((count, i) => {
@@ -197,7 +143,7 @@ export default function ProfileTab({ username, history, token }: Props) {
 
       {topExercises.length > 0 && (
         <>
-          <div className="profile-section">Most Logged Exercises</div>
+          <div className="profile-section">{t("Most Logged Exercises", "Your Go-To Moves", "Your Signature Moves")}</div>
           <div className="profile-card">
             {topExercises.map(([name, count]) => (
               <div key={name} className="top-ex-row">
@@ -211,7 +157,7 @@ export default function ProfileTab({ username, history, token }: Props) {
 
       {topGroups.length > 0 && (
         <>
-          <div className="profile-section">Muscle Group Focus</div>
+          <div className="profile-section">{t("Muscle Group Focus", "Where You Put In Work", "Where the Gains Live")}</div>
           <div className="profile-card">
             {topGroups.map(([group, count]) => (
               <div key={group} className="muscle-bar-row">
@@ -226,8 +172,87 @@ export default function ProfileTab({ username, history, token }: Props) {
         </>
       )}
 
-      <div className="profile-section">Account</div>
-      <ChangePasswordCard token={token} />
+      <div className="profile-section">{t("Settings", "Settings", "Settings")}</div>
+      <div className="profile-card">{settingsButton}</div>
+
+      <Duck isAdmin={isAdmin} />
     </div>
+  );
+}
+
+const DUCK_MSGS = [
+  "QUACK",
+  "You found the duck. +1 to all lifts.",
+  "The duck has spoken. Lift heavy.",
+  "QUACK QUACK (that's bro for 'good job')",
+  "The Swoly Bible has a duck chapter. Thou shalt quack.",
+  "Rubber ducky, you're the one making gains so much fun.",
+  "The iron duck never lies.",
+  "Disciples of the Swoly Duck do not skip leg day.",
+  "Every rep is a quack for the person you want to be.",
+];
+
+const GRL_DUCK_MSGS = [
+  "QUACK, bestie.",
+  "You found the duck. Her aura just went up.",
+  "Duck math: every quack = +1 PR.",
+  "The duck girlbossed too close to the sun. Now she's here.",
+  "Iconic duck behavior. Carry on.",
+  "She's not just a duck. She's the moment.",
+  "Manifesting heavier lifts and softer rest days.",
+  "Duck says: hydrate, lift, glow.",
+  "Plot twist: the duck was the main character.",
+];
+
+function Duck({ isAdmin }: { isAdmin?: boolean }) {
+  const mode = useToneMode();
+  const [msg, setMsg]       = useState<string | null>(null);
+  const [bounce, setBounce] = useState(false);
+  const msgTimer    = useRef<number | null>(null);
+  const bounceTimer = useRef<number | null>(null);
+
+  useEffect(() => () => {
+    if (msgTimer.current)    window.clearTimeout(msgTimer.current);
+    if (bounceTimer.current) window.clearTimeout(bounceTimer.current);
+  }, []);
+
+  const handleDuck = useCallback(() => {
+    const pool = mode === "grl" ? GRL_DUCK_MSGS : DUCK_MSGS;
+    setMsg(pool[Math.floor(Math.random() * pool.length)]);
+    setBounce(true);
+    if (bounceTimer.current) window.clearTimeout(bounceTimer.current);
+    if (msgTimer.current)    window.clearTimeout(msgTimer.current);
+    bounceTimer.current = window.setTimeout(() => setBounce(false), 500);
+    msgTimer.current    = window.setTimeout(() => setMsg(null), 6000);
+  }, [mode]);
+
+  return (
+    <div style={{ textAlign: "center" }}>
+      {msg && <div className="health-toast">{msg}</div>}
+      <button className={`duck-btn${isAdmin ? " admin" : ""}${bounce ? " bounce" : ""}`} onClick={handleDuck} aria-label="duck">
+        <DuckIcon size={22} />
+      </button>
+    </div>
+  );
+}
+
+function DuckIcon({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="var(--primary)" strokeWidth="1.5"
+      strokeLinecap="round" strokeLinejoin="round">
+      {/* body */}
+      <path d="M2 18C2 14 6 12 11 12C16 12 20 14 20 18C20 21 16 23 11 23C6 23 2 21 2 18Z" />
+      {/* tail curving up at back */}
+      <path d="M2 15C1 12 2 9 4 8" />
+      {/* head */}
+      <circle cx="17" cy="9" r="3" />
+      {/* beak */}
+      <path d="M20 8.5L23 9L20 10.5" />
+      {/* eye */}
+      <circle cx="18.5" cy="8" r=".5" fill="var(--primary)" stroke="none" />
+      {/* wing */}
+      <path d="M6 18C9 16 13 16 16 18" />
+    </svg>
   );
 }

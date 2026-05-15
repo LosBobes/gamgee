@@ -5,6 +5,7 @@ from typing import List
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
+from .buddies import notify_buddy_workout
 
 router = APIRouter(prefix="/workouts", tags=["workouts"])
 
@@ -34,6 +35,8 @@ def create_workout(
         raise HTTPException(status_code=409, detail="Workout session already exists")
     db_session = models.WorkoutSession(**session.model_dump(), user_id=current_user.id)
     db.add(db_session)
+    db.flush()
+    notify_buddy_workout(db, current_user, db_session)
     db.commit()
     db.refresh(db_session)
     return db_session

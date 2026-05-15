@@ -2,6 +2,8 @@
 
 A self-hosted workout tracking app. Log sessions, track personal records, visualise muscle coverage, and get progression coaching — all behind a per-user JWT auth wall.
 
+> **Just want to use the app?** See the [User Guide](docs/user-guide.md) for a walkthrough of every feature.
+
 ## Stack
 
 | Layer    | Technology                        |
@@ -39,6 +41,7 @@ A self-hosted workout tracking app. Log sessions, track personal records, visual
 - Aggregate stats: total workouts, volume lifted, time logged, sets done.
 - 16-week activity heatmap.
 - Top 5 most-logged exercises and muscle group frequency bars.
+- Appearance settings: pick an accent colour from 8 presets or any custom hex value. The entire UI — buttons, highlights, PR cards, the logo, and all tinted backgrounds — updates instantly and syncs to your account.
 
 **Muscle visualisation**
 - Front and back SVG body maps — single clean silhouette path, muscles highlight with a soft glow only when active. Used in the wizard and exercise suggestion cards.
@@ -91,42 +94,49 @@ pnpm run build      # TypeScript check + production bundle
 ```
 gamgee/
 ├── docker-compose.yml
+├── docker-compose.prod.yml
 ├── .env.example
 │
 ├── backend/
 │   ├── Dockerfile
 │   ├── requirements.txt
 │   └── app/
-│       ├── main.py          # FastAPI app, routers, CORS
-│       ├── database.py      # SQLAlchemy engine + SessionLocal
-│       ├── models.py        # ORM: User, WorkoutSession, PersonalRecord, Exercise
-│       ├── schemas.py       # Pydantic request/response schemas
-│       ├── auth.py          # JWT creation/verification, bcrypt, get_current_user
-│       ├── init_db.py       # DB init + exercise seeding
+│       ├── main.py             # FastAPI app, routers, CORS, in-place migrations
+│       ├── database.py         # SQLAlchemy engine + SessionLocal
+│       ├── models.py           # ORM: User, WorkoutSession, PersonalRecord, Exercise, BodyMetric
+│       ├── schemas.py          # Pydantic request/response schemas
+│       ├── auth.py             # JWT creation/verification, bcrypt, get_current_user
+│       ├── password_policy.py  # OWASP/NIST 800-63B validation
+│       ├── init_db.py          # DB init + exercise seeding
 │       └── routers/
-│           ├── auth.py      # /api/auth — register, login, me
-│           ├── workouts.py  # /api/workouts — list, create
-│           └── prs.py       # /api/prs — list, upsert
+│           ├── auth.py         # /api/auth — register, login, me, change-password, preferences
+│           ├── workouts.py     # /api/workouts — CRUD
+│           ├── prs.py          # /api/prs — list, upsert, delete
+│           ├── health.py       # /api/health — body metric CRUD
+│           └── items.py        # /api/items — scaffold (unused)
 │
 └── frontend/
-    ├── Dockerfile           # multi-stage: dev / builder / nginx
-    ├── nginx.conf           # production reverse-proxy
-    ├── vite.config.ts       # /api proxy → backend
+    ├── index.html              # inline script: applies theme from localStorage before first paint
+    ├── Dockerfile              # multi-stage: dev / builder / nginx
+    ├── nginx.conf              # production reverse-proxy
+    ├── vite.config.ts          # /api proxy → backend
     └── src/
-        ├── WorkoutTracker.tsx        # root state + all shared handlers
-        ├── WorkoutTracker.css        # global styles + CSS custom properties
-        ├── types.ts                  # all TypeScript interfaces
-        ├── utils.ts                  # fmtClock, fmtDate, fmtDur, orm1
-        ├── analysis.ts               # per-exercise progression analysis engine
+        ├── App.tsx                       # mounts SplashScreen + WorkoutTracker as siblings
+        ├── WorkoutTracker.tsx            # root state, authFetch, hexToHue(), theme useEffect
+        ├── WorkoutTracker.css            # global styles + all CSS custom properties
+        ├── types.ts                      # shared TypeScript interfaces
+        ├── utils.ts                      # fmtClock, fmtDate, fmtDur, orm1
+        ├── analysis.ts                   # per-exercise progression analysis engine
         ├── data/
-        │   ├── exercises.ts          # 100+ exercises, categories, muscle maps
-        │   ├── muscles.ts            # 32 muscle IDs → name + group
-        │   ├── focuses.ts            # 7 workout focus templates
-        │   ├── bodymap.ts            # SVG body path + front/back muscle coords
-        │   └── tips.ts               # coaching tip cards
+        │   ├── exercises.ts              # 100+ exercises, categories, muscle maps
+        │   ├── muscles.ts                # 32 muscle IDs → name + group
+        │   ├── focuses.ts                # 7 workout focus templates
+        │   ├── bodymap.ts                # SVG path + front/back muscle coords
+        │   └── tips.ts                   # coaching tip cards
         └── components/
             ├── AuthScreen.tsx
             ├── AppHeader.tsx
+            ├── SplashScreen.tsx
             ├── StatsBar.tsx
             ├── BodyMap.tsx
             ├── ExercisePicker.tsx
@@ -136,14 +146,18 @@ gamgee/
             │   ├── WizardStart.tsx
             │   ├── WizardFocus.tsx
             │   ├── WizardBuild.tsx
+            │   ├── WizardCardio.tsx
             │   ├── WizardReview.tsx
             │   ├── ActiveWorkout.tsx
-            │   └── ExerciseCard.tsx
+            │   ├── ExerciseCard.tsx
+            │   └── WorkoutComplete.tsx
             └── tabs/
                 ├── HistoryTab.tsx
+                ├── EditWorkoutModal.tsx
                 ├── PRsTab.tsx
                 ├── CoachTab.tsx
-                └── ProfileTab.tsx
+                ├── HealthTab.tsx
+                └── ProfileTab.tsx        # includes ColorPicker (8 swatches + custom hex)
 ```
 
 ---
@@ -154,18 +168,22 @@ All routes except `/api/auth/register`, `/api/auth/login`, and `/health` require
 
 ### Auth — `/api/auth`
 
-| Method | Path        | Body                          | Description              |
-|--------|-------------|-------------------------------|--------------------------|
-| POST   | `/register` | `{ username, password }`      | Create account           |
-| POST   | `/login`    | OAuth2 form `username`+`password` | Returns JWT          |
-| GET    | `/me`       | —                             | Current user info        |
+| Method | Path                | Body                                              | Description                    |
+|--------|---------------------|---------------------------------------------------|--------------------------------|
+| POST   | `/register`         | `{ username, password, name, email, gender }`     | Create account                 |
+| POST   | `/login`            | OAuth2 form `username` + `password`               | Returns JWT                    |
+| GET    | `/me`               | —                                                 | Current user info              |
+| POST   | `/change-password`  | `{ current_password, new_password }`              | Change password (authenticated)|
+| PATCH  | `/preferences`      | `{ primary_color }` (e.g. `"#28D1FF"`)            | Update user appearance prefs   |
 
 ### Workouts — `/api/workouts`
 
-| Method | Path | Body                    | Description                            |
-|--------|------|-------------------------|----------------------------------------|
-| GET    | `/`  | —                       | All sessions for the current user, newest first |
-| POST   | `/`  | `WorkoutSession` object | Save a completed session (idempotent by `id`) |
+| Method | Path           | Body                    | Description                                      |
+|--------|----------------|-------------------------|--------------------------------------------------|
+| GET    | `/`            | —                       | All sessions for the current user, newest first  |
+| POST   | `/`            | `WorkoutSession` object | Save a completed session (client-generated UUID) |
+| PUT    | `/{session_id}`| `WorkoutSession` object | Update an existing session                       |
+| DELETE | `/{session_id}`| —                       | Delete a session                                 |
 
 `WorkoutSession.exercises` is stored as a JSONB column — no separate join table.
 
@@ -175,8 +193,35 @@ All routes except `/api/auth/register`, `/api/auth/login`, and `/health` require
 |--------|-------------------|-----------------------|-----------------------------------|
 | GET    | `/`               | —                     | All PRs for the current user      |
 | PUT    | `/{exercise_id}`  | `PersonalRecord` body | Upsert (create or overwrite) a PR |
+| DELETE | `/{exercise_id}`  | —                     | Delete a PR                       |
 
 PRs have a unique constraint on `(user_id, exercise_id)`.
+
+### Health metrics — `/api/health`
+
+| Method | Path           | Body                 | Description                                                    |
+|--------|----------------|----------------------|----------------------------------------------------------------|
+| GET    | `/`            | —                    | All metrics; filter with `?metric_type=`, `?from=`, `?to=`    |
+| POST   | `/`            | `BodyMetricCreate`   | Log a new metric (`metric_type`, `value`, `unit`, `date`)      |
+| DELETE | `/{metric_id}` | —                    | Delete a metric entry                                          |
+
+---
+
+## Theming
+
+The app is driven by a single CSS custom property `--primary` (default `#28D1FF`). Every tinted background, highlight, PR card, and the logo colour derives from it automatically — change one value to retheme the whole UI.
+
+Users set their accent colour in **Profile → Appearance**. The value is persisted on the backend (`users.primary_color`) and cached in `localStorage` so the correct colour is applied before the first paint — including during the splash screen — with no flicker.
+
+| CSS variable    | Derivation                                              | Used for                              |
+|-----------------|---------------------------------------------------------|---------------------------------------|
+| `--primary`     | set by JS from stored preference                        | buttons, active states, tab indicators|
+| `--accent`      | `var(--primary)`                                        | alias used throughout the stylesheet  |
+| `--ad`          | `color-mix(--primary 11%, transparent)`                 | tinted card backgrounds               |
+| `--ad2`         | `color-mix(--primary 22%, transparent)`                 | stronger tinted backgrounds           |
+| `--pr`          | `var(--primary)`                                        | PR card weight values and all PR badges|
+| `--pr-muted`    | `color-mix(--primary 65%, --muted)`                     | 1RM estimates, secondary PR info      |
+| `--logo-hue-shift` | `selectedHue − 193°` (original cyan hue)             | `filter: hue-rotate()` on logo images |
 
 ---
 
@@ -207,7 +252,7 @@ curl -X POST https://yourdomain.com/api/auth/change-password \
   -d '{"current_password": "old", "new_password": "new-min-8-chars"}'
 ```
 
-Returns `204 No Content` on success. Fails with `400` if the current password is wrong or the new one is under 8 characters.
+Returns `204 No Content` on success. Fails with `400` if the current password is wrong or the new password fails the OWASP/NIST 800-63B policy (12–128 chars, complexity rules).
 
 ### Admin reset (user locked out)
 

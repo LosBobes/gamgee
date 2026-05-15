@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, Link2, Link2Off } from "lucide-react";
+import { X, Check, Circle, Play, Square, Link2, Link2Off, TrendingUp, AlertTriangle, Plus, Minus, Eye } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
+import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
+import { snapshotMotion } from "../../data/motionStorage";
+import { EXERCISE_INFO } from "../../data/exerciseInfo";
+import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 
 interface Props {
   ex:           WorkoutExercise;
@@ -97,8 +101,41 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
 
 export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, isLinkTarget, onRemove, updateSet, toggleSet, addSet, removeSet, addDropSet, onLinkClick, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
-  const doneCt   = ex.sets.filter(s => s.done).length;
-  const m        = EM[ex.id] || { p: [], s: [] };
+  const [deloadDone, setDeloadDone] = useState(false);
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const doneCt = ex.sets.filter(s => s.done).length;
+  const m      = EM[ex.id] || { p: [], s: [] };
+  const canInspect = !!snapshotMotion(ex.id) || !!EXERCISE_INFO[ex.id];
+
+  const isDeload  = analysis?.status === STATUS.DELOAD;
+  const showDeload = isDeload && !deloadDone && ex.type === "strength";
+
+  const applyProgression = () => {
+    if (!analysis) return;
+    ex.sets.forEach((_, idx) => {
+      updateSet(idx, "weight", String(analysis.nextWeight));
+      updateSet(idx, "reps",   String(analysis.nextReps));
+    });
+  };
+
+  const acceptDeload = () => {
+    if (!analysis) return;
+    ex.sets.forEach((_, idx) => {
+      updateSet(idx, "weight", String(analysis.nextWeight));
+      updateSet(idx, "reps",   String(analysis.nextReps));
+    });
+    setDeloadDone(true);
+  };
+
+  const wStep = ex.type === "cardio" ? 5    : 2.5;
+  const rStep = ex.type === "cardio" ? 0.5  : 1;
+  const stepField = (idx: number, field: "weight" | "reps", delta: number) => {
+    const step = field === "weight" ? wStep : rStep;
+    const cur  = parseFloat(ex.sets[idx][field]);
+    const base = Number.isFinite(cur) ? cur : 0;
+    const next = Math.max(0, Math.round((base + delta * step) * 100) / 100);
+    updateSet(idx, field, String(next));
+  };
 
   const cardClass = [
     "ex-card",
@@ -107,6 +144,7 @@ export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, i
   ].filter(Boolean).join(" ");
 
   return (
+    <>
     <div className={cardClass} onClick={isLinkTarget ? onLinkClick : undefined} style={isLinkTarget ? { cursor: "pointer" } : undefined}>
       <div className="ex-hdr">
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -118,23 +156,60 @@ export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, i
             <span style={{ color: TYPE_COLOR[ex.type] }}>●</span>
             <span>{doneCt}/{ex.sets.length} sets</span>
             {analysis && <span style={{ color: analysis.status.color }}>→ {analysis.nextWeight}kg × {analysis.nextReps}</span>}
+            {analysis && ex.type === "strength" && (
+              <button className="btn-progress" onClick={applyProgression} title="Apply coach recommendation to all sets">
+                <TrendingUp size={15} /> APPLY
+              </button>
+            )}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 5 }}>
             {m.p.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
             {m.s.slice(0, 2).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
           </div>
         </div>
-        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+        <div className="ex-hdr-actions">
           <button
             className={["btn-icon", "link-btn", linked ? "link-btn-linked" : "", isLinkSource ? "link-btn-source" : ""].filter(Boolean).join(" ")}
             onClick={e => { e.stopPropagation(); onLinkClick(); }}
             title={linked ? "Unlink superset" : isLinkSource ? "Cancel superset" : "Create superset"}
+            aria-label={linked ? "Unlink superset" : "Create superset"}
           >
             {linked ? <Link2Off size={14} /> : <Link2 size={14} />}
           </button>
-          <button className="btn-icon" onClick={onRemove}><X size={14} /></button>
+          {canInspect && (
+            <button
+              type="button"
+              className="btn-icon btn-inspect"
+              onClick={() => setInspectOpen(true)}
+              aria-label="Show how-to and animation"
+              title="How-to & animation"
+            >
+              <Eye size={14} />
+            </button>
+          )}
+          <button className="btn-icon" onClick={onRemove} aria-label="Remove exercise"><X size={14} /></button>
+
         </div>
       </div>
+
+      {showDeload && (
+        <div className="deload-banner">
+          <AlertTriangle size={14} className="deload-icon" />
+          <div className="deload-body">
+            <div className="deload-msg">
+              Stuck at {analysis!.last.topW}kg for 3 sessions. Accept deload to {analysis!.nextWeight}kg?
+            </div>
+            <div className="deload-actions">
+              <button className="btn-deload-confirm" onClick={acceptDeload}>
+                <Check size={11} /> Accept Deload
+              </button>
+              <button className="btn-deload-skip" onClick={() => setDeloadDone(true)}>
+                Keep Current
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="set-table">
         <div className="set-col-hdr">
@@ -164,32 +239,62 @@ export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, i
                 <div className={`set-num${set.done ? " done" : ""}${set.drop ? " drop-num" : ""}`}>
                   {set.drop ? "↓" : idx + 1}
                 </div>
-                <div className="inp-wrap">
+                <div className="stepper inp-wrap">
+                  <button
+                    type="button" className="step-btn step-minus"
+                    aria-label={`decrease ${wL}`}
+                    onClick={() => stepField(idx, "weight", -1)}
+                  >
+                    <Minus size={18} strokeWidth={3} />
+                  </button>
                   <input
-                    className={`set-inp ${set.done ? "done" : ""}`}
-                    type="number" min="0" step="0.5"
+                    className={`set-inp step-inp ${set.done ? "done" : ""}`}
+                    type="number" inputMode="decimal" min="0" step={wStep}
                     placeholder={ex.type === "cardio" ? "30" : "0"}
                     value={set.weight}
                     onChange={e => updateSet(idx, "weight", e.target.value)}
                   />
+                  <button
+                    type="button" className="step-btn step-plus"
+                    aria-label={`increase ${wL}`}
+                    onClick={() => stepField(idx, "weight", +1)}
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
                   {showPrTag && <span className="new-pr-tag">NEW PR!</span>}
                 </div>
-                <input
-                  className={`set-inp ${set.done ? "done" : ""}`}
-                  type="number" min="0" step="1"
-                  placeholder={ex.type === "cardio" ? "5.0" : "0"}
-                  value={set.reps}
-                  onChange={e => updateSet(idx, "reps", e.target.value)}
-                />
+                <div className="stepper">
+                  <button
+                    type="button" className="step-btn step-minus"
+                    aria-label={`decrease ${rL}`}
+                    onClick={() => stepField(idx, "reps", -1)}
+                  >
+                    <Minus size={18} strokeWidth={3} />
+                  </button>
+                  <input
+                    className={`set-inp step-inp ${set.done ? "done" : ""}`}
+                    type="number" inputMode="decimal" min="0" step={rStep}
+                    placeholder={ex.type === "cardio" ? "5.0" : "0"}
+                    value={set.reps}
+                    onChange={e => updateSet(idx, "reps", e.target.value)}
+                  />
+                  <button
+                    type="button" className="step-btn step-plus"
+                    aria-label={`increase ${rL}`}
+                    onClick={() => stepField(idx, "reps", +1)}
+                  >
+                    <Plus size={18} strokeWidth={3} />
+                  </button>
+                </div>
                 <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
-                  {set.done ? <Check size={13} /> : <Circle size={13} />}
+                  {set.done ? <Check size={18} strokeWidth={3} /> : <Circle size={18} strokeWidth={2.5} />}
                 </button>
                 <button
                   className="rm-set-btn"
                   onClick={() => removeSet(idx)}
                   disabled={ex.sets.length <= 1}
                 >
-                  <X size={13} />
+                  <X size={14} />
                 </button>
               </div>
             );
@@ -203,5 +308,13 @@ export default function ExerciseCard({ ex, pr, analysis, linked, isLinkSource, i
         </div>
       </div>
     </div>
+    {inspectOpen && (
+      <ExerciseInspectModal
+        exerciseId={ex.id}
+        exerciseName={ex.name}
+        onClose={() => setInspectOpen(false)}
+      />
+    )}
+    </>
   );
 }

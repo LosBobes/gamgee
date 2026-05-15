@@ -181,6 +181,26 @@ The site will be live at `https://yourdomain.com`. Caddy provisions the TLS cert
 
 ---
 
+## Web push notifications (optional)
+
+Push notifications use VAPID keys configured via three env vars
+(`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`). If they're
+unset the app falls back to the SSE-only in-app bell. To turn push on:
+
+```bash
+# Mint a fresh keypair (run on the server)
+docker compose -f docker-compose.prod.yml exec backend python -m app.gen_vapid
+
+# Paste the output into /opt/gamgee/.env, then restart the backend
+docker compose -f docker-compose.prod.yml up -d --no-deps --build backend
+```
+
+The full primer — what VAPID is, how the keys flow through browser/push
+service/backend, and how to rotate them safely — is in
+[`docs/web-push-vapid.md`](web-push-vapid.md).
+
+---
+
 ## Updating after code changes
 
 ```bash
@@ -256,3 +276,101 @@ journalctl -u caddy -f
 # Connect directly to the database
 docker exec -it gamgee-db-1 psql -U gamgee -d gamgee
 ```
+
+---
+
+## Admin panel
+
+The app ships with a built-in backoffice at `/admin`. It covers four entity tables — Users, Exercises, Workout Sessions, and Personal Records — with inline editing and deletion.
+
+### Granting admin access
+
+There is no self-registration for admins. Promote a user directly in the database:
+
+```bash
+# Shell into the running DB container
+docker exec -it gamgee-db-1 psql -U gamgee -d gamgee
+
+# Promote by username
+UPDATE users SET is_admin = TRUE WHERE username = 'your_username';
+```
+
+Once the user's token is refreshed (next login, or immediately if already logged in and the `/api/auth/me` response is re-fetched), a **Shield / Admin** button appears in the app header linking to `/admin`.
+
+### How it works
+
+- **Auth**: the admin panel reuses the same JWT token stored in `localStorage`. Navigating to `/admin` verifies the token against `GET /api/admin/users`; a 403 means the account isn't an admin.
+- **Protection**: every `/api/admin/*` route requires `is_admin = true` on the authenticated user. A non-admin token gets a `403 Admin access required` response.
+- **User deletion**: deleting a user via the admin panel cascades — their workouts, PRs, and health metrics are removed first, then the user row.
+- **Self-protection**: the panel blocks removing your own admin rights and deleting your own account.
+
+### Admin API routes
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/users` | List all users |
+| PATCH | `/api/admin/users/{id}` | Update name / email / gender / is_admin |
+| DELETE | `/api/admin/users/{id}` | Delete user and all their data |
+| GET | `/api/admin/workouts` | List all workout sessions (all users) |
+| DELETE | `/api/admin/workouts/{id}` | Delete a session |
+| GET | `/api/admin/prs` | List all personal records (all users) |
+| DELETE | `/api/admin/prs/{id}` | Delete a PR |
+| GET | `/api/admin/exercises` | List exercise catalogue |
+| POST | `/api/admin/exercises` | Create an exercise |
+| PATCH | `/api/admin/exercises/{id}` | Update an exercise |
+| DELETE | `/api/admin/exercises/{id}` | Delete an exercise |
+
+---
+
+## Server access and DB tunnel
+
+A `Makefile` in the repo root provides shorthand commands. The default host is set at the top of the file; override it on the command line with `HOST=`.
+
+```bash
+# SSH into the server
+make ssh
+
+# SSH with a different host
+make ssh HOST=root@1.2.3.4
+```
+
+### Forwarding the database locally
+
+The production Postgres is bound to `127.0.0.1:5432` on the server (loopback only — not reachable from the internet). An SSH tunnel bridges it to your local machine:
+
+```bash
+make db-tunnel
+```
+
+The Makefile reads `HETZNER_HOST` and `HETZNER_USER` from your environment — the same variable names used as GitHub Actions secrets, so you only need to set them once:
+
+```bash
+# Add to ~/.zshrc or ~/.bashrc
+export HETZNER_HOST=1.2.3.4
+export HETZNER_USER=root
+```
+
+While the tunnel is open, connect from your local machine as if Postgres were local:
+
+```bash
+psql postgresql://gamgee:PASSWORD@localhost:5432/gamgee
+
+# or with any GUI (TablePlus, DBeaver, etc.)
+# host: localhost  port: 5432  user: gamgee  db: gamgee
+```
+
+The password is whatever `POSTGRES_PASSWORD` is set to in the server's `.env`. Press `Ctrl-C` to close the tunnel.
+
+### GitHub Actions secrets
+
+The deploy workflow (`.github/workflows/deploy.yml`) requires these repository secrets:
+
+| Secret | Value |
+|--------|-------|
+| `HETZNER_HOST` | Server IP or hostname |
+| `HETZNER_USER` | SSH user (usually `root`) |
+| `HETZNER_SSH_KEY` | Private key whose public half is on the server |
+| `HETZNER_PORT` | SSH port (optional, defaults to 22) |
+| `DEPLOY_PATH` | Absolute path on server, e.g. `/opt/gamgee` |
+
+Set these under **GitHub → repo → Settings → Secrets and variables → Actions**.

@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { Brain, ChevronRight, Check } from "lucide-react";
-import type { ExerciseDef, WorkoutSession } from "../../types";
+import type { ExerciseDef, WorkoutSession, ProgressionSpeed } from "../../types";
 import { ALL_EX } from "../../data/exercises";
-import { TIPS } from "../../data/tips";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
+  progressionSpeed: ProgressionSpeed;
   onAccept: (ex: ExerciseDef, weight: number, reps: number) => void;
 }
 
@@ -15,12 +16,13 @@ const STATUS_ORDER: Record<string, number> = {
   "READY TO JUMP": 3, "PROGRESSING": 4, "BUILDING REPS": 5, "NEW": 6,
 };
 
-export default function CoachTab({ history, onAccept }: Props) {
-  const [overrides, setOverrides]       = useState<Record<string, string>>({});
-  const [deloadAcked, setDeloadAcked]   = useState<Set<string>>(new Set());
+export default function CoachTab({ history, progressionSpeed, onAccept }: Props) {
+  const t = useTxt();
+  const [overrides, setOverrides]     = useState<Record<string, string>>({});
+  const [deloadAcked, setDeloadAcked] = useState<Set<string>>(new Set());
 
   const coachData = ALL_EX
-    .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
+    .map(ex => ({ ex, a: analyzeEx(ex.id, history, progressionSpeed) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
 
@@ -35,8 +37,10 @@ export default function CoachTab({ history, onAccept }: Props) {
       {coachData.length > 0 ? (
         <>
           <div className="coach-intro">
-            Progression analysis from your logged history — sorted by exercises that need the most attention.
-            Red = intervene, amber = ready for weight jump, green = moving forward.
+            {t(
+              "What to work on next, sorted by what needs the most attention. Red = intervene, amber = ready for a weight jump, green = moving forward.",
+              "What to hit next, sorted by what needs you most. Red = intervene now, amber = jump that weight, green = you're crushing it."
+            )}
           </div>
           {coachData.map(({ ex, a }) => {
             const { sessions, last, est1RM, status, nextWeight, nextReps, reason } = a;
@@ -134,7 +138,7 @@ export default function CoachTab({ history, onAccept }: Props) {
 
                   {/* ── Recommendation box ── */}
                   <div className="rec-box">
-                    <div className="rec-box-label"><ChevronRight size={11} /> Next Session Target</div>
+                    <div className="rec-box-label"><ChevronRight size={11} /> {t("Next Session Target", "Next Session: Go For It", "Next Session: Manifest It")}</div>
                     <div className="rec-action-row">
                       <div className="rec-weight-wrap">
                         <input
@@ -163,21 +167,11 @@ export default function CoachTab({ history, onAccept }: Props) {
           })}
         </>
       ) : (
-        <div className="empty" style={{ paddingBottom: 16 }}>
+        <div className="empty">
           <div className="empty-icon"><Brain size={40} /></div>
-          <div className="empty-label">Log sessions to unlock coaching</div>
+          <div className="empty-label">{t("Log sessions to unlock coaching", "Log some sessions and the coach wakes up", "Log a few sessions and the coach pulls up")}</div>
         </div>
       )}
-      <div className="coach-section-title">General Principles</div>
-      <div className="tips-grid">
-        {TIPS.map(t => (
-          <div key={t.title} className="tip-card">
-            <div className="tip-icon"><t.icon size={20} /></div>
-            <div className="tip-title">{t.title}</div>
-            <div className="tip-body">{t.body}</div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

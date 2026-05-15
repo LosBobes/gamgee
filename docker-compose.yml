@@ -23,7 +23,16 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-gamgee}:${POSTGRES_PASSWORD:-gamgee}@db:5432/${POSTGRES_DB:-gamgee}
+      DATABASE_URL:      postgresql://${POSTGRES_USER:-gamgee}:${POSTGRES_PASSWORD:-gamgee}@db:5432/${POSTGRES_DB:-gamgee}
+      JWT_SECRET:        ${JWT_SECRET:-change-me-in-production-please}
+      PASSWORD_PEPPER:   ${PASSWORD_PEPPER:-}
+      SENDGRID_API_KEY:  ${SENDGRID_API_KEY:-}
+      EMAIL_FROM:        ${EMAIL_FROM:-no-reply@example.com}
+      EMAIL_FROM_NAME:   ${EMAIL_FROM_NAME:-Gamgee}
+      APP_BASE_URL:      ${APP_BASE_URL:-http://localhost:5173}
+      VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT:     ${VAPID_SUBJECT:-mailto:admin@example.com}
     ports:
       - "8000:8000"
     volumes:

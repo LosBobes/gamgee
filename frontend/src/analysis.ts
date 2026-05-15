@@ -1,4 +1,4 @@
-import type { WorkoutSession, StatusDef } from "./types";
+import type { WorkoutSession, StatusDef, ProgressionSpeed } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1 } from "./utils";
 
@@ -13,7 +13,11 @@ export interface AnalysisResult {
   reason: string;
 }
 
-export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResult | null {
+// Scales the default jump size when recommending the next weight. "moderate"
+// keeps the legacy 2.5kg upper / 5kg lower behaviour.
+const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fast: 2 };
+
+export function analyzeEx(exId: string, history: WorkoutSession[], speed: ProgressionSpeed = "moderate"): AnalysisResult | null {
   const sessions: SessionSummary[] = [];
   [...history].reverse().forEach(w => {
     const f = w.exercises.find(e => e.id === exId);
@@ -29,7 +33,7 @@ export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResu
   const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
   const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
   const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  const step   = UPPER_IDS.has(exId) ? 2.5 : 5;
+  const step   = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed];
 
   let status: StatusDef;
   let nextWeight: number;
@@ -52,10 +56,10 @@ export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResu
     } else if (wD === 0 && rD > 0) {
       if (last.topR >= 12) {
         status = STATUS.READY; nextWeight = last.topW + step; nextReps = Math.max(6, last.topR - 4);
-        reason = `${last.topR} reps at ${last.topW}kg — time to bump. Move to ${last.topW + step}kg, expect ~${Math.max(6, last.topR - 4)} reps. That's the deal.`;
+        reason = `${last.topR} reps at ${last.topW}kg. Time to bump. Move to ${last.topW + step}kg, expect ~${Math.max(6, last.topR - 4)} reps. That's the deal.`;
       } else {
         status = STATUS.BUILDING; nextWeight = last.topW; nextReps = last.topR + 1;
-        reason = `Reps up to ${last.topR}. Keep milking this weight — push for ${last.topR + 1} before touching the plates.`;
+        reason = `Reps up to ${last.topR}. Keep milking this weight. Push for ${last.topR + 1} before touching the plates.`;
       }
     } else if (wD === 0 && rD === 0) {
       status = STATUS.PLATEAUED; nextWeight = last.topW; nextReps = last.topR + 1;

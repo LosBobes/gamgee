@@ -17,3 +17,6 @@ export const fmtDur = (ms: number): string => {
 
 export const orm1 = (w: number, r: number): number =>
   r === 1 ? w : Math.round(w * (1 + r / 30));
+
+export const fmtShortDate = (iso: string): string =>
+  new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });

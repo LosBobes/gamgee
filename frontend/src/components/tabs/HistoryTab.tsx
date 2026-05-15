@@ -3,6 +3,7 @@ import { ClipboardList, Timer, Dumbbell, Layers, Activity, Trophy, ChevronUp, Ch
 import type { WorkoutSession, PRDict } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
 import EditWorkoutModal from "./EditWorkoutModal";
+import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
@@ -14,6 +15,7 @@ interface Props {
 const DAYS = ["S","M","T","W","T","F","S"];
 
 export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) {
+  const t = useTxt();
   const [view,           setView]           = useState<"list" | "calendar">("list");
   const [expanded,       setExpanded]       = useState<Set<string>>(new Set());
   const [calMonth,       setCalMonth]       = useState(() => new Date());
@@ -59,7 +61,7 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
   if (history.length === 0) {
     return (
       <div className="tab-anim">
-        <div className="empty"><div className="empty-icon"><ClipboardList size={40} /></div><div className="empty-label">No sessions yet</div></div>
+        <div className="empty"><div className="empty-icon"><ClipboardList size={40} /></div><div className="empty-label">{t("No sessions yet", "No sessions yet. Your legend starts today.", "No sessions yet. Your villain origin starts today.")}</div></div>
       </div>
     );
   }
@@ -130,9 +132,9 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
       {view === "calendar" && (
         <div className="cal-wrap">
           <div className="cal-nav">
-            <button className="cal-nav-btn" onClick={prevMonth}><ChevronLeft size={14} /> PREV</button>
+            <button className="cal-nav-btn" onClick={prevMonth} aria-label="Previous month"><ChevronLeft size={14} /><span className="cal-nav-text">PREV</span></button>
             <span className="cal-month-label">{monthLabel}</span>
-            <button className="cal-nav-btn" onClick={nextMonth}>NEXT <ChevronRight size={14} /></button>
+            <button className="cal-nav-btn" onClick={nextMonth} aria-label="Next month"><span className="cal-nav-text">NEXT</span><ChevronRight size={14} /></button>
           </div>
           <div className="cal-dow">
             {DAYS.map((d, i) => <div key={i} className="cal-dow-lbl">{d}</div>)}
