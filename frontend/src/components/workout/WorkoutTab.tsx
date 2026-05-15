@@ -35,6 +35,9 @@ interface Props {
   toggleSet:       (uid: string, idx: number) => void;
   addSet:          (uid: string) => void;
   removeSet:       (uid: string, idx: number) => void;
+  addDropSet:      (uid: string) => void;
+  linkSuperset:    (uid1: string, uid2: string) => void;
+  unlinkSuperset:  (uid: string) => void;
   isNewPr:         (exId: string, weight: string) => boolean;
   finishWorkout:   () => void;
 }
@@ -44,7 +47,8 @@ export default function WorkoutTab({
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
-  updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout,
+  updateSet, toggleSet, addSet, removeSet, addDropSet, linkSuperset, unlinkSuperset,
+  isNewPr, finishWorkout,
 }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack   = wStep < prevStepRef.current;
@@ -141,6 +145,9 @@ export default function WorkoutTab({
             toggleSet={toggleSet}
             addSet={addSet}
             removeSet={removeSet}
+            addDropSet={addDropSet}
+            linkSuperset={linkSuperset}
+            unlinkSuperset={unlinkSuperset}
             isNewPr={isNewPr}
           />
         </div>

@@ -8,8 +8,8 @@ export interface MuscleInfo { n: string; g: string; }
 export interface ExerciseDef { id: string; name: string; type: ExerciseType; cat?: string; }
 export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: number; newP?: string[]; ovP?: string[]; newS?: string[]; }
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
-export interface WorkoutSet { weight: string; reps: string; done: boolean; }
-export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
+export interface WorkoutSet { weight: string; reps: string; done: boolean; drop?: boolean; }
+export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; supersetId?: string; }
 export type CardioTiming = "none" | "before" | "after" | "both";
 export interface CardioSlot { exId: string; minutes: number; }
 export interface CardioPlan { timing: CardioTiming; before: CardioSlot | null; after: CardioSlot | null; }
@@ -22,6 +22,7 @@ export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry
 export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;
 export interface CoachingTip { icon: LucideIcon; title: string; body: string; bodyBro?: string; bodyGrl?: string; }
+export interface CoachPreset { weight: number; reps: number; }
 export interface CustomFocusDef { id: string; name: string; iconName: string; desc: string; }
 export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; instructions?: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }

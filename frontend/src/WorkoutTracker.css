@@ -903,6 +903,20 @@ html, body { background: var(--bg); }
   transform: translateY(-1px);
 }
 .btn-add-set:active { transform: scale(0.98); }
+
+/* set footer holds "add set" + "drop" side by side */
+.set-footer { display: flex; gap: 6px; margin-top: 6px; }
+.set-footer .btn-add-set { margin-top: 0; flex: 1; }
+.btn-drop-set {
+  font-family: 'Nunito', sans-serif; font-size: 11px; letter-spacing: 1px;
+  color: #FF8C42; background: transparent;
+  border: 1px dashed rgba(255,140,66,0.35); border-radius: 5px;
+  padding: 11px 14px; cursor: pointer; white-space: nowrap;
+  transition: border-color 0.15s, background 0.15s, transform 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-drop-set:hover { border-color: #FF8C42; background: rgba(255,140,66,0.07); transform: translateY(-1px); }
+
 .wx-actions { display: flex; gap: 10px; margin-bottom: 14px; }
 
 /* ── EXERCISE CARD (logging) ── */
@@ -913,6 +927,67 @@ html, body { background: var(--bg); }
   transition: box-shadow 0.2s;
 }
 .ex-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+
+/* ── SUPERSET ── */
+.superset-group {
+  border: 1px solid rgba(160,124,240,0.3);
+  border-radius: 14px; padding: 6px; margin-bottom: 10px;
+  background: rgba(160,124,240,0.04);
+}
+.superset-group .ex-card { margin-bottom: 6px; }
+.superset-group .ex-card:last-child { margin-bottom: 0; }
+.superset-group-label {
+  display: flex; align-items: center; gap: 5px;
+  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase;
+  color: #A07CF0; padding: 3px 8px 6px;
+}
+.ex-card-link-source {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.ex-card-link-target {
+  border-color: rgba(160,124,240,0.6);
+  box-shadow: 0 0 0 2px rgba(160,124,240,0.2);
+  animation: pulse-purple 1.4s ease-in-out infinite;
+}
+@keyframes pulse-purple {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(160,124,240,0.2); }
+  50%       { box-shadow: 0 0 0 4px rgba(160,124,240,0.35); }
+}
+.superset-link-banner {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: rgba(160,124,240,0.08); border: 1px solid rgba(160,124,240,0.3);
+  border-radius: 8px; padding: 9px 13px; margin-bottom: 10px;
+  font-size: 11px; color: var(--text);
+}
+.superset-link-banner strong { color: #A07CF0; }
+.superset-link-cancel {
+  margin-left: auto; background: transparent;
+  border: 1px solid rgba(160,124,240,0.35); border-radius: 5px;
+  color: #A07CF0; font-family: 'Nunito', sans-serif;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px;
+  padding: 3px 9px; cursor: pointer; transition: background 0.15s;
+}
+.superset-link-cancel:hover { background: rgba(160,124,240,0.15); }
+
+/* ── LINK BUTTON ON EXERCISE CARD ── */
+.link-btn { opacity: 0.35; transition: opacity 0.15s, color 0.15s; }
+.link-btn:hover { opacity: 0.9; }
+.link-btn-linked { opacity: 1; color: #A07CF0; }
+.link-btn-source { opacity: 1; color: var(--accent); }
+
+/* ── DROP SETS ── */
+.drop-set-row {
+  background: rgba(255,140,66,0.04);
+  border-left: 2px solid rgba(255,140,66,0.35);
+  padding-left: 4px; margin-left: -4px; border-radius: 0 4px 4px 0;
+}
+.drop-num {
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 900;
+  color: #FF8C42 !important; line-height: 1;
+}
+
 .ex-hdr { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 12px 12px 14px; border-bottom: 1px solid var(--border); gap: 8px; }
 .ex-name { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
 .ex-meta { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -1224,6 +1299,65 @@ html, body { background: var(--bg); }
 .rec-target { font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 900; color: var(--text); line-height: 1; }
 .rec-target-unit { font-size: 13px; color: var(--muted); font-weight: 400; }
 .rec-reason { font-size: 10px; color: var(--muted); margin-top: 7px; line-height: 1.7; }
+
+/* ── COACH INTERACTIVE: weight override + do-this ── */
+.rec-action-row { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.rec-weight-wrap { display: flex; align-items: baseline; gap: 5px; flex: 1; min-width: 0; }
+.rec-weight-input {
+  font-family: 'Nunito', sans-serif; font-size: 26px; font-weight: 900;
+  color: var(--text); background: transparent;
+  border: none; border-bottom: 1px solid var(--border);
+  width: 72px; outline: none; padding: 0; line-height: 1;
+  -moz-appearance: textfield;
+}
+.rec-weight-input::-webkit-outer-spin-button,
+.rec-weight-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.rec-weight-input:focus { border-bottom-color: var(--accent); }
+.do-this-btn {
+  flex-shrink: 0;
+  background: var(--accent); color: var(--bg);
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  border: none; border-radius: 6px; padding: 7px 14px;
+  cursor: pointer; transition: opacity 0.15s;
+  white-space: nowrap;
+}
+.do-this-btn:hover { opacity: 0.82; }
+
+/* ── DELOAD BANNER ── */
+.deload-banner {
+  background: rgba(160,124,240,0.07);
+  border: 1px solid rgba(160,124,240,0.28);
+  border-radius: 8px; padding: 11px 13px; margin-bottom: 12px;
+}
+.deload-banner-text { font-size: 11px; color: var(--text); line-height: 1.65; margin-bottom: 9px; }
+.deload-banner-text strong { color: #A07CF0; }
+.deload-banner-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.deload-accept-btn {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(160,124,240,0.15); border: 1px solid rgba(160,124,240,0.45);
+  color: #A07CF0;
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  border-radius: 5px; padding: 5px 11px; cursor: pointer; transition: background 0.15s;
+}
+.deload-accept-btn:hover { background: rgba(160,124,240,0.28); }
+.deload-dismiss-btn {
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase;
+  border-radius: 5px; padding: 5px 11px; cursor: pointer; transition: border-color 0.15s;
+}
+.deload-dismiss-btn:hover { border-color: var(--muted); color: var(--text); }
+.deload-acked {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; color: var(--green);
+  background: rgba(76,168,124,0.08); border: 1px solid rgba(76,168,124,0.22);
+  border-radius: 6px; padding: 7px 11px; margin-bottom: 12px;
+  font-family: 'Nunito', sans-serif; font-weight: 700; letter-spacing: 0.5px;
+}
+
 .session-count { font-size: 9px; color: var(--muted); }
 .orm-badge { display: inline-block; font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; padding: 2px 7px; background: color-mix(in srgb, var(--pr-muted) 12%, transparent); color: var(--pr-muted); border: 1px solid color-mix(in srgb, var(--pr-muted) 30%, transparent); border-radius: 3px; letter-spacing: 1px; }
 .trend-wrap { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-bottom: 12px; }

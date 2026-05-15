@@ -5,6 +5,7 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
+  CoachPreset,
 } from "./types";
 import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
@@ -78,6 +79,8 @@ export default function WorkoutTracker({
   const [history,       setHistory]       = useState<WorkoutSession[]>([]);
   const [prs,           setPrs]           = useState<PRDict>({});
   const [healthMetrics, setHealthMetrics] = useState<BodyMetric[]>([]);
+  // coach suggestions pre-loaded into next workout (per-exercise: preset wins over autoFill)
+  const [coachPresets,  setCoachPresets]  = useState<Record<string, CoachPreset>>({});
   // post-workout cool-down
   const [completed, setCompleted] = useState<WorkoutSession | null>(null);
   // auth
@@ -507,13 +510,21 @@ export default function WorkoutTracker({
     };
 
     const mainExercises: WorkoutExercise[] = planned.map(ex => {
-      let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
-      if (autoFill) {
-        const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
-        if (lastSession) {
-          const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
-          if (lastEx.sets.length > 0)
-            initSets = lastEx.sets.map(s => ({ weight: s.weight, reps: s.reps, done: false }));
+      // Per-exercise: coach preset wins over autoFill (preset is an explicit
+      // "Do this" click); otherwise fall back to last session if autoFill is on.
+      const preset = coachPresets[ex.id];
+      let initSets: WorkoutSet[];
+      if (preset) {
+        initSets = [{ weight: String(preset.weight), reps: String(preset.reps), done: false }];
+      } else {
+        initSets = [{ weight: "", reps: "", done: false }];
+        if (autoFill) {
+          const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
+          if (lastSession) {
+            const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
+            if (lastEx.sets.length > 0)
+              initSets = lastEx.sets.map(s => ({ weight: s.weight, reps: s.reps, done: false }));
+          }
         }
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
@@ -528,6 +539,14 @@ export default function WorkoutTracker({
     ]);
     setPlanned([]);
     setCardio({ timing: "none", before: null, after: null });
+    setCoachPresets({});
+  };
+
+  const acceptCoachSuggestion = (ex: ExerciseDef, weight: number, reps: number) => {
+    setCoachPresets(p => ({ ...p, [ex.id]: { weight, reps } }));
+    setPlanned(p => p.find(e => e.id === ex.id) ? p : [...p, ex]);
+    setTab("workout");
+    setWStep(1);
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -555,6 +574,37 @@ export default function WorkoutTracker({
     setExercises(p => p.map(ex =>
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== idx) }
     ));
+
+  const addDropSet = (uid: string) =>
+    setExercises(p => p.map(ex => {
+      if (ex.uid !== uid) return ex;
+      const last  = ex.sets[ex.sets.length - 1];
+      const lastW = parseFloat(last?.weight);
+      const dropW = !isNaN(lastW) && lastW > 0
+        ? String(Math.round(lastW * 0.8 / 2.5) * 2.5)
+        : "";
+      return { ...ex, sets: [...ex.sets, { weight: dropW, reps: last?.reps ?? "", done: false, drop: true }] };
+    }));
+
+  const linkSuperset = (uid1: string, uid2: string) => {
+    const groupId = crypto.randomUUID();
+    setExercises(p => p.map(ex =>
+      ex.uid === uid1 || ex.uid === uid2 ? { ...ex, supersetId: groupId } : ex
+    ));
+  };
+
+  const unlinkSuperset = (uid: string) =>
+    setExercises(p => {
+      const target = p.find(e => e.uid === uid);
+      if (!target?.supersetId) return p;
+      const gid     = target.supersetId;
+      const inGroup = p.filter(e => e.supersetId === gid);
+      return p.map(e =>
+        inGroup.length <= 2
+          ? e.supersetId === gid ? { ...e, supersetId: undefined } : e
+          : e.uid === uid        ? { ...e, supersetId: undefined } : e
+      );
+    });
 
   const isNewPr = (exId: string, weight: string): boolean => {
     const w = parseFloat(weight);
@@ -770,6 +820,7 @@ export default function WorkoutTracker({
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
+            addDropSet={addDropSet} linkSuperset={linkSuperset} unlinkSuperset={unlinkSuperset}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
           />
         )}
@@ -847,7 +898,7 @@ export default function WorkoutTracker({
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} onAccept={acceptCoachSuggestion} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
         {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
