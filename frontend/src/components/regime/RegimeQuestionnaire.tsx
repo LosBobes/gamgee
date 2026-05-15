@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Sparkles, RefreshCw, Save, Calendar, Check } from "lucide-react";
-import type { RegimeQuestionnaire, RegimeDraft, Regime, ProgressionSpeed } from "../../types";
+import { useMemo, useState } from "react";
+import { Sparkles, RefreshCw, Save, Calendar, Check, ArrowLeft } from "lucide-react";
+import type { RegimeQuestionnaire, RegimeDraft, Regime, ProgressionSpeed, WeekPlanDay } from "../../types";
 
 const GOALS: Array<{ id: RegimeQuestionnaire["goal"]; label: string; desc: string }> = [
   { id: "strength",    label: "Strength",     desc: "Heavier weights, lower reps." },
@@ -25,6 +25,11 @@ const PROGRESSION_OPTIONS: Array<{ id: ProgressionSpeed; label: string; desc: st
   { id: "fast",     label: "Aggressive",    desc: "Bigger jumps (5/10 kg)." },
 ];
 
+const WEEK_DAYS: { key: WeekPlanDay; short: string }[] = [
+  { key: "mon", short: "Mon" }, { key: "tue", short: "Tue" }, { key: "wed", short: "Wed" },
+  { key: "thu", short: "Thu" }, { key: "fri", short: "Fri" }, { key: "sat", short: "Sat" }, { key: "sun", short: "Sun" },
+];
+
 const WEEK_LABELS: Record<string, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
@@ -34,13 +39,34 @@ interface Props {
   onSaved?: (regime: Regime) => void;
   progressionSpeed: ProgressionSpeed;
   onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
+  /**
+   * When provided, the panel renders its own header with a BACK button
+   * and treats itself as a full-page view. The parent should hide its
+   * own content while this is visible.
+   */
+  onCancel?: () => void;
+  /**
+   * Optional label for the back button (e.g. "BACK TO PLAN").
+   */
+  backLabel?: string;
+  /**
+   * If true, calls onCancel automatically after a successful save so the
+   * questionnaire returns the user to the screen they came from.
+   */
+  closeOnSave?: boolean;
 }
 
-export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressionSpeed, onProgressionSpeedChange }: Props) {
+export default function RegimeQuestionnairePanel({
+  authFetch, onSaved, progressionSpeed, onProgressionSpeedChange,
+  onCancel, backLabel, closeOnSave,
+}: Props) {
   const [name, setName] = useState("");
   const [goal, setGoal] = useState<RegimeQuestionnaire["goal"]>("general");
   const [experience, setExperience] = useState<RegimeQuestionnaire["experience"]>("beginner");
   const [daysPerWeek, setDaysPerWeek] = useState(3);
+  const [availableDays, setAvailableDays] = useState<WeekPlanDay[]>(
+    ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+  );
   const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [avoidMuscles, setAvoidMuscles] = useState<string[]>([]);
   const [equipment, setEquipment] = useState<string[]>(["barbell", "dumbbell", "machine"]);
@@ -50,8 +76,25 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressi
   const [err, setErr] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
 
+  // Cap days/week to what the user marked available — otherwise the request
+  // would be silently downgraded server-side and the slider would lie.
+  const effectiveDaysPerWeek = useMemo(
+    () => Math.max(1, Math.min(daysPerWeek, Math.max(1, availableDays.length))),
+    [daysPerWeek, availableDays.length],
+  );
+  const daysCappedByAvailability = effectiveDaysPerWeek < daysPerWeek;
+
   const toggle = (list: string[], setList: (l: string[]) => void, value: string) => {
     setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
+  };
+
+  const toggleDay = (day: WeekPlanDay) => {
+    setAvailableDays(prev => {
+      // Don't allow zero available days — keep at least one selected so the
+      // generator always has somewhere to schedule.
+      const next = prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day];
+      return next.length > 0 ? next : prev;
+    });
   };
 
   const generate = async () => {
@@ -62,7 +105,8 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressi
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name || undefined,
-          goal, experience, days_per_week: daysPerWeek,
+          goal, experience, days_per_week: effectiveDaysPerWeek,
+          available_days: availableDays,
           focus_areas: focusAreas, avoid_muscles: avoidMuscles,
           equipment, include_cardio: includeCardio,
         } satisfies RegimeQuestionnaire),
@@ -99,6 +143,7 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressi
       const saved: Regime = await r.json();
       setSavedId(saved.id);
       onSaved?.(saved);
+      if (closeOnSave) onCancel?.();
     } catch {
       setErr("Network error");
     } finally {
@@ -108,6 +153,17 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressi
 
   return (
     <div className="regime-questionnaire" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {onCancel && (
+        <div className="wz-hdr wz-hdr-sticky">
+          <button className="wz-back" onClick={onCancel}>
+            <ArrowLeft size={13} /> {backLabel || "BACK"}
+          </button>
+          <span className="wz-focus-label">
+            <Sparkles size={13} /> AUTO-GENERATE
+          </span>
+          <div style={{ width: 72 }} />
+        </div>
+      )}
       <div className="card" style={{ padding: 14, display: "flex", flexDirection: "column", gap: 14 }}>
         <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
           <Sparkles size={16} /> Build your weekly plan
@@ -164,10 +220,48 @@ export default function RegimeQuestionnairePanel({ authFetch, onSaved, progressi
 
         <div>
           <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-            Days per week: <strong>{daysPerWeek}</strong>
+            Which days can you train? <span style={{ color: "var(--muted)" }}>· tap to toggle</span>
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 4 }}>
+            {WEEK_DAYS.map(d => {
+              const on = availableDays.includes(d.key);
+              return (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => toggleDay(d.key)}
+                  className={`chip ${on ? "active" : ""}`}
+                  style={{
+                    minHeight: 40, padding: "6px 4px",
+                    border: `1px solid ${on ? "var(--accent)" : "var(--ad)"}`,
+                    borderRadius: 8,
+                    background: on ? "var(--ad2)" : "transparent",
+                    color: on ? "inherit" : "var(--muted)",
+                    cursor: "pointer", fontWeight: 700, fontSize: 12,
+                  }}
+                  aria-pressed={on}
+                >
+                  {d.short}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 6 }}>
+            {availableDays.length} day{availableDays.length === 1 ? "" : "s"} available · rest days are placed on the days you skip.
+          </div>
+        </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+            Sessions per week: <strong>{effectiveDaysPerWeek}</strong>
+            {daysCappedByAvailability && (
+              <span style={{ color: "var(--accent)", marginLeft: 6 }}>
+                (capped to your {availableDays.length} available day{availableDays.length === 1 ? "" : "s"})
+              </span>
+            )}
           </label>
           <input
-            type="range" min={1} max={7} value={daysPerWeek}
+            type="range" min={1} max={Math.max(1, availableDays.length)} value={effectiveDaysPerWeek}
             onChange={e => setDaysPerWeek(Number(e.target.value))}
             style={{ width: "100%" }}
           />

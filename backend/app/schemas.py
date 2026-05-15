@@ -920,6 +920,9 @@ class RegimeQuestionnaire(BaseModel):
     goal: RegimeGoal = "general"
     experience: RegimeExperience = "beginner"
     days_per_week: int = Field(ge=1, le=7, default=3)
+    # Days of the week the user is available to train. Empty = no preference,
+    # generator falls back to an evenly-spaced schedule.
+    available_days: list[str] = Field(default_factory=list)
     focus_areas: list[str] = Field(default_factory=list)        # muscle group ids
     avoid_muscles: list[str] = Field(default_factory=list)      # muscle group ids
     equipment: list[str] = Field(default_factory=list)          # barbell | dumbbell | bodyweight | machine
