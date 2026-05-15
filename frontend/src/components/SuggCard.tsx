@@ -30,11 +30,6 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
       <div className="sugg-row">
         <div className="sugg-left">
           <div className="sugg-name">{ex.name}</div>
-          <div className="sugg-muscles">
-            {newP.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
-            {ovP.map(mid  => <span key={mid} className="mtag overlap">{MI[mid]?.n}</span>)}
-            {newS.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
-          </div>
         </div>
 
         {hasDetails && (
@@ -45,7 +40,7 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
             aria-expanded={open}
             onClick={e => { e.stopPropagation(); setOpen(o => !o); }}
           >
-            <Eye size={15} />
+            <Eye size={18} />
           </button>
         )}
 
@@ -55,7 +50,7 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
           aria-label={isAdded ? "Remove exercise" : "Add exercise"}
           onClick={e => { e.stopPropagation(); toggle(); }}
         >
-          {isAdded ? <Check size={18} /> : <Plus size={18} />}
+          {isAdded ? <Check size={22} /> : <Plus size={22} />}
         </button>
       </div>
 
@@ -63,6 +58,13 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
         <div className={`sugg-info-wrap ${open ? "open" : ""}`} aria-hidden={!open}>
           <div className="sugg-info">
             <div className="sugg-info-inner" onClick={e => e.stopPropagation()}>
+              {(newP.length > 0 || ovP.length > 0 || newS.length > 0) && (
+                <div className="sugg-muscles">
+                  {newP.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
+                  {ovP.map(mid  => <span key={mid} className="mtag overlap">{MI[mid]?.n}</span>)}
+                  {newS.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
+                </div>
+              )}
               {motion && open && (
                 <div className="sugg-info-anim">
                   <ExerciseAnimation
