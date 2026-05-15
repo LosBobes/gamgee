@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import "./AdminApp.css";
+import { MOTIONS as BUNDLED_MOTIONS } from "../data/exerciseMotions";
+import { saveMotion } from "../data/motionStorage";
 
 type Page = "users" | "exercises" | "workouts" | "prs" | "feedback" | "quotes" | "tips" | "motions";
 type AuthFetch = (url: string, opts?: RequestInit) => Promise<Response>;
@@ -26,6 +28,7 @@ interface Exercise {
   name: string;
   category: string;
   type: string;
+  description: string | null;
   primary_muscles: string[];
   secondary_muscles: string[];
 }
@@ -360,13 +363,18 @@ function ExercisesPage({ authFetch }: { authFetch: AuthFetch }) {
 
   const openEdit = (ex: Exercise) => {
     setEditing(ex); setCreating(false);
-    setForm({ ...ex, primary_str: ex.primary_muscles.join(", "), secondary_str: ex.secondary_muscles.join(", ") });
+    setForm({
+      ...ex,
+      description: ex.description ?? "",
+      primary_str: ex.primary_muscles.join(", "),
+      secondary_str: ex.secondary_muscles.join(", "),
+    });
     setErr("");
   };
 
   const openCreate = () => {
     setCreating(true); setEditing(null);
-    setForm({ id: "", name: "", category: "compound", type: "strength", primary_str: "", secondary_str: "" });
+    setForm({ id: "", name: "", category: "compound", type: "strength", description: "", primary_str: "", secondary_str: "" });
     setErr("");
   };
 
@@ -413,7 +421,7 @@ function ExercisesPage({ authFetch }: { authFetch: AuthFetch }) {
       <div className="adm-table-wrap">
         <table className="adm-table">
           <thead><tr>
-            <th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Primary muscles</th><th></th>
+            <th>ID</th><th>Name</th><th>Category</th><th>Type</th><th>Description</th><th>Primary muscles</th><th></th>
           </tr></thead>
           <tbody>
             {filtered.map(ex => (
@@ -422,6 +430,13 @@ function ExercisesPage({ authFetch }: { authFetch: AuthFetch }) {
                 <td><strong>{ex.name}</strong></td>
                 <td>{ex.category}</td>
                 <td>{ex.type}</td>
+                <td
+                  className="adm-muted adm-small"
+                  title={ex.description ?? ""}
+                  style={{ maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                >
+                  {ex.description ?? <em style={{ opacity: 0.5 }}>(none)</em>}
+                </td>
                 <td className="adm-muted adm-small">{ex.primary_muscles.join(", ")}</td>
                 <td className="adm-actions">
                   <button className="adm-btn-sm" onClick={() => openEdit(ex)}>Edit</button>
@@ -452,6 +467,15 @@ function ExercisesPage({ authFetch }: { authFetch: AuthFetch }) {
               <option value="cardio">cardio</option>
               <option value="timed">timed</option>
             </select>
+          </Field>
+          <Field label="Description">
+            <textarea
+              className="adm-input"
+              rows={3}
+              placeholder="One- or two-sentence summary of what this lift is."
+              value={form.description ?? ""}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+            />
           </Field>
           <Field label="Primary muscles (comma-separated IDs)">
             <input className="adm-input" value={form.primary_str ?? ""} onChange={e => setForm(f => ({ ...f, primary_str: e.target.value }))} />
@@ -1159,17 +1183,57 @@ interface MotionRow {
   floor: boolean;
   rig: { feet?: string; arm2?: string; leg2?: string };
   frames: unknown[];
+  equipment?: unknown;
 }
 
+// Neutral standing pose used as the starting keyframe for brand-new motions.
+const STARTER_POSE = {
+  head:     [50, 20],
+  neck:     [50, 30],
+  shoulder: [50, 35],
+  elbow:    [50, 60],
+  hand:     [50, 85],
+  hip:      [50, 85],
+  knee:     [50, 115],
+  ankle:    [50, 140],
+  toe:      [60, 140],
+} as const;
+
 function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
-  const [items,   setItems]   = useState<MotionRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [items,     setItems]     = useState<MotionRow[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [loading,   setLoading]   = useState(true);
+
+  // Modal state
+  const [creating,    setCreating]    = useState(false);
+  const [reassigning, setReassigning] = useState<MotionRow | null>(null);
+  const [pickedEx,    setPickedEx]    = useState<string>("");
+  const [searchEx,    setSearchEx]    = useState<string>("");
+  const [busy,        setBusy]        = useState(false);
+  const [syncing,     setSyncing]     = useState(false);
 
   const refresh = useCallback(() => {
     setLoading(true);
-    fetch("/api/content/motions").then(r => r.json()).then(setItems).finally(() => setLoading(false));
-  }, []);
+    Promise.all([
+      fetch("/api/content/motions").then(r => r.json()),
+      authFetch("/api/admin/exercises").then(r => r.json()),
+    ])
+      .then(([m, ex]) => { setItems(m); setExercises(ex); })
+      .finally(() => setLoading(false));
+  }, [authFetch]);
   useEffect(() => { refresh(); }, [refresh]);
+
+  const motionByExId = useMemo(() => {
+    const map = new Map<string, MotionRow>();
+    items.forEach(m => map.set(m.exercise_id, m));
+    return map;
+  }, [items]);
+
+  const exerciseNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    exercises.forEach(e => map.set(e.id, e.name));
+    return map;
+  }, [exercises]);
 
   const del = async (m: MotionRow) => {
     if (!confirm(`Delete ${m.name}? Frontend will fall back to the bundled default until re-saved.`)) return;
@@ -1177,57 +1241,323 @@ function MotionsPage({ authFetch }: { authFetch: AuthFetch }) {
     if (res.ok) setItems(prev => prev.filter(i => i.exercise_id !== m.exercise_id));
   };
 
+  const openCreate = () => {
+    setCreating(true);
+    setPickedEx("");
+    setSearchEx("");
+  };
+
+  const openReassign = (m: MotionRow) => {
+    setReassigning(m);
+    setPickedEx("");
+    setSearchEx("");
+  };
+
+  // Filter the exercise picker by free-text search (id or name) and tag rows
+  // that already have a motion so admins don't accidentally overwrite one.
+  const filteredExercises = useMemo(() => {
+    const q = searchEx.trim().toLowerCase();
+    return exercises
+      .filter(ex => !q || ex.id.toLowerCase().includes(q) || ex.name.toLowerCase().includes(q))
+      .map(ex => ({ ...ex, hasMotion: motionByExId.has(ex.id) }));
+  }, [exercises, searchEx, motionByExId]);
+
+  const createMotion = async () => {
+    if (!pickedEx) return;
+    const ex = exercises.find(e => e.id === pickedEx);
+    if (!ex) return;
+    const existing = motionByExId.get(pickedEx);
+    if (existing && !confirm(
+      `${ex.name} (${ex.id}) already has a motion called "${existing.name}". Open the editor for that motion instead?`,
+    )) {
+      // Skipped — close the modal without doing anything destructive.
+      setCreating(false);
+      return;
+    }
+    if (existing) {
+      // Just navigate to the existing motion.
+      setCreating(false);
+      window.open(`/exercise-editor?id=${encodeURIComponent(ex.id)}`, "_blank");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const body = {
+        exercise_id: ex.id,
+        name: ex.name,
+        category: ex.category,
+        duration: 2000,
+        bench: false,
+        floor: ex.category === "Legs" || ex.category === "Cardio",
+        rig: { feet: "oval", arm2: "mirror", leg2: "mirror" },
+        frames: [
+          { t: 0,   pose: STARTER_POSE },
+          { t: 0.5, pose: STARTER_POSE },
+          { t: 1,   pose: STARTER_POSE },
+        ],
+      };
+      const res = await authFetch(`/api/content/motions/${encodeURIComponent(ex.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        alert(`Failed to create motion: ${res.status} ${await res.text()}`);
+        return;
+      }
+      setCreating(false);
+      refresh();
+      window.open(`/exercise-editor?id=${encodeURIComponent(ex.id)}`, "_blank");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reassignMotion = async () => {
+    if (!reassigning || !pickedEx) return;
+    if (pickedEx === reassigning.exercise_id) {
+      setReassigning(null);
+      return;
+    }
+    const target = exercises.find(e => e.id === pickedEx);
+    if (!target) return;
+    const conflict = motionByExId.get(pickedEx);
+    if (conflict && !confirm(
+      `Reassigning will overwrite the existing motion on ${target.name} ("${conflict.name}"). Continue?`,
+    )) return;
+
+    setBusy(true);
+    try {
+      // Carry every field over so the new row is a faithful clone. The backend
+      // uses exercise_id as a primary key, so we delete the old row and PUT a
+      // fresh one rather than trying to rename in place.
+      const body = {
+        exercise_id: target.id,
+        name: reassigning.name,
+        category: reassigning.category,
+        duration: reassigning.duration,
+        bench: reassigning.bench,
+        floor: reassigning.floor,
+        rig: reassigning.rig,
+        frames: reassigning.frames,
+      };
+      const putRes = await authFetch(`/api/content/motions/${encodeURIComponent(target.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!putRes.ok) {
+        alert(`Failed to write to ${target.id}: ${putRes.status} ${await putRes.text()}`);
+        return;
+      }
+      // Only after the new row exists do we delete the old one — keeps the
+      // animation visible to other users for the entire reassignment.
+      await authFetch(`/api/content/motions/${encodeURIComponent(reassigning.exercise_id)}`, {
+        method: "DELETE",
+      });
+      setReassigning(null);
+      refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Push every bundled motion that isn't already in the DB. Pulls straight
+  // from the frontend's BUNDLED_MOTIONS so the data is sourced from one place.
+  const syncBundled = async () => {
+    const bundledIds = Object.keys(BUNDLED_MOTIONS);
+    const missing = bundledIds.filter(id => !motionByExId.has(id));
+    if (missing.length === 0) {
+      alert("Every bundled motion is already in the database.");
+      return;
+    }
+    if (!confirm(
+      `Push ${missing.length} bundled motion${missing.length === 1 ? "" : "s"} to the database? ` +
+      "Existing motions will not be overwritten.",
+    )) return;
+    setSyncing(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      for (const id of missing) {
+        try {
+          await saveMotion(authFetch, id, BUNDLED_MOTIONS[id]);
+          ok++;
+        } catch (err) {
+          console.error(`syncBundled: ${id} failed`, err);
+          fail++;
+        }
+      }
+      refresh();
+      alert(`Synced ${ok} motion${ok === 1 ? "" : "s"}${fail > 0 ? ` (${fail} failed — see console)` : ""}.`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Counts for the header — bundled-but-not-in-DB and exercises with no motion.
+  const bundledOnlyCount = Object.keys(BUNDLED_MOTIONS).filter(id => !motionByExId.has(id)).length;
+
   if (loading) return <div className="adm-center">Loading…</div>;
+
+  const missingMotionCount = exercises.filter(e => !motionByExId.has(e.id)).length;
 
   return (
     <div className="adm-page">
       <div className="adm-page-header">
         <h1 className="adm-page-title">Motion animations ({items.length})</h1>
-        <a className="adm-btn-primary" href="/exercise-graphics" target="_blank" rel="noreferrer">
-          Open gallery →
-        </a>
+        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+          <button className="adm-btn-primary" onClick={openCreate}>
+            + Link motion to exercise
+          </button>
+          {bundledOnlyCount > 0 && (
+            <button
+              className="adm-btn-ghost"
+              onClick={syncBundled}
+              disabled={syncing}
+              title="Push every bundled animation that isn't yet persisted to the database."
+            >
+              {syncing ? "Syncing…" : `↓ Sync ${bundledOnlyCount} bundled motion${bundledOnlyCount === 1 ? "" : "s"}`}
+            </button>
+          )}
+          <a className="adm-btn-ghost" href="/exercise-editor" target="_blank" rel="noreferrer">
+            Open animation editor →
+          </a>
+          <a className="adm-btn-ghost" href="/exercise-graphics" target="_blank" rel="noreferrer">
+            Open gallery →
+          </a>
+        </div>
       </div>
       <p style={{ color: "var(--muted)", marginTop: 0 }}>
-        Each row is one stick-figure animation persisted in the database. Use the in-app keyframe editor (link below)
-        to drag joints; saving from there writes back to this table.
+        Each row is one stick-figure animation persisted in the database, keyed by an exercise id.
+        Use <strong>+ Link motion to exercise</strong> to start a new motion against any exercise
+        ({missingMotionCount} exercise{missingMotionCount === 1 ? "" : "s"} still without one),
+        or <strong>Reassign</strong> on a row to move an existing motion to a different exercise.
+        {bundledOnlyCount > 0 && (
+          <> The app currently ships <strong>{bundledOnlyCount}</strong> bundled animation{bundledOnlyCount === 1 ? "" : "s"}
+          that aren't yet in the database — click <strong>Sync bundled motions</strong> to publish them all in one shot.</>
+        )}
       </p>
 
       <table className="adm-table">
         <thead>
           <tr>
-            <th style={{ width: 140 }}>ID</th>
-            <th>Name</th>
+            <th style={{ width: 140 }}>Exercise ID</th>
+            <th>Motion name</th>
+            <th style={{ width: 140 }}>Linked exercise</th>
             <th style={{ width: 90 }}>Category</th>
             <th style={{ width: 80 }}>Duration</th>
             <th style={{ width: 70 }}>Frames</th>
-            <th style={{ width: 90 }}>Bench</th>
-            <th style={{ width: 90 }}>Floor</th>
             <th style={{ width: 200 }}>Rig</th>
-            <th style={{ width: 180 }}>Actions</th>
+            <th style={{ width: 260 }}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {items.map(m => (
-            <tr key={m.exercise_id}>
-              <td><code>{m.exercise_id}</code></td>
-              <td>{m.name}</td>
-              <td>{m.category ?? "—"}</td>
-              <td>{m.duration ? `${m.duration}ms` : "—"}</td>
-              <td>{m.frames.length}</td>
-              <td>{m.bench ? "yes" : "—"}</td>
-              <td>{m.floor ? "yes" : "—"}</td>
-              <td style={{ fontSize: 11 }}>
-                feet:{m.rig?.feet ?? "oval"} · arm2:{m.rig?.arm2 ?? "none"} · leg2:{m.rig?.leg2 ?? "none"}
-              </td>
-              <td>
-                <a className="adm-btn-ghost" href={`/exercise-editor?id=${m.exercise_id}`}
-                   target="_blank" rel="noreferrer">Edit keyframes</a>
-                <button className="adm-btn-danger" onClick={() => del(m)}>Delete</button>
-              </td>
-            </tr>
-          ))}
+          {items.map(m => {
+            const exName = exerciseNameById.get(m.exercise_id);
+            const orphan = !exName;
+            return (
+              <tr key={m.exercise_id}>
+                <td><code>{m.exercise_id}</code></td>
+                <td>{m.name}</td>
+                <td className={orphan ? "adm-muted" : undefined}
+                    title={orphan ? "No exercise row matches this id — reassign or create the exercise." : ""}>
+                  {exName ?? <em>(orphan)</em>}
+                </td>
+                <td>{m.category ?? "—"}</td>
+                <td>{m.duration ? `${m.duration}ms` : "—"}</td>
+                <td>{m.frames.length}</td>
+                <td style={{ fontSize: 11 }}>
+                  feet:{m.rig?.feet ?? "oval"} · arm2:{m.rig?.arm2 ?? "none"} · leg2:{m.rig?.leg2 ?? "none"}
+                </td>
+                <td className="adm-actions">
+                  <a className="adm-btn-sm" href={`/exercise-editor?id=${m.exercise_id}`}
+                     target="_blank" rel="noreferrer">Edit</a>
+                  <button className="adm-btn-sm" onClick={() => openReassign(m)}>Reassign</button>
+                  <button className="adm-btn-sm adm-btn-danger" onClick={() => del(m)}>Delete</button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
+
+      {(creating || reassigning) && (
+        <Modal
+          title={reassigning
+            ? `Reassign motion "${reassigning.name}" (currently ${reassigning.exercise_id})`
+            : "Link a new motion to an exercise"}
+          onClose={() => { setCreating(false); setReassigning(null); }}
+        >
+          <Field label="Search">
+            <input
+              className="adm-input"
+              autoFocus
+              placeholder="Search by exercise name or id…"
+              value={searchEx}
+              onChange={e => setSearchEx(e.target.value)}
+            />
+          </Field>
+          <div style={{
+            border: "1px solid var(--border)", borderRadius: 6,
+            maxHeight: 320, overflowY: "auto",
+            marginBottom: 12,
+          }}>
+            {filteredExercises.length === 0 && (
+              <p style={{ padding: 12, margin: 0, color: "var(--muted)" }}>No exercises match that search.</p>
+            )}
+            {filteredExercises.map(ex => {
+              const selected = pickedEx === ex.id;
+              return (
+                <button
+                  key={ex.id}
+                  type="button"
+                  onClick={() => setPickedEx(ex.id)}
+                  style={{
+                    display: "block", width: "100%", textAlign: "left",
+                    padding: "8px 12px",
+                    border: "none",
+                    borderBottom: "1px solid var(--border)",
+                    background: selected ? "var(--ad, var(--accent))" : "transparent",
+                    color: selected ? "var(--bg)" : "var(--text)",
+                    cursor: "pointer",
+                    fontFamily: "inherit",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span><strong>{ex.name}</strong> <code style={{ opacity: 0.7 }}>{ex.id}</code></span>
+                    <span style={{ fontSize: 11, opacity: 0.7 }}>
+                      {ex.category} · {ex.type}
+                      {ex.hasMotion && <span style={{ marginLeft: 8, color: selected ? "var(--bg)" : "var(--warning, #f4a256)" }}>has motion</span>}
+                    </span>
+                  </div>
+                  {ex.description && (
+                    <div style={{ fontSize: 11, marginTop: 2, opacity: selected ? 0.85 : 0.65 }}>
+                      {ex.description}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="adm-modal-actions">
+            <button
+              className="adm-btn-primary"
+              onClick={reassigning ? reassignMotion : createMotion}
+              disabled={busy || !pickedEx}
+            >
+              {busy ? "Working…"
+                : reassigning ? "Reassign motion"
+                : motionByExId.has(pickedEx) ? "Open existing motion"
+                : "Create motion & open editor"}
+            </button>
+            <button className="adm-btn-ghost" onClick={() => { setCreating(false); setReassigning(null); }}>
+              Cancel
+            </button>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

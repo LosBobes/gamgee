@@ -94,6 +94,9 @@ class Exercise(Base):
     type = Column(String(20), nullable=False)     # strength | cardio | timed
     primary_muscles = Column(JSONB, nullable=False, default=list)
     secondary_muscles = Column(JSONB, nullable=False, default=list)
+    # One- or two-sentence summary of the lift. Distinct from ExerciseInfo
+    # (setup / execute / cue), which is the step-by-step coaching script.
+    description = Column(Text, nullable=True)
 
 
 class BodyMetric(Base):
