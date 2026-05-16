@@ -22,10 +22,21 @@ export function analyzeEx(exId: string, history: WorkoutSession[], speed: Progre
   [...history].reverse().forEach(w => {
     const f = w.exercises.find(e => e.id === exId);
     if (!f || !f.sets.length) return;
-    const ws = f.sets.map(s => parseFloat(s.weight)).filter(x => !isNaN(x) && x > 0);
-    const rs = f.sets.map(s => parseInt(s.reps)).filter(x => !isNaN(x) && x > 0);
-    if (!ws.length) return;
-    sessions.push({ date: w.date, topW: Math.max(...ws), topR: rs.length ? Math.max(...rs) : 0, totalSets: f.sets.length });
+    // Pick the top set as a single unit (heaviest weight, tie-break on most
+    // reps) so topW and topR always come from the same actual set. Computing
+    // them with independent Math.max calls used to mix sets — e.g. a session
+    // with [100kg×3, 80kg×12] would report topW=100, topR=12 and an est1RM
+    // of orm1(100, 12)=140kg that never happened.
+    const pairs = f.sets
+      .map(s => ({ w: parseFloat(s.weight), r: parseInt(s.reps) }))
+      .filter(p => !isNaN(p.w) && p.w > 0)
+      .map(p => ({ w: p.w, r: !isNaN(p.r) && p.r > 0 ? p.r : 0 }));
+    if (!pairs.length) return;
+    const top = pairs.reduce((a, b) => {
+      if (b.w !== a.w) return b.w > a.w ? b : a;
+      return b.r > a.r ? b : a;
+    });
+    sessions.push({ date: w.date, topW: top.w, topR: top.r, totalSets: f.sets.length });
   });
   if (!sessions.length) return null;
 
