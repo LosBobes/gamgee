@@ -262,11 +262,22 @@ def motivate(
     if row.status != "accepted":
         raise HTTPException(status_code=400, detail="You can only motivate accepted buddies")
 
-    # Check the recipient's master switch (Settings → Notifications) and the
-    # per-buddy preference for motivate from us specifically.
+    # If the sender names a preset, always use the canonical text — never
+    # trust client-supplied message body when a preset id is set.
+    if body.preset is not None:
+        if body.preset not in PRESET_MESSAGES:
+            raise HTTPException(status_code=400, detail="Unknown preset")
+        message = PRESET_MESSAGES[body.preset]
+    else:
+        message = body.message
+
+    # Honour the recipient's master switch (Settings → Notifications) and the
+    # per-buddy preference for motivate from us specifically. Silently drop
+    # — returning 403 with a descriptive message would let the sender probe
+    # the recipient's preferences for every buddy.
     recipient = db.query(models.User).filter(models.User.id == row.buddy_user_id).first()
-    if recipient and not recipient.notify_motivate:
-        raise HTTPException(status_code=403, detail="Recipient has disabled motivate notifications")
+    if not recipient or not recipient.notify_motivate:
+        return {"status": "sent"}
     recipient_row = (
         db.query(models.Buddy)
         .filter(
@@ -277,12 +288,8 @@ def motivate(
         .first()
     )
     if recipient_row and not recipient_row.notify_motivate:
-        raise HTTPException(status_code=403, detail="Recipient has disabled motivate notifications")
+        return {"status": "sent"}
 
-    message = body.message
-    if body.preset and body.preset in PRESET_MESSAGES and message == PRESET_MESSAGES[body.preset]:
-        # OK — preset used as-is
-        pass
     create_notification(
         db, user_id=row.buddy_user_id, kind="motivate",
         sender_user_id=current_user.id,

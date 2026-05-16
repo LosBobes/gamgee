@@ -6,7 +6,7 @@ import type {
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
 } from "./types";
-import { loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
+import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
@@ -193,6 +193,41 @@ export default function WorkoutTracker({
   useEffect(() => {
     sessionStorage.setItem("gamgee_active_tab", tab);
   }, [tab]);
+
+  // Wipe per-user state whenever the token goes away (manual logout or 401).
+  // Without this, the next user on this device (or this user after a token
+  // refresh) momentarily sees the previous account's buddies/notifications/
+  // conversations/etc. The Workbox `api-cache` and the localStorage-backed
+  // weekly plan are flushed for the same reason.
+  useEffect(() => {
+    if (token) return;
+    setUsername(null);
+    setName(null);
+    setEmail(null);
+    setGender(null);
+    setIsAdmin(false);
+    setIsVerified(true);
+    setIsTrainer(false);
+    setCurrentUserId(null);
+    setHistory([]);
+    setPrs({});
+    setHealthMetrics([]);
+    setWeeklyPlanState(null);
+    setBuddies([]);
+    setNotifications([]);
+    setUnreadCount(0);
+    setLiveSessions([]);
+    setMyLiveSession(null);
+    setViewedLiveSession(null);
+    setTrainerLinks([]);
+    setAssignments([]);
+    setConversations([]);
+    setActiveConvId(null);
+    clearWeeklyPlan();
+    if (typeof caches !== "undefined") {
+      caches.delete("api-cache").catch(() => { /* best-effort */ });
+    }
+  }, [token]);
 
   useEffect(() => {
     if (!token) return;
@@ -666,7 +701,7 @@ export default function WorkoutTracker({
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
   const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history, progressionSpeed) !== null).length;
 
-  const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); setUsername(null); };
+  const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); };
 
   const resendVerification = async () => {
     setVerifyMsg(null);

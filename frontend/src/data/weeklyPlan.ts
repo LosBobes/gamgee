@@ -23,6 +23,10 @@ export function saveWeeklyPlan(plan: WeeklyPlan): void {
   localStorage.setItem(KEY, JSON.stringify(plan));
 }
 
+export function clearWeeklyPlan(): void {
+  localStorage.removeItem(KEY);
+}
+
 export function getTodayKey(): WeekPlanDay {
   const map: WeekPlanDay[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
   return map[new Date().getDay()];
