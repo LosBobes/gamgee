@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart } from "lucide-react";
+import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart, Eye } from "lucide-react";
 import type { WeekPlanDay, WeeklyPlan, DayPlan, ProgressionSpeed, Regime, ExerciseDef } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
 import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
+import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 
 interface Props {
   initial:   WeeklyPlan | null;
@@ -64,6 +65,7 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
 
   const [activeDay, setActiveDay] = useState<WeekPlanDay>("mon");
   const [query, setQuery] = useState("");
+  const [inspectId, setInspectId] = useState<string | null>(null);
 
   // Reset search when switching days so each day starts fresh.
   useEffect(() => { setQuery(""); }, [activeDay]);
@@ -95,10 +97,15 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
   const renderExerciseRow = (ex: ExerciseDef) => {
     const checked = day.exerciseIds.includes(ex.id);
     return (
-      <button
+      <div
         key={ex.id}
+        role="button"
+        tabIndex={0}
         className={`ww-ex-row${checked ? " checked" : ""}`}
         onClick={() => toggleExercise(ex.id)}
+        onKeyDown={e => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExercise(ex.id); }
+        }}
       >
         <span className="ww-ex-check">
           {checked && <Check size={11} />}
@@ -109,7 +116,16 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
             <Heart size={10} /> CARDIO
           </span>
         )}
-      </button>
+        <button
+          type="button"
+          className="ww-ex-info-btn"
+          onClick={e => { e.stopPropagation(); setInspectId(ex.id); }}
+          aria-label={`Details for ${ex.name}`}
+          title="Details"
+        >
+          <Eye size={14} />
+        </button>
+      </div>
     );
   };
 
@@ -231,8 +247,9 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
         {day.enabled && (
           <>
             {/* Focus picker — Cardio is one of the focuses, so picking it
-                turns the day into a cardio day with cardio-only suggestions. */}
-            <div className="ww-section-label">{t("Focus", "Focus")}</div>
+                turns the day into a cardio day with cardio-only suggestions.
+                The chips are self-explanatory (icon + name) so we skip a
+                section label to keep the screen quieter. */}
             <div className="ww-focus-row">
               {Object.entries(FOCUS).map(([k, f]) => (
                 <button
@@ -274,11 +291,8 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
             {searchResults ? (
               searchResults.length > 0 ? (
                 <>
-                  <div className="ww-section-label" style={{ marginTop: 12 }}>
+                  <div className="ww-search-count">
                     {searchResults.length} {searchResults.length === 1 ? "match" : "matches"}
-                    <span className="ww-section-hint">
-                      {t("any exercise — strength or cardio", "any move — iron or cardio")}
-                    </span>
                   </div>
                   <div className="ww-exercise-list">
                     {searchResults.map(renderExerciseRow)}
@@ -291,13 +305,7 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
               )
             ) : focusIds.length > 0 ? (
               <>
-                <div className="ww-section-label" style={{ marginTop: 12 }}>
-                  {t("Exercises", "Exercises")}
-                  <span className="ww-section-hint">
-                    {t("blank = auto-pick", "blank = app picks")}
-                  </span>
-                </div>
-                <div className="ww-exercise-list">
+                <div className="ww-exercise-list" style={{ marginTop: 8 }}>
                   {focusIds.map(id => {
                     const ex = ALL_EX.find(e => e.id === id);
                     return ex ? renderExerciseRow(ex) : null;
@@ -305,7 +313,7 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
                 </div>
                 {customExs.length > 0 && (
                   <>
-                    <div className="ww-section-label" style={{ marginTop: 16 }}>
+                    <div className="ww-section-label" style={{ marginTop: 14 }}>
                       <Wrench size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
                       {t("Your Custom Exercises", "Your Custom Lifts", "Your Custom Moves")}
                     </div>
@@ -334,6 +342,14 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
           </div>
         )}
       </div>
+
+      {inspectId && (
+        <ExerciseInspectModal
+          exerciseId={inspectId}
+          exerciseName={ALL_EX.find(e => e.id === inspectId)?.name ?? inspectId}
+          onClose={() => setInspectId(null)}
+        />
+      )}
     </>
   );
 }

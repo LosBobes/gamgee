@@ -428,13 +428,19 @@ html, body { background: var(--bg); }
   -webkit-tap-highlight-color: transparent; flex-shrink: 0;
 }
 .ww-rest-toggle.active { background: var(--s3); border-color: var(--muted); color: var(--text); }
-/* Search inside the day editor */
+/* Search inside the day editor.
+   The wrap can pick up horizontal padding at the mobile breakpoint (where it
+   goes sticky and uses negative margin to bleed to the card edges), so the
+   icon and clear button are positioned relative to .ww-search-input via the
+   custom `--wrap-pad` variable rather than the wrap itself — that way they
+   always sit inside the input box regardless of wrap padding. */
 .ww-search-wrap {
   position: relative;
-  margin: 12px 0 4px;
+  margin: 10px 0 4px;
+  --wrap-pad: 0px;
 }
 .ww-search-icon {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  position: absolute; left: calc(var(--wrap-pad) + 10px); top: 50%; transform: translateY(-50%);
   color: var(--muted); pointer-events: none;
 }
 .ww-search-input {
@@ -447,13 +453,16 @@ html, body { background: var(--bg); }
 .ww-search-input:focus { border-color: var(--accent); }
 .ww-search-input::placeholder { color: var(--muted); }
 .ww-search-clear {
-  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: calc(var(--wrap-pad) + 4px); top: 50%; transform: translateY(-50%);
   background: transparent; border: none; color: var(--muted);
   width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
   cursor: pointer; border-radius: 6px;
   -webkit-tap-highlight-color: transparent;
 }
 .ww-search-clear:hover { color: var(--text); background: var(--ad); }
+.ww-search-count {
+  font-size: 11px; color: var(--muted); margin: 10px 0 6px; font-style: italic;
+}
 /* Cardio badge inside exercise rows */
 .ww-ex-badge {
   display: inline-flex; align-items: center; gap: 3px;
@@ -471,10 +480,10 @@ html, body { background: var(--bg); }
   display: flex; align-items: center; gap: 8px;
 }
 .ww-section-hint { font-weight: 400; letter-spacing: 0; font-style: italic; font-size: 10px; text-transform: none; }
-.ww-focus-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.ww-focus-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 4px; }
 .ww-focus-chip {
   display: flex; align-items: center; gap: 5px;
-  padding: 6px 10px; background: var(--s1); border: 1px solid var(--border);
+  padding: 5px 9px; background: var(--s1); border: 1px solid var(--border);
   border-radius: 20px; font-size: 11px; font-weight: 700; color: var(--muted);
   cursor: pointer; transition: all 0.15s; font-family: 'Nunito', sans-serif;
 }
@@ -482,11 +491,13 @@ html, body { background: var(--bg); }
 .ww-exercise-list { display: flex; flex-direction: column; gap: 4px; }
 .ww-ex-row {
   display: flex; align-items: center; gap: 10px;
-  min-height: 44px; padding: 10px 12px; background: var(--s1); border: 1px solid transparent;
+  min-height: 40px; padding: 8px 10px; background: var(--s1); border: 1px solid transparent;
   border-radius: 8px; cursor: pointer; transition: all 0.15s;
   font-family: 'Nunito', sans-serif; text-align: left; width: 100%;
   -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
 }
+.ww-ex-row:hover { border-color: var(--ad2); }
 .ww-ex-row.checked { background: var(--ad); border-color: var(--ad2); }
 .ww-ex-check {
   width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border);
@@ -495,6 +506,15 @@ html, body { background: var(--bg); }
 }
 .ww-ex-row.checked .ww-ex-check { background: var(--accent); border-color: var(--accent); color: #0a0804; }
 .ww-ex-name { font-size: 14px; color: var(--text); flex: 1; min-width: 0; }
+.ww-ex-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ww-ex-info-btn:hover { color: var(--accent); border-color: color-mix(in srgb, var(--primary) 45%, transparent); background: var(--ad); }
+.ww-ex-info-btn:active { transform: scale(0.94); }
 .ww-auto-note { font-size: 11px; color: var(--muted); font-style: italic; padding: 10px 0; }
 .ww-rest-msg {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -832,16 +852,22 @@ html, body { background: var(--bg); }
   .ww-day-editor { padding: 12px; }
   .ww-day-name { font-size: 18px; }
   .ww-day-count { display: block; margin-left: 0; font-size: 10px; }
-  .ww-focus-chip { padding: 8px 12px; font-size: 12px; min-height: 36px; }
-  /* sticky search bar within the day editor */
+  .ww-focus-chip { padding: 6px 11px; font-size: 12px; min-height: 32px; }
+  /* sticky search bar within the day editor.
+     We bleed to the card edges via negative margin + padding so the input
+     stays full-width while sticky. The 12px horizontal padding is reported
+     through --wrap-pad so the search icon / clear button stay inside the
+     input's left/right edges instead of overlapping the wrap padding. */
   .ww-day-editor .ww-search-wrap {
     position: sticky;
     top: calc(var(--hdr-h) + 54px + 56px);
     z-index: 47;
     background: var(--s2);
-    margin: 12px -12px 4px;
+    margin: 10px -12px 4px;
     padding: 6px 12px 4px;
+    --wrap-pad: 12px;
   }
+  .ww-ex-info-btn { width: 34px; height: 34px; }
 }
 
 /* ── REVIEW ── */
