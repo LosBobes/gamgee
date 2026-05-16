@@ -1,0 +1,24 @@
+# Lint config for the FastAPI backend. Lean ruleset on purpose — the bigger
+# the set, the more drive-by edits PRs need.
+line-length = 100
+target-version = "py312"
+exclude = [".venv", "build", "dist", "__pycache__"]
+
+[lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "I",   # isort import-order
+  "B",   # flake8-bugbear
+  "UP",  # pyupgrade
+  "W",   # pycodestyle warnings
+]
+# Keep these noisy rules off — they're not load-bearing for safety.
+ignore = [
+  "E501",  # line-too-long — already capped at 100 above and we use long
+           # f-string error messages occasionally.
+  "B008",  # function calls in defaults — FastAPI's Depends(...) pattern.
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E402"]  # tests intentionally import after setting env vars

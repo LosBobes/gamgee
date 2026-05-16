@@ -11,3 +11,6 @@ python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.9
 httpx>=0.27.0
 pywebpush>=2.0.0
+# Optional: enable the AI coach (/api/coach-ai). The router falls back to a
+# 503 when ANTHROPIC_API_KEY is unset.
+anthropic>=0.40.0

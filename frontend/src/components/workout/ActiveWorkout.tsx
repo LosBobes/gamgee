@@ -6,6 +6,7 @@ import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
 import { useTxt } from "../../context/ToneContext";
 import OnboardingHint from "../OnboardingHint";
+import { useWorkoutHotkeys } from "../../hooks/useWorkoutHotkeys";
 
 interface Props {
   exercises:      WorkoutExercise[];
@@ -26,6 +27,32 @@ interface Props {
 export default function ActiveWorkout({ exercises, prs, history, doneSets, progressionSpeed, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [showPick, setShowPick] = useState(false);
   const t = useTxt();
+
+  // Space toggles the next not-yet-done set on the first exercise that has
+  // one. Arrow shortcuts adjust the first not-yet-done set's reps / weight.
+  const firstPending = (() => {
+    for (const ex of exercises) {
+      const idx = ex.sets.findIndex(s => !s.done);
+      if (idx !== -1) return { uid: ex.uid, idx, ex };
+    }
+    return null;
+  })();
+  useWorkoutHotkeys(true, {
+    onSpace: () => {
+      if (firstPending) toggleSet(firstPending.uid, firstPending.idx);
+    },
+    onAdjustReps: (delta) => {
+      if (!firstPending) return;
+      const cur = parseInt(firstPending.ex.sets[firstPending.idx].reps) || 0;
+      updateSet(firstPending.uid, firstPending.idx, "reps", String(Math.max(0, cur + delta)));
+    },
+    onAdjustWeight: (delta) => {
+      if (!firstPending) return;
+      const cur = parseFloat(firstPending.ex.sets[firstPending.idx].weight) || 0;
+      const next = Math.max(0, Math.round((cur + delta) * 100) / 100);
+      updateSet(firstPending.uid, firstPending.idx, "weight", String(next));
+    },
+  });
 
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);

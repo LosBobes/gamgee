@@ -40,6 +40,7 @@ import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { registerServiceWorker } from "./push";
 import { useAutoSaveWorkout, loadSavedWorkout, clearSavedWorkout } from "./hooks/useAutoSaveWorkout";
+import { useAppBadge } from "./hooks/useAppBadge";
 
 
 interface WorkoutTrackerProps {
@@ -135,6 +136,10 @@ export default function WorkoutTracker({
 
   // Auto-save the in-progress workout so a refresh or crash doesn't lose it.
   useAutoSaveWorkout(active, startTs, focus, exercises);
+
+  // PWA icon badge tracks unread notifications + unread chat messages.
+  const unreadConvCount = conversations.reduce((a, c) => a + (c.unread_count || 0), 0);
+  useAppBadge(unreadCount + unreadConvCount);
 
   // On mount, restore any saved-in-progress workout once we know the user is
   // signed in. We don't run inside the auth-screen branch.
