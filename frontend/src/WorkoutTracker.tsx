@@ -30,6 +30,7 @@ import LiveSessionViewer from "./components/LiveSessionViewer";
 import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
+import InstallNag from "./components/InstallNag";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
@@ -38,6 +39,7 @@ import { useChatSocket } from "./hooks/useChatSocket";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { registerServiceWorker } from "./push";
+import { useAutoSaveWorkout, loadSavedWorkout, clearSavedWorkout } from "./hooks/useAutoSaveWorkout";
 
 
 interface WorkoutTrackerProps {
@@ -130,6 +132,28 @@ export default function WorkoutTracker({
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
+
+  // Auto-save the in-progress workout so a refresh or crash doesn't lose it.
+  useAutoSaveWorkout(active, startTs, focus, exercises);
+
+  // On mount, restore any saved-in-progress workout once we know the user is
+  // signed in. We don't run inside the auth-screen branch.
+  const restoredRef = useRef(false);
+  useEffect(() => {
+    if (restoredRef.current || !token || active) return;
+    const snap = loadSavedWorkout();
+    if (!snap || !snap.active) return;
+    if (!confirm("Resume your in-progress workout?")) {
+      clearSavedWorkout();
+      restoredRef.current = true;
+      return;
+    }
+    setActive(true);
+    setStartTs(snap.startTs);
+    setFocus(snap.focus);
+    setExercises(snap.exercises);
+    restoredRef.current = true;
+  }, [token, active]);
 
   // A ?conv=<id> URL param (set by push-notification click-throughs for
   // chat messages) deep-links straight to that conversation. Read it once on
@@ -627,6 +651,7 @@ export default function WorkoutTracker({
     setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
     setWStep(0); setPlanned([]); setFocus(null);
     setCardio({ timing: "none", before: null, after: null });
+    clearSavedWorkout();
     setCompleted(session);
   };
 
@@ -853,6 +878,7 @@ export default function WorkoutTracker({
         {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
+      <InstallNag />
       {viewedLiveSession && (
         <LiveSessionViewer
           session={viewedLiveSession}

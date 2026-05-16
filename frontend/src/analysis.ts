@@ -2,6 +2,106 @@ import type { WorkoutSession, StatusDef, ProgressionSpeed } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1 } from "./utils";
 
+export interface E1RMPoint { date: string; e1rm: number; topW: number; topR: number; }
+
+/**
+ * For each session in `history` that contains `exId`, compute the best e1RM
+ * across that session's sets (Epley). Returns oldest-first so a chart can
+ * render left-to-right without re-sorting.
+ */
+export function e1rmHistory(exId: string, history: WorkoutSession[]): E1RMPoint[] {
+  const points: E1RMPoint[] = [];
+  [...history].reverse().forEach(w => {
+    const ex = w.exercises.find(e => e.id === exId);
+    if (!ex) return;
+    let best: E1RMPoint | null = null;
+    for (const set of ex.sets) {
+      const wt = parseFloat(set.weight);
+      const rp = parseInt(set.reps);
+      if (!Number.isFinite(wt) || !Number.isFinite(rp) || wt <= 0 || rp <= 0) continue;
+      const est = orm1(wt, rp);
+      if (!best || est > best.e1rm) {
+        best = { date: w.date, e1rm: Math.round(est * 10) / 10, topW: wt, topR: rp };
+      }
+    }
+    if (best) points.push(best);
+  });
+  return points;
+}
+
+/**
+ * Weekly volume per muscle group over the past `weeks` weeks. Each set
+ * contributes (weight * reps) to its primary muscle group, weighted at 100%,
+ * and to its secondary group at 50%.
+ */
+export function volumeByGroup(
+  history: WorkoutSession[],
+  muscleMap: Record<string, { p: string[]; s: string[] }>,
+  groupMap: Record<string, string>,  // muscle id -> group id
+  weeks: number = 4,
+): Record<string, number> {
+  const cutoff = Date.now() - weeks * 7 * 24 * 3600 * 1000;
+  const totals: Record<string, number> = {};
+  for (const session of history) {
+    const ts = Date.parse(session.date);
+    if (Number.isFinite(ts) && ts < cutoff) continue;
+    for (const ex of session.exercises) {
+      const muscles = muscleMap[ex.id];
+      if (!muscles) continue;
+      let exVolume = 0;
+      for (const set of ex.sets) {
+        if (!set.done) continue;
+        const w = parseFloat(set.weight);
+        const r = parseInt(set.reps);
+        if (Number.isFinite(w) && Number.isFinite(r) && w > 0 && r > 0) {
+          exVolume += w * r;
+        }
+      }
+      if (exVolume <= 0) continue;
+      for (const mid of muscles.p || []) {
+        const g = groupMap[mid];
+        if (!g) continue;
+        totals[g] = (totals[g] ?? 0) + exVolume;
+      }
+      for (const mid of muscles.s || []) {
+        const g = groupMap[mid];
+        if (!g) continue;
+        totals[g] = (totals[g] ?? 0) + exVolume * 0.5;
+      }
+    }
+  }
+  return totals;
+}
+
+/**
+ * Compute a current streak counted in "training days within the last N days",
+ * tolerant of REST_TOLERANCE rest days between sessions. Mirrors the
+ * server-side computation in /api/streaks but operates on cached history so
+ * the UI can render before the network round-trip.
+ */
+const REST_TOLERANCE = 2;
+export function currentStreak(history: WorkoutSession[], today: Date = new Date()): number {
+  const dates = [...new Set(
+    history.map(h => h.date && h.date.slice(0, 10)).filter(Boolean) as string[]
+  )].sort();
+  if (!dates.length) return 0;
+  const last = new Date(dates[dates.length - 1] + "T00:00:00");
+  const gapToToday = Math.floor((today.getTime() - last.getTime()) / 86400000);
+  if (gapToToday > REST_TOLERANCE + 1) return 0;
+  let run = 1;
+  for (let i = dates.length - 1; i > 0; i--) {
+    const a = new Date(dates[i - 1] + "T00:00:00").getTime();
+    const b = new Date(dates[i] + "T00:00:00").getTime();
+    const gap = Math.round((b - a) / 86400000);
+    if (gap <= REST_TOLERANCE + 1) {
+      run++;
+    } else {
+      break;
+    }
+  }
+  return run;
+}
+
 export interface SessionSummary { date: string; topW: number; topR: number; totalSets: number; }
 export interface AnalysisResult {
   sessions: SessionSummary[];

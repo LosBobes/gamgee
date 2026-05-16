@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye, Timer, Calculator } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
+import RestTimer from "./RestTimer";
+import PlateCalculatorModal from "./PlateCalculatorModal";
 
 interface Props {
   ex:         WorkoutExercise;
@@ -92,12 +94,39 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
+function defaultRestForExercise(exId: string): number {
+  // Compound lifts: 3 min by default; isolation: 90 s. Tweak per exercise key.
+  const COMPOUND = ["squat", "bench", "deadlift", "ohp", "rdl", "front-squat", "press"];
+  return COMPOUND.includes(exId) ? 180 : 90;
+}
+
+function loadStoredRest(exId: string, fallback: number): number {
+  const raw = localStorage.getItem(`gamgee_rest_${exId}`);
+  const v = parseInt(raw || "");
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+}
+
 export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
+  const [timerOpen, setTimerOpen] = useState(false);
+  const [plateTarget, setPlateTarget] = useState<number | null>(null);
   const doneCt = ex.sets.filter(s => s.done).length;
   const m      = EM[ex.id] || { p: [], s: [] };
+  const restSeconds = loadStoredRest(ex.id, defaultRestForExercise(ex.id));
+
+  // Auto-open the rest timer when a strength set is marked done for the first
+  // time. Tracked by counting `done` sets — only opens on increases so toggling
+  // off doesn't reopen.
+  const lastDoneCtRef = useRef(doneCt);
+  useEffect(() => {
+    if (ex.type !== "strength") { lastDoneCtRef.current = doneCt; return; }
+    if (doneCt > lastDoneCtRef.current) {
+      setTimerOpen(true);
+    }
+    lastDoneCtRef.current = doneCt;
+  }, [doneCt, ex.type]);
 
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
@@ -154,6 +183,32 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
           </div>
         </div>
         <div className="ex-hdr-actions">
+          {ex.type === "strength" && (
+            <button
+              type="button"
+              className="btn-icon btn-inspect"
+              onClick={() => {
+                const latest = [...ex.sets].reverse().find(s => parseFloat(s.weight) > 0);
+                const t = latest ? parseFloat(latest.weight) : 60;
+                setPlateTarget(Number.isFinite(t) ? t : 60);
+              }}
+              aria-label="Plate calculator"
+              title="Plate calculator"
+            >
+              <Calculator size={14} />
+            </button>
+          )}
+          {ex.type === "strength" && (
+            <button
+              type="button"
+              className="btn-icon btn-inspect"
+              onClick={() => setTimerOpen(true)}
+              aria-label="Rest timer"
+              title="Rest timer"
+            >
+              <Timer size={14} />
+            </button>
+          )}
           <button
             type="button"
             className="btn-icon btn-inspect"
@@ -281,6 +336,19 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
         exerciseId={ex.id}
         exerciseName={ex.name}
         onClose={() => setInspectOpen(false)}
+      />
+    )}
+    {timerOpen && (
+      <RestTimer
+        initialSeconds={restSeconds}
+        onClose={() => setTimerOpen(false)}
+        onChangeDefault={(s) => localStorage.setItem(`gamgee_rest_${ex.id}`, String(s))}
+      />
+    )}
+    {plateTarget !== null && (
+      <PlateCalculatorModal
+        initialTarget={plateTarget}
+        onClose={() => setPlateTarget(null)}
       />
     )}
     </>

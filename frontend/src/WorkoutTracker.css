@@ -3218,3 +3218,165 @@ html, body { background: var(--bg); }
   /* set-inp is a tiny weight/reps cell — keep readable but avoid zoom */
   .set-inp { font-size: 16px; }
 }
+
+/* ── Rest timer ──────────────────────────────────────────────────────────── */
+.rest-timer {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-2, #1b1f24);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
+  min-width: 280px;
+}
+.rest-timer-row { display: flex; align-items: center; gap: 10px; }
+.rest-timer-time {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex: 1;
+  color: var(--primary);
+}
+.rest-timer-btn {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 8px;
+  padding: 6px 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.rest-timer-btn:hover { background: var(--ad, #ffffff14); }
+.rest-timer-close { color: var(--muted); }
+.rest-timer-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+.rest-timer-preset {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border, #2a2f36);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.rest-timer-preset.active {
+  background: var(--ad, #ffffff14);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ── Plate calculator ────────────────────────────────────────────────────── */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1100;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-card {
+  background: var(--bg-2, #1b1f24);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 14px;
+  padding: 18px;
+  max-width: 420px;
+  width: 100%;
+}
+.modal-hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.modal-hdr h3 { margin: 0; font-size: 16px; }
+.plate-calc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 14px;
+}
+.plate-calc-row label {
+  display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted);
+}
+.plate-calc-row input {
+  padding: 8px; border-radius: 8px; border: 1px solid var(--border, #2a2f36);
+  background: var(--bg, #11151a); color: inherit; font-size: 16px;
+}
+.plate-calc-unit { display: flex; gap: 4px; }
+.plate-calc-unit button {
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border, #2a2f36);
+  background: transparent; color: inherit; cursor: pointer; font-size: 12px;
+}
+.plate-calc-unit button.active {
+  border-color: var(--primary); color: var(--primary);
+  background: var(--ad, #ffffff14);
+}
+.plate-calc-result {
+  background: var(--bg, #11151a);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 10px;
+  padding: 12px;
+}
+.plate-calc-summary { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.plate-calc-used { font-size: 13px; color: var(--muted); }
+.plate-calc-rem { color: #ff9b6b; font-weight: 600; }
+.plate-calc-visual {
+  display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap;
+}
+.plate-pill {
+  font-family: ui-monospace, monospace;
+  background: var(--primary);
+  color: #0c1014;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── e1RM chart ──────────────────────────────────────────────────────────── */
+.e1rm-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--text, #e8eef5);
+}
+.chart-empty {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--bg, #11151a);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Install nag (iOS PWA hint) ──────────────────────────────────────────── */
+.install-nag {
+  position: fixed; left: 12px; right: 12px; bottom: 12px; z-index: 950;
+  background: var(--bg-2, #1b1f24);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex; gap: 10px; align-items: flex-start;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.4);
+}
+.install-nag-body { flex: 1; font-size: 13px; line-height: 1.45; }
+.install-nag-body strong { color: var(--primary); }
+.install-nag button {
+  background: transparent; color: inherit;
+  border: 1px solid var(--border, #2a2f36); border-radius: 8px;
+  padding: 6px 10px; cursor: pointer; font-size: 12px;
+}
+.install-nag button.primary { background: var(--primary); color: #0c1014; border-color: var(--primary); }
+
+/* ── AMOLED black variant ────────────────────────────────────────────────── */
+:root[data-theme="amoled"] {
+  --bg: #000000;
+  --bg-2: #050505;
+  --bg-3: #0a0a0a;
+  --border: #1a1a1a;
+}

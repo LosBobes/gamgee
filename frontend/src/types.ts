@@ -270,3 +270,78 @@ export interface ChatMessage {
 }
 // activeMuscles removed — SuggCard uses pre-computed newP/ovP/newS from SuggExercise
 export interface SuggCardProps { ex: SuggExercise; isAdded: boolean; onAdd: () => void; onRemove: () => void; onHover: () => void; onLeave: () => void; }
+
+// ── Templates / Notes / Streaks / Soreness / 2FA ──────────────────────────
+export interface WorkoutTemplate {
+  id: number;
+  user_id: number;
+  name: string;
+  focus: string | null;
+  description: string | null;
+  exercises: WorkoutExercise[];
+  is_shared: boolean;
+  created_at: number;
+  last_used_at: number | null;
+}
+
+export interface ExerciseNote {
+  exercise_id: string;
+  body: string;
+  updated_at: number;
+}
+
+export interface StreakBadge {
+  badge_id: string;
+  earned_at: number;
+  label: string;
+  description: string;
+  icon: string | null;
+  meta: unknown;
+}
+
+export interface StreakSummary {
+  current_streak: number;
+  best_streak: number;
+  sessions_total: number;
+  days_active_30: number;
+  last_workout_date: string | null;
+  earned_badges: StreakBadge[];
+}
+
+export interface SorenessLog {
+  id?: number;
+  date: string;
+  sleep: number | null;
+  stress: number | null;
+  motivation: number | null;
+  soreness_map: Record<string, number>;
+  note: string | null;
+  created_at?: number;
+}
+
+export interface TwoFactorStatus {
+  enrolled: boolean;
+  enabled: boolean;
+  recovery_codes_left: number;
+}
+
+export interface TwoFactorEnrollment {
+  secret: string;
+  otpauth_url: string;
+  recovery_codes: string[];
+}
+
+export interface CoachAIResponse {
+  answer: string;
+  model: string | null;
+  cached: boolean;
+}
+
+// Optional per-set fields persisted alongside weight/reps/done in the JSONB
+// `exercises` payload. The backend doesn't enforce them — older sessions
+// simply omit the fields.
+export interface ExtendedWorkoutSet extends WorkoutSet {
+  rpe?: number | null;
+  rir?: number | null;
+  rest_seconds?: number | null;
+}
