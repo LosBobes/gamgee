@@ -3,6 +3,8 @@ import { X, Pause, Play } from "lucide-react";
 import ExerciseAnimation from "./ExerciseAnimation";
 import { snapshotMotion } from "../../data/motionStorage";
 import { EXERCISE_INFO } from "../../data/exerciseInfo";
+import { EM } from "../../data/exercises";
+import { MI } from "../../data/muscles";
 
 interface Props {
   exerciseId: string;
@@ -13,6 +15,8 @@ interface Props {
 export default function ExerciseInspectModal({ exerciseId, exerciseName, onClose }: Props) {
   const motion = snapshotMotion(exerciseId);
   const info = EXERCISE_INFO[exerciseId];
+  const m = EM[exerciseId] || { p: [], s: [] };
+  const hasMuscles = m.p.length > 0 || m.s.length > 0;
   const [paused, setPaused] = useState(false);
 
   useEffect(() => {
@@ -63,11 +67,22 @@ export default function ExerciseInspectModal({ exerciseId, exerciseName, onClose
           <div className="ex-inspect-no-anim">No animation available for this exercise yet.</div>
         )}
 
-        {info && (
+        {hasMuscles && (
+          <div className="ex-inspect-muscles">
+            {m.p.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
+            {m.s.map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
+          </div>
+        )}
+
+        {info ? (
           <div className="ex-inspect-info">
             <div className="ex-inspect-row"><span className="label">Setup</span><span>{info.setup}</span></div>
             <div className="ex-inspect-row"><span className="label">Execute</span><span>{info.execute}</span></div>
             <div className="ex-inspect-row"><span className="label">Cue</span><span>{info.cue}</span></div>
+          </div>
+        ) : (
+          <div className="ex-inspect-info">
+            <div className="ex-inspect-row ex-inspect-empty">No how-to written for this exercise yet.</div>
           </div>
         )}
       </div>
