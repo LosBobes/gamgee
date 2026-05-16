@@ -110,6 +110,55 @@ describe("analyzeEx", () => {
     expect(res.nextWeight).toBe(105);
   });
 
+  it("picks the heaviest set's reps for topR (not max-of-each-column)", () => {
+    // Session has a heavy triple and a light high-rep set. The top set is
+    // 100kg×3, so est1RM should be orm1(100, 3) = 110 — not orm1(100, 12).
+    const multiSet: WorkoutSession = {
+      id: "ms",
+      date: "2026-05-01",
+      duration: 0,
+      exercises: [
+        {
+          id: "bench",
+          name: "Bench Press",
+          type: "strength",
+          uid: "bench_ms",
+          sets: [
+            { weight: "100", reps: "3", done: true },
+            { weight: "80", reps: "12", done: true },
+          ],
+        },
+      ],
+    };
+    const res = analyzeEx("bench", [multiSet])!;
+    expect(res.last.topW).toBe(100);
+    expect(res.last.topR).toBe(3);
+    expect(res.est1RM).toBe(110);
+  });
+
+  it("ties on weight break to the set with more reps", () => {
+    const session: WorkoutSession = {
+      id: "tie",
+      date: "2026-05-01",
+      duration: 0,
+      exercises: [
+        {
+          id: "bench",
+          name: "Bench Press",
+          type: "strength",
+          uid: "bench_tie",
+          sets: [
+            { weight: "80", reps: "5", done: true },
+            { weight: "80", reps: "8", done: true },
+          ],
+        },
+      ],
+    };
+    const res = analyzeEx("bench", [session])!;
+    expect(res.last.topW).toBe(80);
+    expect(res.last.topR).toBe(8);
+  });
+
   it("skips sets with no parsable weight", () => {
     const empty: WorkoutSession = {
       id: "x",
