@@ -31,6 +31,7 @@ import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
 import InstallNag from "./components/InstallNag";
+import TemplatesPickerModal from "./components/workout/TemplatesPickerModal";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
@@ -131,6 +132,7 @@ export default function WorkoutTracker({
   // wizards and tabs that read ALL_EX/EM to re-render against the mutated catalog.
   const [, setCustomExBump] = useState(0);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   useEffect(() => subscribeCustomExercises(() => setCustomExBump(v => v + 1)), []);
 
@@ -683,6 +685,21 @@ export default function WorkoutTracker({
     setWStep(0);
   }, [history]);
 
+  const applyTemplate = useCallback((tpl: { exercises: WorkoutExercise[]; focus: string | null }) => {
+    const cloned: WorkoutExercise[] = tpl.exercises.map(ex => ({
+      ...ex,
+      uid: `${ex.id}_${Date.now()}_${Math.random()}`,
+      sets: (ex.sets || []).map(s => ({ weight: s.weight ?? "", reps: s.reps ?? "", done: false })),
+    }));
+    setTemplatePickerOpen(false);
+    setActive(true);
+    setStartTs(Date.now());
+    setElapsed(0);
+    setExercises(cloned);
+    setFocus(tpl.focus);
+    setWStep(0);
+  }, []);
+
   // ── History management ──
 
   const deleteWorkout = (id: string) => {
@@ -802,7 +819,7 @@ export default function WorkoutTracker({
         ["chat", "coaching", "trainees", "regimes"].includes(tab) ? " content-wide" : ""
       }`}>
         {completed && (
-          <WorkoutComplete session={completed} onDone={dismissCompleted} />
+          <WorkoutComplete session={completed} onDone={dismissCompleted} authFetch={authFetch} />
         )}
         {!completed && tab === "workout" && (
           <WorkoutTab
@@ -820,6 +837,7 @@ export default function WorkoutTracker({
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
             onRepeatLast={history.length > 0 ? repeatLastSession : undefined}
+            onUseTemplate={() => setTemplatePickerOpen(true)}
           />
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
@@ -903,6 +921,13 @@ export default function WorkoutTracker({
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       <InstallNag />
+      {templatePickerOpen && (
+        <TemplatesPickerModal
+          authFetch={authFetch}
+          onClose={() => setTemplatePickerOpen(false)}
+          onPick={applyTemplate}
+        />
+      )}
       {viewedLiveSession && (
         <LiveSessionViewer
           session={viewedLiveSession}

@@ -5,10 +5,12 @@ import { EM } from "../../data/exercises";
 import { MI } from "../../data/muscles";
 import { pickStretches, type Stretch } from "../../data/stretches";
 import { useTxt } from "../../context/ToneContext";
+import SaveTemplateButton from "./SaveTemplateButton";
 
 interface Props {
   session: WorkoutSession;
   onDone: () => void;
+  authFetch?: (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
 // Collect every muscle group hit during the session (primary + secondary).
@@ -25,7 +27,7 @@ function workedGroups(session: WorkoutSession): Set<string> {
   return groups;
 }
 
-export default function WorkoutComplete({ session, onDone }: Props) {
+export default function WorkoutComplete({ session, onDone, authFetch }: Props) {
   const [stage, setStage] = useState<"prompt" | "stretch">("prompt");
   const [doneIdx, setDoneIdx] = useState<Set<number>>(new Set());
   const t = useTxt();
@@ -52,6 +54,12 @@ export default function WorkoutComplete({ session, onDone }: Props) {
             </div>
           </div>
         </div>
+
+        {authFetch && (
+          <div style={{ marginTop: 16, marginBottom: 16, display: "flex", justifyContent: "center" }}>
+            <SaveTemplateButton session={session} authFetch={authFetch} />
+          </div>
+        )}
 
         <div className="complete-actions">
           <button className="btn-secondary" onClick={onDone}>

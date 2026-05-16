@@ -38,6 +38,7 @@ interface Props {
   isNewPr:         (exId: string, weight: string) => boolean;
   finishWorkout:   () => void;
   onRepeatLast?:   () => void;
+  onUseTemplate?:  () => void;
 }
 
 export default function WorkoutTab({
@@ -46,7 +47,7 @@ export default function WorkoutTab({
   weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout,
-  onRepeatLast,
+  onRepeatLast, onUseTemplate,
 }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack   = wStep < prevStepRef.current;
@@ -58,7 +59,7 @@ export default function WorkoutTab({
       {/* Step 0 — landing */}
       {!active && wStep === 0 && (
         <div key="wstep-0" className={stepAnim}>
-          <WizardStart lastSession={history[0] ?? null} onStart={() => setWStep(1)} onRepeatLast={onRepeatLast} />
+          <WizardStart lastSession={history[0] ?? null} onStart={() => setWStep(1)} onRepeatLast={onRepeatLast} onUseTemplate={onUseTemplate} />
         </div>
       )}
 
