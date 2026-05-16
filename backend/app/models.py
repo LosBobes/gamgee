@@ -490,3 +490,144 @@ class ExerciseMotion(Base):
     floor = Column(Boolean, nullable=False, default=False)
     rig = Column(JSONB, nullable=False, default=dict)
     frames = Column(JSONB, nullable=False, default=list)
+
+
+# ── User extensions (templates, notes, audit, security) ──────────────────────
+
+class WorkoutTemplate(Base):
+    """Reusable named workout (Push A, Vacation hotel-gym, etc.).
+    `exercises` mirrors the JSONB shape used by WorkoutSession.exercises."""
+    __tablename__ = "workout_templates"
+    __table_args__ = (
+        Index("ix_templates_user", "user_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    focus = Column(String(60), nullable=True)
+    description = Column(Text, nullable=True)
+    exercises = Column(JSONB, nullable=False, default=list)
+    is_shared = Column(Boolean, nullable=False, default=False)
+    created_at = Column(BigInteger, nullable=False, default=0)
+    last_used_at = Column(BigInteger, nullable=True)
+
+
+class ExerciseNote(Base):
+    """Per-user free-text note attached to an exercise id. Surfaces next time
+    the user logs that exercise."""
+    __tablename__ = "exercise_notes"
+    __table_args__ = (
+        UniqueConstraint("user_id", "exercise_id", name="uq_exercise_note"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    exercise_id = Column(String, nullable=False)
+    body = Column(Text, nullable=False, default="")
+    updated_at = Column(BigInteger, nullable=False, default=0)
+
+
+class AuditEvent(Base):
+    """Immutable record of admin / trainer / security-sensitive actions.
+    `before` / `after` are JSONB snapshots when relevant; missing for non-CRUD
+    events (e.g. login, 2fa-enroll)."""
+    __tablename__ = "audit_events"
+    __table_args__ = (
+        Index("ix_audit_actor_ts", "actor_id", "created_at"),
+        Index("ix_audit_action", "action"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    actor_username = Column(String(50), nullable=True)
+    action = Column(String(60), nullable=False)
+    target_type = Column(String(40), nullable=True)
+    target_id = Column(String(80), nullable=True)
+    before = Column(JSONB, nullable=True)
+    after = Column(JSONB, nullable=True)
+    note = Column(Text, nullable=True)
+    ip = Column(String(64), nullable=True)
+    created_at = Column(BigInteger, nullable=False, default=0, index=True)
+
+
+class RefreshToken(Base):
+    """Opaque server-side refresh token. Hashing (SHA-256) means the DB row
+    alone can't be replayed. `revoked_at` doubles as a "logout all devices"
+    surface — flip every row for a user."""
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (
+        Index("ix_refresh_user_active", "user_id", "revoked_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    user_agent = Column(String(500), nullable=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+    expires_at = Column(BigInteger, nullable=False, default=0)
+    revoked_at = Column(BigInteger, nullable=True)
+
+
+class TotpSecret(Base):
+    """Per-user TOTP secret for 2FA. `enabled_at` flips when the user has
+    confirmed a working setup. Recovery codes are stored as SHA-256 hashes
+    of one-time-use codes in `recovery_hashes` (JSONB list of strings)."""
+    __tablename__ = "totp_secrets"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    secret = Column(String(64), nullable=False)
+    enabled_at = Column(BigInteger, nullable=True)
+    recovery_hashes = Column(JSONB, nullable=False, default=list)
+    created_at = Column(BigInteger, nullable=False, default=0)
+
+
+class Mesocycle(Base):
+    """Multi-week training block. `weeks` is a JSONB list of week records,
+    each with a regime-like `days` map plus progression rules (RPE cap,
+    weight bump, deload flag)."""
+    __tablename__ = "mesocycles"
+    __table_args__ = (
+        Index("ix_mesocycles_owner", "owner_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    description = Column(Text, nullable=True)
+    weeks = Column(JSONB, nullable=False, default=list)
+    rules = Column(JSONB, nullable=False, default=dict)
+    created_at = Column(BigInteger, nullable=False, default=0)
+
+
+class EarnedBadge(Base):
+    """A badge unlocked by a user (streak, milestone, challenge)."""
+    __tablename__ = "earned_badges"
+    __table_args__ = (
+        UniqueConstraint("user_id", "badge_id", name="uq_earned_badge"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    badge_id = Column(String(60), nullable=False)
+    earned_at = Column(BigInteger, nullable=False, default=0)
+    meta = Column(JSONB, nullable=True)
+
+
+class SorenessLog(Base):
+    """Daily readiness check-in. Sleep / stress on 1–5 scale; soreness per
+    muscle group is in `soreness_map` (JSONB: { group_id: 0..3 })."""
+    __tablename__ = "soreness_logs"
+    __table_args__ = (
+        Index("ix_soreness_user_date", "user_id", "date"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    date = Column(String, nullable=False)  # YYYY-MM-DD
+    sleep = Column(Integer, nullable=True)
+    stress = Column(Integer, nullable=True)
+    motivation = Column(Integer, nullable=True)
+    soreness_map = Column(JSONB, nullable=False, default=dict)
+    note = Column(Text, nullable=True)
+    created_at = Column(BigInteger, nullable=False, default=0)

@@ -1026,3 +1026,160 @@ class MessageCreate(BaseModel):
         if not v:
             raise ValueError("Message cannot be empty")
         return v
+
+
+# ── Templates / Notes / Audit / Streaks / Soreness / Coach AI ───────────────
+
+class TemplateBase(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    focus: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=2000)
+    exercises: list[Any] = []
+    is_shared: bool = False
+
+
+class TemplateCreate(TemplateBase):
+    pass
+
+
+class TemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    focus: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=2000)
+    exercises: list[Any] | None = None
+    is_shared: bool | None = None
+
+
+class TemplateOut(TemplateBase):
+    id: int
+    user_id: int
+    created_at: int = 0
+    last_used_at: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class ExerciseNoteIn(BaseModel):
+    body: str = Field(default="", max_length=4000)
+
+
+class ExerciseNoteOut(BaseModel):
+    exercise_id: str
+    body: str
+    updated_at: int = 0
+
+
+class AuditEventOut(BaseModel):
+    id: int
+    actor_id: int | None = None
+    actor_username: str | None = None
+    action: str
+    target_type: str | None = None
+    target_id: str | None = None
+    note: str | None = None
+    created_at: int = 0
+    before: Any | None = None
+    after: Any | None = None
+    ip: str | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class StreakBadge(BaseModel):
+    badge_id: str
+    earned_at: int
+    label: str
+    description: str
+    icon: str | None = None
+    meta: dict | None = None
+
+
+class StreakSummary(BaseModel):
+    current_streak: int
+    best_streak: int
+    sessions_total: int
+    days_active_30: int
+    last_workout_date: str | None = None
+    earned_badges: list[StreakBadge] = []
+
+
+class SorenessIn(BaseModel):
+    date: str
+    sleep: int | None = Field(default=None, ge=1, le=5)
+    stress: int | None = Field(default=None, ge=1, le=5)
+    motivation: int | None = Field(default=None, ge=1, le=5)
+    soreness_map: dict[str, int] = Field(default_factory=dict)
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class SorenessOut(SorenessIn):
+    id: int
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class CoachAIRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=2000)
+    exercise_id: str | None = None
+
+
+class CoachAIResponse(BaseModel):
+    answer: str
+    model: str | None = None
+    cached: bool = False
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=10, max_length=512)
+
+
+class RefreshOut(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
+
+class TotpEnrollOut(BaseModel):
+    secret: str
+    otpauth_url: str
+    recovery_codes: list[str]
+
+
+class TotpVerifyIn(BaseModel):
+    code: str = Field(min_length=6, max_length=10)
+
+
+class TotpDisableIn(BaseModel):
+    password: str
+    code: str | None = None
+
+
+class LoginTwoFactor(BaseModel):
+    username: str
+    password: str
+    code: str = Field(min_length=6, max_length=10)
+
+
+class AccountDelete(BaseModel):
+    password: str
+    confirm: Literal["DELETE"]
+
+
+class MesocycleBase(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=2000)
+    weeks: list[Any] = []
+    rules: dict[str, Any] = Field(default_factory=dict)
+
+
+class MesocycleCreate(MesocycleBase):
+    pass
+
+
+class MesocycleOut(MesocycleBase):
+    id: int
+    owner_id: int
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}

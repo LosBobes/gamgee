@@ -8,6 +8,8 @@ from .database import Base, engine
 from .routers import (
     items, workouts, prs, auth, health, admin, buddies, notifications, live,
     feedback, events, content, trainers, regimes, assignments, chat,
+    templates, exercise_notes, streaks, soreness, imports, account,
+    coach_ai, auth_ext, audit,
 )
 from .version import __version__
 
@@ -66,6 +68,12 @@ if engine.dialect.name == "postgresql":
         # Exercise description column — added so each exercise can carry a
         # short summary independent of the setup/execute/cue coaching script.
         _conn.execute(text("ALTER TABLE exercises ADD COLUMN IF NOT EXISTS description TEXT"))
+        # User extensions added in the bulk feature upgrade. All ADD COLUMN
+        # IF NOT EXISTS / index-create-if-not-exists, so it's safe to re-run.
+        _conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_workout_sessions_user_date "
+            "ON workout_sessions (user_id, date DESC)"
+        ))
 
 app = FastAPI(title="Gamgee API", version=__version__, redirect_slashes=False)
 
@@ -101,6 +109,15 @@ app.include_router(trainers.router, prefix="/api")
 app.include_router(regimes.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(templates.router, prefix="/api")
+app.include_router(exercise_notes.router, prefix="/api")
+app.include_router(streaks.router, prefix="/api")
+app.include_router(soreness.router, prefix="/api")
+app.include_router(imports.router, prefix="/api")
+app.include_router(account.router, prefix="/api")
+app.include_router(coach_ai.router, prefix="/api")
+app.include_router(auth_ext.router, prefix="/api")
+app.include_router(audit.router, prefix="/api")
 
 
 # Seed any empty content tables on startup so a fresh dev DB or upgrade is
