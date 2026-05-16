@@ -13,6 +13,7 @@ from ..auth import (
 )
 from ..database import get_db
 from ..email_service import send_password_reset_email, send_verification_email
+from ..rate_limit import limit
 from ..tokens import RESET_TOKEN_TTL, VERIFY_TOKEN_TTL, hash_token, new_token, now_utc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -40,7 +41,8 @@ def _issue_verification_email(db: Session, user: models.User) -> None:
     send_verification_email(user.email, user.name, raw)
 
 
-@router.post("/register", response_model=schemas.UserOut, status_code=201)
+@router.post("/register", response_model=schemas.UserOut, status_code=201,
+             dependencies=[Depends(limit("10/hour"))])
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(func.lower(models.User.username) == user_in.username.lower()).first():
         raise HTTPException(status_code=400, detail="Username already taken")
@@ -89,7 +91,8 @@ def register_trainer(payload: schemas.TrainerCreate, db: Session = Depends(get_d
     return user
 
 
-@router.post("/login", response_model=schemas.Token)
+@router.post("/login", response_model=schemas.Token,
+             dependencies=[Depends(limit("20/minute"))])
 def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # Accept "username or email", case-insensitive, with surrounding whitespace
     # stripped — autofill and password managers commonly add either.
@@ -189,7 +192,8 @@ def update_profile(
 
 # ── Password reset ───────────────────────────────────────────────────────────
 
-@router.post("/forgot-password", status_code=202)
+@router.post("/forgot-password", status_code=202,
+             dependencies=[Depends(limit("5/hour"))])
 def forgot_password(body: schemas.ForgotPassword, db: Session = Depends(get_db)):
     """Email a password reset link.
 

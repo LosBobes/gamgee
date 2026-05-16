@@ -28,6 +28,9 @@ def _compile_jsonb_sqlite(type_, compiler, **kw):  # pragma: no cover - trivial
 # Point the app at a throwaway DB URL before any app modules are imported.
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("JWT_SECRET", "test-secret")
+# Disable in-process rate limiting in tests — many fixtures hammer
+# register/login from the same loopback IP.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 from app import database  # noqa: E402  (intentional late import)
 from app.main import app  # noqa: E402

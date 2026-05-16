@@ -11,6 +11,7 @@ from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
 from ..notifications import create_notification, notify_buddies, now_ms, publish_buddy_change
+from ..rate_limit import limit
 
 router = APIRouter(prefix="/buddies", tags=["buddies"])
 
@@ -245,7 +246,8 @@ PRESET_MESSAGES = {
 }
 
 
-@router.post("/{buddy_id}/motivate", status_code=201)
+@router.post("/{buddy_id}/motivate", status_code=201,
+             dependencies=[Depends(limit("30/hour"))])
 def motivate(
     buddy_id: int,
     body: schemas.MotivateBody,

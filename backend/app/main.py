@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
 from .database import Base, engine
+from .observability import init_prometheus, init_sentry
 from .routers import (
     items, workouts, prs, auth, health, admin, buddies, notifications, live,
     feedback, events, content, trainers, regimes, assignments, chat,
@@ -75,7 +76,9 @@ if engine.dialect.name == "postgresql":
             "ON workout_sessions (user_id, date DESC)"
         ))
 
+init_sentry()
 app = FastAPI(title="Gamgee API", version=__version__, redirect_slashes=False)
+init_prometheus(app)
 
 _extra_origins = [o.strip() for o in os.environ.get("CORS_EXTRA_ORIGINS", "").split(",") if o.strip()]
 _app_base = os.environ.get("APP_BASE_URL", "").strip()

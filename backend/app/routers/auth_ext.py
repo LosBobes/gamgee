@@ -19,6 +19,7 @@ from ..auth import (
     verify_password,
 )
 from ..database import get_db
+from ..rate_limit import limit
 from ..security_ext import (
     audit,
     consume_recovery_code,
@@ -34,7 +35,8 @@ from ..security_ext import (
 router = APIRouter(prefix="/auth", tags=["auth-ext"])
 
 
-@router.post("/refresh", response_model=schemas.RefreshOut)
+@router.post("/refresh", response_model=schemas.RefreshOut,
+             dependencies=[Depends(limit("60/minute"))])
 def refresh(body: schemas.RefreshRequest, db: Session = Depends(get_db)):
     user = consume_refresh_token(db, body.refresh_token)
     if not user:
@@ -154,7 +156,8 @@ def status_2fa(
     }
 
 
-@router.post("/2fa/login", response_model=schemas.RefreshOut)
+@router.post("/2fa/login", response_model=schemas.RefreshOut,
+             dependencies=[Depends(limit("20/minute"))])
 def login_with_2fa(
     body: schemas.LoginTwoFactor,
     request: Request,

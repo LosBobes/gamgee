@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas
 from ..auth import get_current_user
 from ..database import get_db
+from ..rate_limit import limit
 
 router = APIRouter(prefix="/coach-ai", tags=["coach-ai"])
 
@@ -85,7 +86,8 @@ def _exercise_history_snippet(db: Session, user_id: int, exercise_id: str, weeks
     return "\n".join(lines)
 
 
-@router.post("/ask", response_model=schemas.CoachAIResponse)
+@router.post("/ask", response_model=schemas.CoachAIResponse,
+             dependencies=[Depends(limit("20/hour"))])
 def ask_coach(
     body: schemas.CoachAIRequest,
     db: Session = Depends(get_db),
