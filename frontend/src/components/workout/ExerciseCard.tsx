@@ -5,8 +5,6 @@ import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
-import { snapshotMotion } from "../../data/motionStorage";
-import { EXERCISE_INFO } from "../../data/exerciseInfo";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 
 interface Props {
@@ -100,7 +98,6 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
   const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
   const m      = EM[ex.id] || { p: [], s: [] };
-  const canInspect = !!snapshotMotion(ex.id) || !!EXERCISE_INFO[ex.id];
 
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
@@ -157,17 +154,15 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
           </div>
         </div>
         <div className="ex-hdr-actions">
-          {canInspect && (
-            <button
-              type="button"
-              className="btn-icon btn-inspect"
-              onClick={() => setInspectOpen(true)}
-              aria-label="Show how-to and animation"
-              title="How-to & animation"
-            >
-              <Eye size={14} />
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn-icon btn-inspect"
+            onClick={() => setInspectOpen(true)}
+            aria-label="Show how-to and animation"
+            title="How-to & animation"
+          >
+            <Eye size={14} />
+          </button>
           <button className="btn-icon" onClick={onRemove} aria-label="Remove exercise"><X size={14} /></button>
         </div>
       </div>

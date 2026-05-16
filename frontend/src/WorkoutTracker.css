@@ -734,6 +734,11 @@ html, body { background: var(--bg); }
   font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 800; letter-spacing: 1.5px;
   color: var(--muted); text-transform: uppercase; padding-top: 3px;
 }
+.ex-inspect-muscles { display: flex; flex-wrap: wrap; gap: 4px; }
+.ex-inspect-row.ex-inspect-empty,
+.sugg-info-row.sugg-info-empty {
+  display: block; color: var(--muted); font-style: italic; font-size: 11px;
+}
 
 /* Inspect button in active-workout exercise card header */
 .ex-hdr-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
