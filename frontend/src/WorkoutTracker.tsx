@@ -660,6 +660,24 @@ export default function WorkoutTracker({
     setTab("history");
   };
 
+  // Repeat the most recent session: pull its exercises into the active state
+  // with sets pre-filled from the previous run but not yet marked done.
+  const repeatLastSession = useCallback(() => {
+    const last = history[0];
+    if (!last) return;
+    const cloned: WorkoutExercise[] = last.exercises.map(ex => ({
+      ...ex,
+      uid: `${ex.id}_${Date.now()}_${Math.random()}`,
+      sets: ex.sets.map(s => ({ weight: s.weight, reps: s.reps, done: false })),
+    }));
+    setActive(true);
+    setStartTs(Date.now());
+    setElapsed(0);
+    setExercises(cloned);
+    setFocus(last.focus ?? null);
+    setWStep(0);
+  }, [history]);
+
   // ── History management ──
 
   const deleteWorkout = (id: string) => {
@@ -796,10 +814,11 @@ export default function WorkoutTracker({
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
+            onRepeatLast={history.length > 0 ? repeatLastSession : undefined}
           />
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
-        {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
+        {!completed && tab === "prs"     && <PRsTab prs={prs} history={history} onDelete={deletePr} />}
         {!completed && tab === "buddies" && (
           <BuddiesTab
             authFetch={authFetch}
@@ -872,9 +891,9 @@ export default function WorkoutTracker({
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} authFetch={authFetch} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
-        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
+        {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} authFetch={authFetch} />}
         {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}

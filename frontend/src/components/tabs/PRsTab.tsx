@@ -1,15 +1,21 @@
-import { Trash2, Trophy } from "lucide-react";
-import type { PRDict } from "../../types";
+import { useState } from "react";
+import { Trash2, Trophy, X } from "lucide-react";
+import type { PRDict, WorkoutSession } from "../../types";
 import { fmtDate, orm1 } from "../../utils";
 import { useTxt } from "../../context/ToneContext";
+import { e1rmHistory } from "../../analysis";
+import E1RMChart from "../E1RMChart";
 
 interface Props {
   prs: PRDict;
+  history?: WorkoutSession[];
   onDelete: (exerciseId: string) => void;
 }
 
-export default function PRsTab({ prs, onDelete }: Props) {
+export default function PRsTab({ prs, history = [], onDelete }: Props) {
   const t = useTxt();
+  const [chartFor, setChartFor] = useState<string | null>(null);
+
   if (Object.keys(prs).length === 0) {
     return (
       <div className="tab-anim">
@@ -18,6 +24,9 @@ export default function PRsTab({ prs, onDelete }: Props) {
     );
   }
 
+  const points = chartFor ? e1rmHistory(chartFor, history) : [];
+  const chartName = chartFor && prs[chartFor] ? prs[chartFor].name : null;
+
   return (
     <div className="tab-anim">
       <p className="pr-header">{(() => { const n = Object.keys(prs).length; return t(`${n} Personal Record${n !== 1 ? "s" : ""}`, `${n} ${n !== 1 ? "Pages" : "Page"} of the Swoly Bible`, `${n} Iconic ${n !== 1 ? "Moments" : "Moment"}`); })()}</p>
@@ -25,10 +34,15 @@ export default function PRsTab({ prs, onDelete }: Props) {
         {Object.entries(prs)
           .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
           .map(([id, pr]) => (
-            <div key={id} className="pr-card">
+            <div
+              key={id}
+              className="pr-card"
+              onClick={() => setChartFor(id)}
+              style={{ cursor: history.length > 0 ? "pointer" : undefined }}
+            >
               <button
                 className="pr-delete-btn"
-                onClick={() => onDelete(id)}
+                onClick={e => { e.stopPropagation(); onDelete(id); }}
                 aria-label={`Delete PR for ${pr.name}`}
               >
                 <Trash2 size={14} />
@@ -47,6 +61,22 @@ export default function PRsTab({ prs, onDelete }: Props) {
             </div>
           ))}
       </div>
+      {chartFor && chartName && (
+        <div className="modal-backdrop" onClick={() => setChartFor(null)}>
+          <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+            <div className="modal-hdr">
+              <h3>{chartName} — est. 1RM</h3>
+              <button className="btn-icon" onClick={() => setChartFor(null)} aria-label="Close"><X size={16} /></button>
+            </div>
+            <E1RMChart points={points} width={340} height={140} />
+            {points.length > 0 && (
+              <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, textAlign: "center" }}>
+                {points.length} session{points.length === 1 ? "" : "s"} · {points[0].date} → {points[points.length - 1].date}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

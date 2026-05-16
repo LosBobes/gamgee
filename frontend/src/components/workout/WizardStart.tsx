@@ -9,11 +9,12 @@ import {
 import OnboardingHint from "../OnboardingHint";
 
 interface Props {
-  lastSession: WorkoutSession | null;
-  onStart:     () => void;
+  lastSession:  WorkoutSession | null;
+  onStart:      () => void;
+  onRepeatLast?: () => void;
 }
 
-export default function WizardStart({ lastSession, onStart }: Props) {
+export default function WizardStart({ lastSession, onStart, onRepeatLast }: Props) {
   const mode = useToneMode();
   const t = useTxt();
   const broQuotes = useBroQuotes();
@@ -53,6 +54,19 @@ export default function WizardStart({ lastSession, onStart }: Props) {
       <button className="btn-start" onClick={onStart} style={{ marginBottom: 12 }}>
         BUILD WORKOUT
       </button>
+      {lastSession && onRepeatLast && (
+        <button
+          type="button"
+          onClick={onRepeatLast}
+          style={{
+            background: "transparent", color: "var(--primary)", border: "1px solid var(--primary)",
+            padding: "10px 18px", borderRadius: 10, cursor: "pointer", fontSize: 12,
+            fontWeight: 700, letterSpacing: "0.04em", textTransform: "uppercase",
+          }}
+        >
+          Repeat last session
+        </button>
+      )}
       {lastSession && (
         <p style={{ fontSize: 11, color: "var(--muted)", marginTop: 12 }}>
           Last session: {fmtDate(lastSession.date)} · {fmtDur(lastSession.duration)}

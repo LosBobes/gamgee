@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, ShieldCheck, Download, Trash2, Upload, Moon } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
@@ -7,6 +7,7 @@ import {
   subscribePush, unsubscribePush,
 } from "../../push";
 import { APP_VERSION } from "../../version";
+import { twoFactorApi, accountApi, importApi } from "../../data/extraApi";
 
 type Gender = "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
 
@@ -582,8 +583,14 @@ export default function SettingsTab({
       <div className="profile-section">{t("Guidance", "Guidance", "Guidance")}</div>
       <OnboardingCard />
 
+      <div className="profile-section">{t("Theme", "Theme")}</div>
+      <AmoledToggle />
+
       <div className="profile-section">{t("Account", "Account")}</div>
       <ChangePasswordCard token={token} />
+      <TwoFactorCard authFetch={authFetch} />
+      <ImportCsvCard authFetch={authFetch} />
+      <DataAccountCard authFetch={authFetch} />
 
       <AboutCard authFetch={authFetch} />
     </div>
@@ -617,5 +624,261 @@ function AboutCard({ authFetch }: { authFetch: (url: string, opts?: RequestInit)
         </div>
       </div>
     </>
+  );
+}
+
+
+// ── Two-factor authentication ────────────────────────────────────────────
+function TwoFactorCard({ authFetch }: { authFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [status, setStatus] = useState<{ enrolled: boolean; enabled: boolean; recovery_codes_left: number } | null>(null);
+  const [enroll, setEnroll] = useState<{ secret: string; otpauth_url: string; recovery_codes: string[] } | null>(null);
+  const [code, setCode] = useState("");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = () => {
+    twoFactorApi.status(authFetch).then(setStatus).catch(() => setStatus(null));
+  };
+  useEffect(refresh, [authFetch]);
+
+  const begin = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const e = await twoFactorApi.enroll(authFetch);
+      setEnroll(e);
+    } catch (err) {
+      setMsg(`Enroll failed: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  };
+
+  const verify = async () => {
+    setBusy(true); setMsg(null);
+    try {
+      const res = await twoFactorApi.verify(authFetch, code.trim());
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `${res.status}`);
+      }
+      setEnroll(null);
+      setCode("");
+      setMsg("Two-factor enabled.");
+      refresh();
+    } catch (err) {
+      setMsg(`Verification failed: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  };
+
+  const disable = async () => {
+    const pwd = prompt("Enter your password to disable 2FA");
+    if (!pwd) return;
+    setBusy(true); setMsg(null);
+    try {
+      const res = await twoFactorApi.disable(authFetch, pwd);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `${res.status}`);
+      }
+      setMsg("Two-factor disabled.");
+      refresh();
+    } catch (err) {
+      setMsg(`Disable failed: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+        <ShieldCheck size={12} /> Two-factor authentication
+      </div>
+      <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>
+        {status?.enabled
+          ? `Enabled. ${status.recovery_codes_left} recovery codes remaining.`
+          : status?.enrolled
+          ? "Enrolled but not yet verified. Enter a code from your authenticator app."
+          : "Not enabled. Add an extra factor to protect your account."}
+      </div>
+      {enroll && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Scan with your authenticator app, then enter the 6-digit code:</div>
+          <div style={{ fontFamily: "monospace", fontSize: 12, wordBreak: "break-all", padding: 8, background: "var(--bg)", borderRadius: 6 }}>
+            {enroll.otpauth_url}
+          </div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>Secret (manual entry): <code>{enroll.secret}</code></div>
+          <details>
+            <summary style={{ fontSize: 12, color: "var(--muted)", cursor: "pointer" }}>Recovery codes (store these safely)</summary>
+            <ul style={{ fontFamily: "monospace", fontSize: 12, marginTop: 6 }}>
+              {enroll.recovery_codes.map(c => <li key={c}>{c}</li>)}
+            </ul>
+          </details>
+          <input
+            type="text" inputMode="numeric" placeholder="123 456" maxLength={10}
+            value={code} onChange={e => setCode(e.target.value)}
+            style={{ padding: 8, borderRadius: 6, border: "1px solid var(--border)", background: "var(--bg)", color: "inherit" }}
+          />
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 8 }}>
+        {!status?.enabled && !enroll && (
+          <button className="btn-primary" disabled={busy} onClick={begin}>Set up 2FA</button>
+        )}
+        {enroll && (
+          <button className="btn-primary" disabled={busy || code.length < 6} onClick={verify}>Verify</button>
+        )}
+        {status?.enabled && (
+          <button className="btn-secondary" disabled={busy} onClick={disable}>Disable</button>
+        )}
+      </div>
+      {msg && <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>{msg}</div>}
+    </div>
+  );
+}
+
+
+// ── Data export + account deletion ───────────────────────────────────────
+function DataAccountCard({ authFetch }: { authFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const handleExport = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const res = await authFetch(accountApi.exportUrl);
+      if (!res.ok) throw new Error(`${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const cd = res.headers.get("Content-Disposition") || "";
+      const m = cd.match(/filename="?([^";]+)/i);
+      a.download = m ? m[1] : `gamgee-export-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMsg("Export downloaded.");
+    } catch (err) {
+      setMsg(`Export failed: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  };
+
+  const handleDelete = async () => {
+    const pwd = prompt("Type your password (we'll then ask for one more confirmation):");
+    if (!pwd) return;
+    if (!confirm("This permanently deletes ALL your data — workouts, PRs, chat, photos. There is no undo. Continue?")) return;
+    setBusy(true); setMsg(null);
+    try {
+      const res = await accountApi.remove(authFetch, pwd);
+      if (res.status === 204) {
+        setMsg("Account deleted. Reloading…");
+        setTimeout(() => { localStorage.removeItem("iron_log_token"); window.location.href = "/"; }, 1500);
+        return;
+      }
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `${res.status}`);
+    } catch (err) {
+      setMsg(`Delete failed: ${(err as Error).message}`);
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        Your data
+      </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button className="btn-secondary" disabled={busy} onClick={handleExport}>
+          <Download size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />
+          Export everything
+        </button>
+        <button className="btn-secondary" style={{ color: "#ff6b6b", borderColor: "#ff6b6b" }} disabled={busy} onClick={handleDelete}>
+          <Trash2 size={14} style={{ verticalAlign: "-2px", marginRight: 4 }} />
+          Delete account
+        </button>
+      </div>
+      {msg && <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>{msg}</div>}
+    </div>
+  );
+}
+
+
+// ── CSV import (Strong / Hevy / JEFIT) ───────────────────────────────────
+function ImportCsvCard({ authFetch }: { authFetch: (u: string, o?: RequestInit) => Promise<Response> }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const onChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true); setMsg(null);
+    try {
+      const r = await importApi.csv(authFetch, file);
+      setMsg(`Imported ${r.imported_sessions} session(s) (${r.layout} layout).`);
+    } catch (err) {
+      setMsg(`Import failed: ${(err as Error).message}`);
+    } finally {
+      setBusy(false);
+      e.target.value = "";
+    }
+  };
+
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 6, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        Import from another tracker
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
+        Drop a CSV export from Strong, Hevy, or JEFIT and we'll fold it in.
+      </div>
+      <label className="btn-secondary" style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: busy ? "wait" : "pointer" }}>
+        <Upload size={14} /> Choose CSV
+        <input type="file" accept=".csv,text/csv" disabled={busy} onChange={onChange} style={{ display: "none" }} />
+      </label>
+      {msg && <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>{msg}</div>}
+    </div>
+  );
+}
+
+
+// ── AMOLED theme toggle ──────────────────────────────────────────────────
+function AmoledToggle() {
+  const [enabled, setEnabled] = useState(() => localStorage.getItem("gamgee_amoled") === "1");
+
+  useEffect(() => {
+    if (enabled) {
+      document.documentElement.setAttribute("data-theme", "amoled");
+      localStorage.setItem("gamgee_amoled", "1");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("gamgee_amoled", "0");
+    }
+  }, [enabled]);
+
+  return (
+    <div className="profile-card" style={{ marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
+          <Moon size={14} /> AMOLED black
+        </div>
+        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+          True-black backgrounds save battery on OLED screens.
+        </div>
+      </div>
+      <button
+        onClick={() => setEnabled(e => !e)}
+        style={{
+          width: 44, height: 24, borderRadius: 12, border: "1px solid var(--border)",
+          background: enabled ? "var(--primary)" : "transparent", position: "relative",
+          cursor: "pointer", transition: "background 0.15s",
+        }}
+        aria-pressed={enabled}
+      >
+        <span style={{
+          position: "absolute", top: 2, left: enabled ? 22 : 2, width: 18, height: 18,
+          borderRadius: "50%", background: enabled ? "#0c1014" : "var(--muted)",
+          transition: "left 0.15s",
+        }} />
+      </button>
+    </div>
   );
 }

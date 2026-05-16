@@ -5,6 +5,7 @@ import { fmtDate, fmtDur } from "../../utils";
 import { MI } from "../../data/muscles";
 import { EM } from "../../data/exercises";
 import { useTxt, useToneMode } from "../../context/ToneContext";
+import StreakBadgesCard from "../StreakBadgesCard";
 
 interface Props {
   username:     string | null;
@@ -12,9 +13,10 @@ interface Props {
   history:      WorkoutSession[];
   isAdmin?:     boolean;
   onOpenSettings: () => void;
+  authFetch:    (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
-export default function ProfileTab({ username, name, history, isAdmin, onOpenSettings }: Props) {
+export default function ProfileTab({ username, name, history, isAdmin, onOpenSettings, authFetch }: Props) {
   const t = useTxt();
 
   const settingsButton = (
@@ -125,6 +127,8 @@ export default function ProfileTab({ username, name, history, isAdmin, onOpenSet
           </div>
         ))}
       </div>
+
+      <StreakBadgesCard authFetch={authFetch} />
 
       <div className="profile-section">{t("Activity: Last 16 Weeks", "Grind Log: Last 16 Weeks", "Glow-Up Log: Last 16 Weeks")}</div>
       <div className="profile-card">

@@ -7,6 +7,7 @@ import {
 import type { BodyMetric, MetricDef } from "../../types";
 import { METRICS } from "../../data/metrics";
 import { fmtShortDate } from "../../utils";
+import SorenessCheckIn from "../SorenessCheckIn";
 
 interface Props {
   healthMetrics: BodyMetric[];
@@ -201,6 +202,8 @@ export default function HealthTab({ healthMetrics, fetchHealthMetrics, authFetch
           </button>
         </form>
       </div>
+
+      <SorenessCheckIn authFetch={authFetch} />
 
       {/* History */}
       {healthMetrics.length > 0 && (

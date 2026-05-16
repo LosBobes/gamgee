@@ -3380,3 +3380,84 @@ html, body { background: var(--bg); }
   --bg-3: #0a0a0a;
   --border: #1a1a1a;
 }
+
+/* ── Streak/badges card ──────────────────────────────────────────────────── */
+.streak-row { display: flex; gap: 14px; margin-bottom: 14px; }
+.streak-cell { flex: 1; text-align: center; }
+.streak-val {
+  font-size: 22px; font-weight: 800; color: var(--primary);
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.streak-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+.badge-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 10px; border-radius: 999px;
+  background: var(--ad, #ffffff14); color: var(--primary);
+  border: 1px solid var(--primary);
+  font-size: 11px; font-weight: 600;
+}
+.badge-empty { font-size: 12px; color: var(--muted); font-style: italic; }
+
+/* ── Soreness check-in ───────────────────────────────────────────────────── */
+.soreness-card {
+  background: var(--bg-2, #1b1f24);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+.soreness-card-hdr {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.04em;
+  text-transform: uppercase; margin-bottom: 10px;
+}
+.soreness-scale-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; gap: 8px; }
+.soreness-scale-lbl { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; color: var(--muted); }
+.soreness-scale-buttons { display: flex; gap: 4px; }
+.soreness-scale-btn,
+.soreness-level-btn {
+  min-width: 28px; padding: 4px 6px; font-size: 11px;
+  border: 1px solid var(--border, #2a2f36); background: transparent; color: inherit;
+  border-radius: 6px; cursor: pointer;
+}
+.soreness-scale-btn.active,
+.soreness-level-btn.active {
+  background: var(--primary); color: #0c1014; border-color: var(--primary);
+}
+.soreness-group-hdr {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.04em;
+  text-transform: uppercase; margin: 12px 0 6px;
+}
+.soreness-group-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.soreness-group-lbl { font-size: 12px; }
+.soreness-group-buttons { display: flex; gap: 4px; }
+
+/* ── AI coach panel ──────────────────────────────────────────────────────── */
+.ai-coach-card {
+  background: var(--bg-2, #1b1f24);
+  border: 1px solid var(--border, #2a2f36);
+  border-radius: 14px;
+  padding: 16px;
+  margin: 14px 0;
+}
+.ai-coach-hdr {
+  font-size: 11px; color: var(--muted); letter-spacing: 0.04em;
+  text-transform: uppercase; margin-bottom: 10px;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.ai-coach-disabled { font-size: 12px; color: var(--muted); }
+.ai-coach-disabled code { background: var(--bg, #11151a); padding: 1px 4px; border-radius: 4px; }
+.ai-coach-input {
+  width: 100%; padding: 8px 10px; box-sizing: border-box;
+  background: var(--bg, #11151a); color: inherit;
+  border: 1px solid var(--border, #2a2f36); border-radius: 8px;
+  font-size: 14px; margin-bottom: 8px;
+}
+.ai-coach-textarea { resize: vertical; min-height: 60px; font-family: inherit; }
+.ai-coach-err { color: #ff6b6b; font-size: 12px; margin-top: 8px; }
+.ai-coach-answer {
+  margin-top: 12px; font-size: 13px; line-height: 1.5;
+  background: var(--bg, #11151a); padding: 10px 12px; border-radius: 8px;
+}
+.ai-coach-answer p { margin: 0 0 8px; }
+.ai-coach-answer p:last-child { margin-bottom: 0; }
