@@ -612,7 +612,18 @@ html, body { background: var(--bg); }
 .sugg-card:active { transform: scale(0.99); }
 .sugg-card.added { border-color: var(--accent); background: var(--ad); }
 .sugg-card.added:hover { border-color: var(--accent); background: var(--ad2); }
-.sugg-card.focus-pick { border-color: color-mix(in srgb, var(--primary) 30%, transparent); }
+.sugg-card.focus-pick { border-color: color-mix(in srgb, var(--primary) 40%, transparent); }
+.sugg-card.focus-pick::before {
+  content: "";
+  position: absolute;
+  top: 10px; bottom: 10px; left: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg,
+    color-mix(in srgb, var(--primary) 90%, transparent),
+    color-mix(in srgb, var(--primary) 35%, transparent));
+  pointer-events: none;
+}
 .sugg-row { display: flex; align-items: center; gap: 10px; }
 .sugg-left { flex: 1; min-width: 0; }
 .sugg-name { font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text); }
@@ -622,16 +633,24 @@ html, body { background: var(--bg); }
 .mtag.overlap { background: color-mix(in srgb, var(--pr) 13%, transparent); color: var(--pr); border-color: color-mix(in srgb, var(--pr) 22%, transparent); }
 .mtag.sec { background: rgba(255,255,255,0.05); color: var(--muted); }
 
-/* Focus corner ribbon — replaces inline FOCUS star */
-.sugg-focus-banner {
-  position: absolute; top: 11px; right: -34px;
-  width: 120px; padding: 3px 0;
-  background: var(--accent); color: #0a0804;
-  font-family: 'Nunito', sans-serif; font-size: 8px; font-weight: 900; letter-spacing: 2px;
-  text-align: center; transform: rotate(45deg);
-  pointer-events: none;
-  box-shadow: 0 2px 6px color-mix(in srgb, var(--primary) 35%, transparent);
-  z-index: 1;
+/* Inline focus pill — modern replacement for the rotated corner ribbon */
+.sugg-focus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 7px 2px 6px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  border-radius: 999px;
+  vertical-align: 2px;
+  white-space: nowrap;
 }
 
 /* Eye toggle button */
