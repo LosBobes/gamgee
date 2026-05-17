@@ -35,6 +35,19 @@ if engine.dialect.name == "postgresql":
         if _existing is None:
             _conn.execute(text("ALTER TABLE users ADD COLUMN is_verified BOOLEAN NOT NULL DEFAULT FALSE"))
             _conn.execute(text("UPDATE users SET is_verified = TRUE"))
+        # Backfill any legacy mixed-case emails to lowercase so the (now case-
+        # insensitive) lookups in /auth match historic rows. Skip rows that
+        # would collide with an existing lowercase email — those duplicate
+        # accounts have to be merged manually.
+        _conn.execute(text(
+            "UPDATE users SET email = LOWER(email) "
+            "WHERE email IS NOT NULL "
+            "  AND email <> LOWER(email) "
+            "  AND NOT EXISTS ("
+            "    SELECT 1 FROM users u2 "
+            "    WHERE u2.id <> users.id AND LOWER(u2.email) = LOWER(users.email)"
+            "  )"
+        ))
         _conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_users_email ON users (email)"))
         # push_subscriptions: ensure the unique (user_id, endpoint) constraint
         # exists for existing dev DBs that pre-date Web Push support.

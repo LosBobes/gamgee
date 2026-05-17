@@ -44,7 +44,7 @@ def _issue_verification_email(db: Session, user: models.User) -> None:
 def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     if db.query(models.User).filter(func.lower(models.User.username) == user_in.username.lower()).first():
         raise HTTPException(status_code=400, detail="Username already taken")
-    if db.query(models.User).filter(models.User.email == user_in.email).first():
+    if db.query(models.User).filter(func.lower(models.User.email) == user_in.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     user = models.User(
         username=user_in.username,
@@ -67,7 +67,7 @@ def register_trainer(payload: schemas.TrainerCreate, db: Session = Depends(get_d
     the public coaching profile and flips ``is_trainer`` on the new account."""
     if db.query(models.User).filter(func.lower(models.User.username) == payload.username.lower()).first():
         raise HTTPException(status_code=400, detail="Username already taken")
-    if db.query(models.User).filter(models.User.email == payload.email).first():
+    if db.query(models.User).filter(func.lower(models.User.email) == payload.email).first():
         raise HTTPException(status_code=400, detail="Email already registered")
     user = models.User(
         username=payload.username,
@@ -167,7 +167,7 @@ def update_profile(
     current_user.name = body.name
     if body.email is not None:
         existing = db.query(models.User).filter(
-            models.User.email == body.email,
+            func.lower(models.User.email) == body.email,
             models.User.id != current_user.id,
         ).first()
         if existing:
@@ -196,7 +196,7 @@ def forgot_password(body: schemas.ForgotPassword, db: Session = Depends(get_db))
     Always returns 202 — we don't reveal whether an email is registered, so
     an attacker can't probe for valid accounts.
     """
-    user = db.query(models.User).filter(models.User.email == body.email).first()
+    user = db.query(models.User).filter(func.lower(models.User.email) == body.email).first()
     if user:
         # Invalidate previous unused reset tokens for this user.
         db.query(models.PasswordResetToken).filter(
@@ -273,7 +273,7 @@ def resend_verification(body: schemas.ResendVerification, db: Session = Depends(
     registered or already verified.
     """
     if body.email:
-        target = db.query(models.User).filter(models.User.email == body.email).first()
+        target = db.query(models.User).filter(func.lower(models.User.email) == body.email).first()
         if target and not target.is_verified:
             _issue_verification_email(db, target)
     return {"detail": "If the email needs verification, a fresh link has been sent."}
