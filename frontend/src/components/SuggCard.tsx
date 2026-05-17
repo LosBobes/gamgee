@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Plus, Check } from "lucide-react";
+import { Eye, Plus, Check, Target } from "lucide-react";
 import type { SuggCardProps } from "../types";
 import { MI } from "../data/muscles";
 import { EXERCISE_INFO } from "../data/exerciseInfo";
@@ -25,11 +25,17 @@ export default function SuggCard({ ex, isAdded, onAdd, onRemove, onHover, onLeav
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
     >
-      {ex.isFocus && <span className="sugg-focus-banner">FOCUS</span>}
-
       <div className="sugg-row">
         <div className="sugg-left">
-          <div className="sugg-name">{ex.name}</div>
+          <div className="sugg-name">
+            {ex.name}
+            {ex.isFocus && (
+              <span className="sugg-focus-badge" aria-label="Matches your focus">
+                <Target size={10} strokeWidth={2.5} aria-hidden="true" />
+                Focus
+              </span>
+            )}
+          </div>
         </div>
 
         <button
