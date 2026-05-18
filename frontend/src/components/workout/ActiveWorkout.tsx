@@ -70,15 +70,18 @@ export default function ActiveWorkout({
   };
 
   // Wrap toggleSet so we start the rest timer when a strength set transitions
-  // undone -> done. Cardio/timed sets have their own pacing.
+  // undone -> done, and queue up a fresh set for cardio/timed (which have no
+  // rest UI to anchor an add-set button to) when the user checks the last one.
   const handleToggleSet = (uid: string, idx: number) => {
     const ex = exercises.find(e => e.uid === uid);
     const set = ex?.sets[idx];
-    const becomingDone = !!ex && !!set && !set.done && ex.type === "strength";
     toggleSet(uid, idx);
-    if (becomingDone) {
+    if (!ex || !set || set.done) return;
+    if (ex.type === "strength") {
       const secs = tierSeconds(lastTier);
       setRest({ uid, endAt: Date.now() + secs * 1000, totalSec: secs, tier: lastTier });
+    } else if (idx === ex.sets.length - 1) {
+      addSet(uid);
     }
   };
 
