@@ -182,12 +182,38 @@ html, body { background: var(--bg); }
   animation: wzFxWipe 0.6s cubic-bezier(.22, 1, .36, 1) both;
 }
 
+/* BACK GESTURE — soft accent sweep left→right that plays whenever a
+   mobile back gesture (iOS edge-swipe, Android back button) is consumed,
+   confirming the app actually navigated. */
+@keyframes backGestureSweep {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  20%  {                               opacity: 1; }
+  80%  {                               opacity: 1; }
+  100% { transform: translateX(100%);  opacity: 0; }
+}
+.back-gesture-fx {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9997;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary) 18%, transparent) 35%,
+    color-mix(in srgb, var(--primary) 32%, transparent) 50%,
+    color-mix(in srgb, var(--primary) 18%, transparent) 65%,
+    transparent 100%
+  );
+  animation: backGestureSweep 0.42s cubic-bezier(.22, 1, .36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
     animation: fadeIn 0.15s ease backwards;
   }
   .earthquake-shake { animation: none; }
   .wz-fx            { display: none; }
+  .back-gesture-fx  { display: none; }
 }
 
 /* ── SPLASH SCREEN ── */

@@ -945,14 +945,23 @@ export default function WorkoutTracker({
     }
   };
 
+  const [backFxId, setBackFxId] = useState<number | null>(null);
+  useEffect(() => {
+    if (backFxId == null) return;
+    const t = window.setTimeout(() => setBackFxId(null), 500);
+    return () => window.clearTimeout(t);
+  }, [backFxId]);
+
   useMobileBackGesture(!!token, () => {
-    if (completed)                          { setCompleted(null); setTab("history"); return true; }
-    if (tab === "chat" && activeConvId != null) { setActiveConvId(null); return true; }
-    if (tab !== "workout")                  { setTab("workout"); return true; }
-    if (active)                             { return true; }
-    if (wStep === 6)                         { setWStep(1); return true; }
-    if (wStep > 0)                          { setWStep(wStep - 1); return true; }
-    return false;
+    let consumed = false;
+    if (completed)                              { setCompleted(null); setTab("history"); consumed = true; }
+    else if (tab === "chat" && activeConvId != null) { setActiveConvId(null); consumed = true; }
+    else if (tab !== "workout")                 { setTab("workout"); consumed = true; }
+    else if (active)                            { consumed = true; }
+    else if (wStep === 6)                       { setWStep(1); consumed = true; }
+    else if (wStep > 0)                         { setWStep(wStep - 1); consumed = true; }
+    if (consumed) setBackFxId(Date.now() + Math.random());
+    return consumed;
   });
 
   if (!token || (forceAuthScreen && !bypassForceAuth))
@@ -1130,6 +1139,7 @@ export default function WorkoutTracker({
           refreshKey={liveViewerKey}
         />
       )}
+      {backFxId != null && <div key={backFxId} className="back-gesture-fx" aria-hidden />}
     </div>
     </OnboardingProvider>
   </ToneProvider>
