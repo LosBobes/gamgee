@@ -33,9 +33,12 @@ export default defineConfig({
         importScripts: ['/push-handlers.js'],
         runtimeCaching: [
           {
-            // Never cache the SSE stream or the chat WebSocket upgrade — both
-            // are long-lived responses Workbox would otherwise try to clone.
-            urlPattern: /^\/api\/(events|chat\/ws)/,
+            // Never cache: SSE / chat WS are long-lived responses Workbox
+            // would otherwise try to clone, and /api/auth/* responses depend
+            // on the Authorization header so they must always hit the network.
+            // Caching auth replies caused Firefox to serve a stale 401 right
+            // after login, kicking the user back to the login screen.
+            urlPattern: /^\/api\/(events|chat\/ws|auth\/)/,
             handler: 'NetworkOnly',
           },
           {
