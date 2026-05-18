@@ -490,7 +490,7 @@ function NotificationTypesCard({ authFetch }: { authFetch: Props["authFetch"] })
       <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
         What to notify me about
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }} role="group" aria-label="Notification types">
         {NOTIF_ROWS.map(({ key, label, hint }) => {
           const on = prefs?.[key] ?? true;
           const loading = busy === key;
@@ -498,16 +498,18 @@ function NotificationTypesCard({ authFetch }: { authFetch: Props["authFetch"] })
             <button
               key={key}
               type="button"
+              role="switch"
+              aria-checked={on}
               onClick={() => toggle(key)}
               disabled={prefs === null || loading}
               className={`pref-toggle${on ? " on" : ""}`}
             >
-              {on ? <Bell size={14} /> : <BellOff size={14} />}
-              <span style={{ display: "flex", flexDirection: "column", minWidth: 0, gap: 2 }}>
-                <span style={{ fontWeight: 600 }}>{label}</span>
-                <span style={{ fontSize: 11, color: "var(--muted)" }}>{hint}</span>
+              <span className="pref-radio" aria-hidden="true" />
+              <span className="pref-toggle-body">
+                <span className="pref-toggle-label">{label}</span>
+                <span className="pref-toggle-hint">{hint}</span>
               </span>
-              <span className={`pref-pill${on ? " on" : ""}`}>{loading ? "…" : on ? "ON" : "OFF"}</span>
+              {loading && <span className="pref-toggle-busy">…</span>}
             </button>
           );
         })}

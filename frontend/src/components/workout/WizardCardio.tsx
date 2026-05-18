@@ -83,6 +83,10 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
       before: wantsBefore ? (plan.before ?? defaultSlot()) : null,
       after:  wantsAfter  ? (plan.after  ?? defaultSlot()) : null,
     });
+    // "Skip" has no slot config to fill out, so jump straight to the build step.
+    // The other options surface duration/type pickers the user is meant to touch,
+    // so we leave them on the screen.
+    if (timing === "none") window.setTimeout(onNext, 180);
   };
 
   const slotsValid =
