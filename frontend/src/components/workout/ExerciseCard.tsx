@@ -110,10 +110,8 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
 
   // Index of the set the user is currently working on — first set that hasn't
   // been checked. -1 means everything is done. Locks every set after this one
-  // (and the add-set button) until the in-progress set is finished, so the
-  // user can't fat-finger ahead.
+  // until the in-progress set is finished, so the user can't fat-finger ahead.
   const activeIdx = ex.sets.findIndex(s => !s.done);
-  const allDone   = activeIdx === -1;
   // While the rest timer is running for THIS exercise, hide any not-yet-done
   // sets — they fade out into the cool-down bar via a CSS transition. The
   // user sees only the set they just finished plus the rest UI.
@@ -317,7 +315,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
             );
           })
         )}
-        {ex.type === "strength" ? (
+        {ex.type === "strength" && (
           <SetRestButton
             prefs={restPrefs}
             rest={rest}
@@ -326,8 +324,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
             onAdjust={onAdjustRest}
             onStartCustom={onStartCustomRest}
           />
-        ) : (
-          <button className="btn-add-set" onClick={addSet} disabled={!allDone}>+ add set</button>
         )}
       </div>
     </div>
