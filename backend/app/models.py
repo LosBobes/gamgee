@@ -35,6 +35,11 @@ class User(Base):
     rest_short_seconds = Column(Integer, nullable=True)
     rest_medium_seconds = Column(Integer, nullable=True)
     rest_long_seconds = Column(Integer, nullable=True)
+    # RPE→step multiplier table — keys "1".."10", values 0..5. Null falls back
+    # to the client default. Per-exercise overrides live under
+    # rpe_multipliers_by_exercise, keyed by Exercise.id (same keys per ex).
+    rpe_multipliers = Column(JSONB, nullable=True)
+    rpe_multipliers_by_exercise = Column(JSONB, nullable=True)
 
 
 class PasswordResetToken(Base):
@@ -74,6 +79,9 @@ class WorkoutSession(Base):
     duration = Column(Integer, nullable=False)   # milliseconds
     focus = Column(String, nullable=True)
     exercises = Column(JSONB, nullable=False, default=list)
+    # Post-session perceived effort 1..10. Drives the next session's
+    # progression multiplier — null means we fall back to the neutral step.
+    rpe = Column(Integer, nullable=True)
 
 
 class PersonalRecord(Base):

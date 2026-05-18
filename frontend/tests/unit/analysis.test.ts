@@ -159,6 +159,27 @@ describe("analyzeEx", () => {
     expect(res.last.topR).toBe(8);
   });
 
+  it("scales the next-weight bump by the RPE multiplier", () => {
+    // Baseline: bench, 60kg×8, NEW status → 62.5kg next (step 2.5 × 1.0).
+    const base = [session("2026-05-01", "60", "8")];
+    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 6 })!.nextWeight).toBe(62.5);
+    // RPE 2 should DOUBLE the jump (default multiplier 2.0).
+    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 2 })!.nextWeight).toBe(65);
+    // RPE 10 should pin the weight (multiplier 0).
+    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 10 })!.nextWeight).toBe(60);
+  });
+
+  it("honours per-exercise RPE overrides over the global table", () => {
+    const base = [session("2026-05-01", "60", "8")];
+    const res = analyzeEx("bench", base, {
+      speed:    "moderate",
+      lastRpe:  10,
+      rpeTable: { "10": 0 },             // global says "hold"
+      rpePerEx: { bench: { "10": 1 } },  // but bench-specific says "normal step"
+    })!;
+    expect(res.nextWeight).toBe(62.5);
+  });
+
   it("skips sets with no parsable weight", () => {
     const empty: WorkoutSession = {
       id: "x",

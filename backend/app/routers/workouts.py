@@ -59,6 +59,7 @@ def update_workout(
     session.duration = session_update.duration
     session.focus = session_update.focus
     session.exercises = session_update.exercises
+    session.rpe = session_update.rpe
     db.commit()
     db.refresh(session)
     return session

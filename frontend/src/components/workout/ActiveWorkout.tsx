@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Check, Dumbbell } from "lucide-react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs } from "../../types";
+import { Check, Dumbbell, TrendingUp } from "lucide-react";
+import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
@@ -15,6 +15,8 @@ interface Props {
   doneSets:       number;
   progressionSpeed: ProgressionSpeed;
   restPrefs:      RestPrefs;
+  rpeMultipliers: RpeMultipliers;
+  rpePerExercise: RpePerExerciseMultipliers;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -23,6 +25,7 @@ interface Props {
   addSet:         (uid: string) => void;
   removeSet:      (uid: string, idx: number) => void;
   isNewPr:        (exId: string, weight: string) => boolean;
+  applyProgressionAll: () => void;
 }
 
 interface RestState {
@@ -32,7 +35,12 @@ interface RestState {
   tier:     RestTier;
 }
 
-export default function ActiveWorkout({ exercises, prs, history, doneSets, progressionSpeed, restPrefs, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
+export default function ActiveWorkout({
+  exercises, prs, history, doneSets, progressionSpeed, restPrefs,
+  rpeMultipliers, rpePerExercise,
+  onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr,
+  applyProgressionAll,
+}: Props) {
   const [showPick, setShowPick] = useState(false);
   // Most recent tier the user picked, reused as the auto-start default on the
   // next set check-off. Defaults to "medium" until they tell us otherwise.
@@ -40,6 +48,18 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, progr
   const [lastCustomSec, setLastCustomSec] = useState<number>(restPrefs.medium);
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
+
+  // Use the RPE of the most recent recorded session as the multiplier source
+  // for THIS session's progression suggestion. analyzeEx merges this with the
+  // global table + per-exercise overrides.
+  const lastRpe = history[0]?.rpe ?? null;
+  const analyzeOpts = { speed: progressionSpeed, lastRpe, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
+
+  // Show the "PROGRESS ALL" affordance only when at least one strength
+  // exercise has prior history (analyzeEx returns null otherwise) and nothing
+  // has been logged yet — once you start checking sets, the per-card APPLY
+  // remains available for surgical adjustments.
+  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && analyzeEx(ex.id, history, analyzeOpts) !== null);
 
   const tierSeconds = (tier: RestTier) =>
     tier === "custom" ? lastCustomSec : restPrefs[tier];
@@ -63,7 +83,13 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, progr
   };
 
   const handleAddSet = (uid: string) => {
-    addSet(uid);
+    // With prefilled "run-it-back" workouts there may already be a not-yet-done
+    // set queued up after the one we just finished — in that case the rest
+    // bar should just clear the cool-down so the next existing set comes back
+    // into view, not append a stray empty set.
+    const ex = exercises.find(e => e.uid === uid);
+    const hasUndone = ex?.sets.some(s => !s.done) ?? false;
+    if (!hasUndone) addSet(uid);
     if (rest?.uid === uid) setRest(null);
   };
 
@@ -101,6 +127,15 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, progr
 
       <div className="wx-actions">
         <button className="btn-add-ex" onClick={() => setShowPick(true)}>+ ADD EXERCISE</button>
+        {hasAnyAnalysis && (
+          <button
+            className="btn-progress-all"
+            onClick={applyProgressionAll}
+            title="Apply coach progression to every exercise"
+          >
+            <TrendingUp size={14} /> PROGRESS
+          </button>
+        )}
         <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
       </div>
 
@@ -116,7 +151,7 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, progr
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={analyzeEx(ex.id, history, progressionSpeed)}
+          analysis={analyzeEx(ex.id, history, analyzeOpts)}
           restPrefs={restPrefs}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}

@@ -108,9 +108,22 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
 
+  // Index of the set the user is currently working on — first set that hasn't
+  // been checked. -1 means everything is done. Locks every set after this one
+  // (and the add-set button) until the in-progress set is finished, so the
+  // user can't fat-finger ahead.
+  const activeIdx = ex.sets.findIndex(s => !s.done);
+  const allDone   = activeIdx === -1;
+  // While the rest timer is running for THIS exercise, hide any not-yet-done
+  // sets — they fade out into the cool-down bar via a CSS transition. The
+  // user sees only the set they just finished plus the rest UI.
+  const restActiveHere = !!rest;
+  const setIsHidden = (set: WorkoutSet) => restActiveHere && !set.done;
+
   const applyProgression = () => {
     if (!analysis) return;
-    ex.sets.forEach((_, idx) => {
+    ex.sets.forEach((set, idx) => {
+      if (set.done) return;
       updateSet(idx, "weight", String(analysis.nextWeight));
       updateSet(idx, "reps",   String(analysis.nextReps));
     });
@@ -118,7 +131,8 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
 
   const acceptDeload = () => {
     if (!analysis) return;
-    ex.sets.forEach((_, idx) => {
+    ex.sets.forEach((set, idx) => {
+      if (set.done) return;
       updateSet(idx, "weight", String(analysis.nextWeight));
       updateSet(idx, "reps",   String(analysis.nextReps));
     });
@@ -215,14 +229,26 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
         ) : (
           ex.sets.map((set, idx) => {
             const showPrTag = ex.type === "strength" && isNewPr(set.weight) && !!set.weight;
+            // For strength: only the in-progress set is interactive. Earlier
+            // sets are read-only (checked off). Later sets are locked until
+            // the current one is checked, so the user can't ghost-fill ahead.
+            const isLocked = ex.type === "strength" && !set.done && idx !== activeIdx;
+            const isHidden = setIsHidden(set);
+            const rowCls   = [
+              "set-row",
+              set.done   ? "set-done"   : "",
+              isLocked   ? "set-locked" : "",
+              isHidden   ? "set-hidden" : "",
+            ].filter(Boolean).join(" ");
             return (
-              <div key={idx} className="set-row">
+              <div key={idx} className={rowCls} aria-hidden={isHidden || undefined}>
                 <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
                 <div className="stepper inp-wrap">
                   <button
                     type="button" className="step-btn step-minus"
                     aria-label={`decrease ${wL}`}
                     onClick={() => stepField(idx, "weight", -1)}
+                    disabled={isLocked}
                   >
                     <Minus size={18} strokeWidth={3} />
                   </button>
@@ -232,11 +258,14 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                     placeholder={ex.type === "cardio" ? "30" : "0"}
                     value={set.weight}
                     onChange={e => updateSet(idx, "weight", e.target.value)}
+                    disabled={isLocked}
+                    readOnly={isLocked}
                   />
                   <button
                     type="button" className="step-btn step-plus"
                     aria-label={`increase ${wL}`}
                     onClick={() => stepField(idx, "weight", +1)}
+                    disabled={isLocked}
                   >
                     <Plus size={18} strokeWidth={3} />
                   </button>
@@ -247,6 +276,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                     type="button" className="step-btn step-minus"
                     aria-label={`decrease ${rL}`}
                     onClick={() => stepField(idx, "reps", -1)}
+                    disabled={isLocked}
                   >
                     <Minus size={18} strokeWidth={3} />
                   </button>
@@ -256,22 +286,30 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                     placeholder={ex.type === "cardio" ? "5.0" : "0"}
                     value={set.reps}
                     onChange={e => updateSet(idx, "reps", e.target.value)}
+                    disabled={isLocked}
+                    readOnly={isLocked}
                   />
                   <button
                     type="button" className="step-btn step-plus"
                     aria-label={`increase ${rL}`}
                     onClick={() => stepField(idx, "reps", +1)}
+                    disabled={isLocked}
                   >
                     <Plus size={18} strokeWidth={3} />
                   </button>
                 </div>
-                <button className={`check-btn ${set.done ? "done" : ""}`} onClick={() => toggleSet(idx)}>
+                <button
+                  className={`check-btn ${set.done ? "done" : ""}`}
+                  onClick={() => toggleSet(idx)}
+                  disabled={isLocked}
+                  aria-label={isLocked ? "Finish the set above first" : (set.done ? "Mark set incomplete" : "Mark set done")}
+                >
                   {set.done ? <Check size={18} strokeWidth={3} /> : <Circle size={18} strokeWidth={2.5} />}
                 </button>
                 <button
                   className="rm-set-btn"
                   onClick={() => removeSet(idx)}
-                  disabled={ex.sets.length <= 1}
+                  disabled={ex.sets.length <= 1 || isLocked}
                 >
                   <X size={14} />
                 </button>
@@ -284,12 +322,13 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
             prefs={restPrefs}
             rest={rest}
             onAddSet={addSet}
+            addDisabled={!allDone}
             onPickTier={onPickRestTier}
             onAdjust={onAdjustRest}
             onStartCustom={onStartCustomRest}
           />
         ) : (
-          <button className="btn-add-set" onClick={addSet}>+ add set</button>
+          <button className="btn-add-set" onClick={addSet} disabled={!allDone}>+ add set</button>
         )}
       </div>
     </div>

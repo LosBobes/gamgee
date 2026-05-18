@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { Check, ArrowRight, Heart, X, Clock } from "lucide-react";
+import { Check, ArrowRight, Heart, X, Clock, Flame } from "lucide-react";
 import type { WorkoutSession } from "../../types";
 import { EM } from "../../data/exercises";
 import { MI } from "../../data/muscles";
@@ -9,6 +9,20 @@ import { useTxt } from "../../context/ToneContext";
 interface Props {
   session: WorkoutSession;
   onDone: () => void;
+  /** Persist the RPE chosen on the post-session prompt. Called once when the
+   * user picks a 1..10 level (or skips, with null). */
+  onSetRpe?: (rpe: number | null) => void;
+}
+
+/** Short label for a given RPE level — drives the post-session prompt copy. */
+function rpeLabel(level: number): string {
+  if (level <= 2) return "Way too easy";
+  if (level <= 4) return "Easy day";
+  if (level <= 6) return "On point";
+  if (level <= 7) return "Solid grind";
+  if (level <= 8) return "Hard";
+  if (level <= 9) return "Brutal";
+  return "Max effort";
 }
 
 // Collect every muscle group hit during the session (primary + secondary).
@@ -25,13 +39,69 @@ function workedGroups(session: WorkoutSession): Set<string> {
   return groups;
 }
 
-export default function WorkoutComplete({ session, onDone }: Props) {
-  const [stage, setStage] = useState<"prompt" | "stretch">("prompt");
+export default function WorkoutComplete({ session, onDone, onSetRpe }: Props) {
+  const [stage, setStage] = useState<"rpe" | "prompt" | "stretch">(onSetRpe ? "rpe" : "prompt");
   const [doneIdx, setDoneIdx] = useState<Set<number>>(new Set());
+  const [rpeHover, setRpeHover] = useState<number | null>(null);
   const t = useTxt();
 
   const groups = useMemo(() => workedGroups(session), [session]);
   const stretches = useMemo(() => pickStretches(groups), [groups]);
+
+  const commitRpe = (rpe: number | null) => {
+    onSetRpe?.(rpe);
+    setStage("prompt");
+  };
+
+  if (stage === "rpe") {
+    const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    const focused = rpeHover ?? session.rpe ?? null;
+    return (
+      <div className="complete-screen tab-anim">
+        <div className="complete-icon"><Flame size={48} /></div>
+        <h1 className="complete-hero">{t("HOW HARD", "HOW HARD", "HOW HARD")}<br /><span>{t("WAS IT?", "WAS IT?", "WAS IT?")}</span></h1>
+        <p className="complete-sub">
+          {t(
+            "Pick a number 1–10. We'll use it to scale the next session's progression — easy days mean we add more weight, brutal days mean we back off.",
+            "Rate the grind 1–10. Easy day? We add weight. Brutal? We back off next session.",
+            "Rate it 1–10, bestie. Easy day = bigger jump next time. Brutal day = we ease up."
+          )}
+        </p>
+
+        <div className="rpe-scale" role="radiogroup" aria-label="Session RPE">
+          {levels.map(level => {
+            const selected = session.rpe === level;
+            return (
+              <button
+                key={level}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={`rpe-btn${selected ? " selected" : ""}`}
+                data-level={level}
+                onMouseEnter={() => setRpeHover(level)}
+                onMouseLeave={() => setRpeHover(null)}
+                onFocus={() => setRpeHover(level)}
+                onBlur={() => setRpeHover(null)}
+                onClick={() => commitRpe(level)}
+              >
+                {level}
+              </button>
+            );
+          })}
+        </div>
+        <div className="rpe-hint">
+          {focused != null ? `${focused} — ${rpeLabel(focused)}` : t("Tap a number", "Tap a number", "Pick a number, bestie")}
+        </div>
+
+        <div className="complete-actions">
+          <button className="btn-secondary" onClick={() => commitRpe(null)}>
+            <X size={14} /> SKIP
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (stage === "prompt") {
     return (
