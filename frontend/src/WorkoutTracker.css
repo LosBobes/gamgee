@@ -1742,7 +1742,12 @@ html, body { background: var(--bg); }
   letter-spacing: 0.5px; margin-bottom: 4px;
 }
 .complete-prompt-sub { font-size: 12px; color: var(--muted); line-height: 1.4; }
-.complete-actions { display: flex; gap: 10px; }
+.complete-actions { display: flex; gap: 10px; align-items: stretch; }
+.complete-actions > .btn-start {
+  flex: 1 1 0; width: auto; min-width: 0;
+  padding: 14px 16px; letter-spacing: 2px; gap: 8px;
+}
+.complete-actions > .btn-secondary { flex: 1 1 0; min-width: 0; }
 .btn-secondary {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase; padding: 11px 18px; flex: 1;
