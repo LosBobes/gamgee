@@ -6,8 +6,9 @@ import type {
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
   RestPrefs, RpeMultipliers, RpePerExerciseMultipliers,
+  WizardTransitionStyle,
 } from "./types";
-import { DEFAULT_REST_PREFS, DEFAULT_RPE_MULTIPLIERS } from "./types";
+import { DEFAULT_REST_PREFS, DEFAULT_RPE_MULTIPLIERS, DEFAULT_WIZARD_TRANSITION } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
@@ -180,6 +181,14 @@ export default function WorkoutTracker({
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
+  const [wizardTransition, setWizardTransitionState] = useState<WizardTransitionStyle>(() => {
+    const raw = localStorage.getItem("gamgee_wizard_transition");
+    return raw === "earthquake" || raw === "ripple" || raw === "wipe" ? raw : DEFAULT_WIZARD_TRANSITION;
+  });
+  const updateWizardTransition = useCallback((next: WizardTransitionStyle) => {
+    setWizardTransitionState(next);
+    localStorage.setItem("gamgee_wizard_transition", next);
+  }, []);
   const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
   // buddy/notif/live state
   const [buddies,        setBuddies]        = useState<Buddy[]>([]);
@@ -936,14 +945,23 @@ export default function WorkoutTracker({
     }
   };
 
+  const [backFxId, setBackFxId] = useState<number | null>(null);
+  useEffect(() => {
+    if (backFxId == null) return;
+    const t = window.setTimeout(() => setBackFxId(null), 500);
+    return () => window.clearTimeout(t);
+  }, [backFxId]);
+
   useMobileBackGesture(!!token, () => {
-    if (completed)                          { setCompleted(null); setTab("history"); return true; }
-    if (tab === "chat" && activeConvId != null) { setActiveConvId(null); return true; }
-    if (tab !== "workout")                  { setTab("workout"); return true; }
-    if (active)                             { return true; }
-    if (wStep === 6)                         { setWStep(1); return true; }
-    if (wStep > 0)                          { setWStep(wStep - 1); return true; }
-    return false;
+    let consumed = false;
+    if (completed)                              { setCompleted(null); setTab("history"); consumed = true; }
+    else if (tab === "chat" && activeConvId != null) { setActiveConvId(null); consumed = true; }
+    else if (tab !== "workout")                 { setTab("workout"); consumed = true; }
+    else if (active)                            { consumed = true; }
+    else if (wStep === 6)                       { setWStep(1); consumed = true; }
+    else if (wStep > 0)                         { setWStep(wStep - 1); consumed = true; }
+    if (consumed) setBackFxId(Date.now() + Math.random());
+    return consumed;
   });
 
   if (!token || (forceAuthScreen && !bypassForceAuth))
@@ -1024,6 +1042,7 @@ export default function WorkoutTracker({
             restPrefs={restPrefs}
             rpeMultipliers={rpeMultipliers}
             rpePerExercise={rpePerExercise}
+            wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
@@ -1109,7 +1128,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (
@@ -1120,6 +1139,7 @@ export default function WorkoutTracker({
           refreshKey={liveViewerKey}
         />
       )}
+      {backFxId != null && <div key={backFxId} className="back-gesture-fx" aria-hidden />}
     </div>
     </OnboardingProvider>
   </ToneProvider>

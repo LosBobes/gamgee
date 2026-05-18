@@ -39,6 +39,11 @@ export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 
+/** Visual effect played during workout-wizard step transitions so the
+ * delay between tap and next step feels intentional. */
+export type WizardTransitionStyle = "earthquake" | "ripple" | "wipe";
+export const DEFAULT_WIZARD_TRANSITION: WizardTransitionStyle = "earthquake";
+
 /** Map of RPE level "1".."10" → step multiplier used to scale the next-session
  * weight jump. Low RPE (workout felt easy) → larger multiplier; high RPE
  * (felt brutal) → smaller / zero multiplier. */

@@ -1,5 +1,6 @@
-import { useRef } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers } from "../../types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers, WizardTransitionStyle } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -29,6 +30,7 @@ interface Props {
   restPrefs:       RestPrefs;
   rpeMultipliers:  RpeMultipliers;
   rpePerExercise:  RpePerExerciseMultipliers;
+  wizardTransition: WizardTransitionStyle;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
@@ -46,7 +48,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, wizardTransition, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -55,12 +57,64 @@ export default function WorkoutTab({
   prevStepRef.current = wStep;
   const stepAnim = goingBack ? "wstep-anim-back" : "wstep-anim";
 
+  // Capture the latest pointerdown coordinates so the earthquake can radiate
+  // from wherever the user actually tapped, rather than the screen centre.
+  const lastClickRef = useRef<{ x: number; y: number }>({
+    x: typeof window !== "undefined" ? window.innerWidth / 2 : 0,
+    y: typeof window !== "undefined" ? window.innerHeight / 2 : 0,
+  });
+  useEffect(() => {
+    const onPointerDown = (e: PointerEvent) => {
+      lastClickRef.current = { x: e.clientX, y: e.clientY };
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
+
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const [quake, setQuake] = useState<{ vx: number; vy: number; lx: number; ly: number; id: number } | null>(null);
+  const triggerQuake = useCallback(() => {
+    const { x: vx, y: vy } = lastClickRef.current;
+    const rect = hostRef.current?.getBoundingClientRect();
+    const lx = rect ? vx - rect.left : vx;
+    const ly = rect ? vy - rect.top  : vy;
+    setQuake({ vx, vy, lx, ly, id: Date.now() + Math.random() });
+  }, []);
+  useEffect(() => {
+    if (!quake) return;
+    const t = window.setTimeout(() => setQuake(null), 650);
+    return () => window.clearTimeout(t);
+  }, [quake]);
+
+  const setWStepQuake = useCallback((s: number) => {
+    if (s !== wStep) triggerQuake();
+    setWStep(s);
+  }, [wStep, setWStep, triggerQuake]);
+  const onLoadTodayQuake = useCallback((plan: DayPlan) => {
+    triggerQuake();
+    onLoadToday(plan);
+  }, [onLoadToday, triggerQuake]);
+  const startFromWizardQuake = useCallback((autoFill: boolean) => {
+    triggerQuake();
+    startFromWizard(autoFill);
+  }, [startFromWizard, triggerQuake]);
+
+  const hostStyle: CSSProperties | undefined = quake
+    ? ({ "--quake-x": `${quake.lx}px`, "--quake-y": `${quake.ly}px` } as CSSProperties)
+    : undefined;
+  const rippleStyle: CSSProperties | undefined = quake
+    ? ({ "--quake-x": `${quake.vx}px`, "--quake-y": `${quake.vy}px` } as CSSProperties)
+    : undefined;
+
+  const shakingNow = quake && wizardTransition === "earthquake";
+
   return (
     <>
+      <div ref={hostRef} className={`wtab-quake-host${shakingNow ? " earthquake-shake" : ""}`} style={hostStyle}>
       {/* Step 0 — landing */}
       {!active && wStep === 0 && (
         <div key="wstep-0" className={stepAnim}>
-          <WizardStart lastSession={history[0] ?? null} onStart={() => setWStep(1)} />
+          <WizardStart lastSession={history[0] ?? null} onStart={() => setWStepQuake(1)} />
         </div>
       )}
 
@@ -69,10 +123,10 @@ export default function WorkoutTab({
         <div key="wstep-1" className={stepAnim}>
           <WizardMode
             weeklyPlan={weeklyPlan}
-            onSingle={() => setWStep(2)}
-            onLoadToday={onLoadToday}
-            onSetupPlan={() => setWStep(6)}
-            onBack={() => setWStep(0)}
+            onSingle={() => setWStepQuake(2)}
+            onLoadToday={onLoadTodayQuake}
+            onSetupPlan={() => setWStepQuake(6)}
+            onBack={() => setWStepQuake(0)}
           />
         </div>
       )}
@@ -83,8 +137,8 @@ export default function WorkoutTab({
           <WizardFocus
             focus={focus}
             setFocus={setFocus}
-            onBack={() => setWStep(1)}
-            onNext={() => setWStep(3)}
+            onBack={() => setWStepQuake(1)}
+            onNext={() => setWStepQuake(3)}
           />
         </div>
       )}
@@ -95,8 +149,8 @@ export default function WorkoutTab({
           <WizardCardio
             plan={cardio}
             setPlan={setCardio}
-            onBack={() => setWStep(2)}
-            onNext={() => setWStep(4)}
+            onBack={() => setWStepQuake(2)}
+            onNext={() => setWStepQuake(4)}
           />
         </div>
       )}
@@ -108,8 +162,8 @@ export default function WorkoutTab({
             focus={focus}
             planned={planned}
             setPlanned={setPlanned}
-            onBack={() => setWStep(3)}
-            onStart={startFromWizard}
+            onBack={() => setWStepQuake(3)}
+            onStart={startFromWizardQuake}
             history={history}
           />
         </div>
@@ -121,7 +175,7 @@ export default function WorkoutTab({
           <WizardWeeklySetup
             initial={weeklyPlan}
             onPersist={setWeeklyPlan}
-            onDone={() => setWStep(1)}
+            onDone={() => setWStepQuake(1)}
             progressionSpeed={progressionSpeed}
             onProgressionSpeedChange={onProgressionSpeedChange}
             authFetch={authFetch}
@@ -152,6 +206,15 @@ export default function WorkoutTab({
             applyProgressionAll={applyProgressionAll}
           />
         </div>
+      )}
+      </div>
+      {quake && (
+        <div
+          key={quake.id}
+          className={`wz-fx wz-fx-${wizardTransition}`}
+          style={rippleStyle}
+          aria-hidden
+        />
       )}
     </>
   );
