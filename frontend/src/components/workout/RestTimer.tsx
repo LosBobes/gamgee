@@ -6,13 +6,9 @@ export type RestTier = "short" | "medium" | "long" | "custom";
 
 interface Props {
   prefs:      RestPrefs;
-  /** Active rest state — null means we're idle and the button shows "+ ADD SET". */
+  /** Active rest state — null means we're idle and the component renders nothing. */
   rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
   onAddSet:   () => void;
-  /** Disable the idle "+ ADD SET" affordance — used while an earlier set in
-   * the exercise hasn't been checked off yet. The rest UI itself is never
-   * disabled because we only render it for the just-completed set. */
-  addDisabled?: boolean;
   onPickTier: (tier: Exclude<RestTier, "custom">) => void;
   onAdjust:   (deltaSec: number) => void;
   onStartCustom: (seconds: number) => void;
@@ -44,7 +40,7 @@ function beep() {
   } catch { /* silent */ }
 }
 
-export default function SetRestButton({ prefs, rest, onAddSet, addDisabled = false, onPickTier, onAdjust, onStartCustom }: Props) {
+export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdjust, onStartCustom }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customOpen, setCustomOpen] = useState(false);
   const [customVal, setCustomVal] = useState<number>(prefs.medium);
@@ -67,18 +63,7 @@ export default function SetRestButton({ prefs, rest, onAddSet, addDisabled = fal
     }
   }, [now, rest]);
 
-  if (!rest) {
-    return (
-      <button
-        className="btn-add-set"
-        onClick={onAddSet}
-        disabled={addDisabled}
-        title={addDisabled ? "Check off the last set first" : undefined}
-      >
-        + add set
-      </button>
-    );
-  }
+  if (!rest) return null;
 
   const remainingMs = rest.endAt - now;
   const remaining   = remainingMs / 1000;
