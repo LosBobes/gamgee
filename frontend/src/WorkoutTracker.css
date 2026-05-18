@@ -132,56 +132,6 @@ html, body { background: var(--bg); }
   animation: wzFxEarthquake 0.6s cubic-bezier(.22, 1, .36, 1) both;
 }
 
-/* RIPPLE — large, soft, accent-coloured wash that expands from the tap. */
-@keyframes wzFxRipple {
-  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.7; }
-  60%  {                                              opacity: 0.35; }
-  100% { transform: translate(-50%, -50%) scale(180); opacity: 0; }
-}
-.wz-fx-ripple {
-  left: var(--quake-x, 50%);
-  top:  var(--quake-y, 50%);
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background:
-    radial-gradient(
-      circle,
-      color-mix(in srgb, var(--primary) 75%, transparent) 0%,
-      color-mix(in srgb, var(--primary) 35%, transparent) 55%,
-      transparent 85%
-    );
-  transform: translate(-50%, -50%) scale(0);
-  animation: wzFxRipple 0.75s cubic-bezier(.22, 1, .36, 1) both;
-}
-
-/* WIPE — vertical accent-coloured bar that sweeps outward from the tap x. */
-@keyframes wzFxWipe {
-  0%   { transform: scaleX(0);   opacity: 0; }
-  18%  {                         opacity: 0.85; }
-  55%  { transform: scaleX(60);  opacity: 0.85; }
-  100% { transform: scaleX(120); opacity: 0; }
-}
-.wz-fx-wipe {
-  left: var(--quake-x, 50%);
-  top: 0;
-  width: 36px;
-  height: 100vh;
-  margin-left: -18px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    color-mix(in srgb, var(--primary) 35%, transparent) 30%,
-    var(--primary) 50%,
-    color-mix(in srgb, var(--primary) 35%, transparent) 70%,
-    transparent 100%
-  );
-  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 60%, transparent));
-  transform-origin: center center;
-  transform: scaleX(0);
-  animation: wzFxWipe 0.6s cubic-bezier(.22, 1, .36, 1) both;
-}
-
 /* BACK GESTURE — soft accent sweep that plays whenever a mobile back
    gesture (iOS edge-swipe, Android back button) is consumed, confirming
    the app actually navigated. Sweeps left→right on iOS (matching the
@@ -217,12 +167,6 @@ html, body { background: var(--bg); }
 :root[data-platform="android"] .back-gesture-fx {
   animation-name: backGestureSweepReverse;
 }
-/* Mirror the wizard wipe on Android so it contracts inward from the
-   edges toward the tap, opposite the outward sweep on iOS. */
-:root[data-platform="android"] .wz-fx-wipe {
-  animation-direction: reverse;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
     animation: fadeIn 0.15s ease backwards;

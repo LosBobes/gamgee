@@ -183,7 +183,7 @@ export default function WorkoutTracker({
   );
   const [wizardTransition, setWizardTransitionState] = useState<WizardTransitionStyle>(() => {
     const raw = localStorage.getItem("gamgee_wizard_transition");
-    return raw === "earthquake" || raw === "ripple" || raw === "wipe" || raw === "none"
+    return raw === "earthquake" || raw === "none"
       ? raw
       : DEFAULT_WIZARD_TRANSITION;
   });
