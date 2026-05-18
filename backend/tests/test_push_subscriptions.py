@@ -6,12 +6,34 @@ the public-key endpoint contract.
 """
 from __future__ import annotations
 
+import base64
 import importlib
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 
 from app import push
+
+
+def _b64url(b: bytes) -> str:
+    return base64.urlsafe_b64encode(b).rstrip(b"=").decode("ascii")
+
+
+def _make_vapid_pair() -> tuple[str, str]:
+    """Generate a real VAPID keypair so the validator in ``push.is_configured``
+    accepts it. The previous fixture used the literal string
+    ``BTEST_PUBLIC_KEY_BASE64URL`` which is now (correctly) rejected."""
+    pk = ec.generate_private_key(ec.SECP256R1())
+    nums = pk.public_key().public_numbers()
+    raw_pub = b"\x04" + nums.x.to_bytes(32, "big") + nums.y.to_bytes(32, "big")
+    raw_priv = pk.private_numbers().private_value.to_bytes(32, "big")
+    return _b64url(raw_pub), _b64url(raw_priv)
+
+
+# A single pair shared across the module — generation is cheap but doing it
+# per-test would noticeably slow the suite.
+_TEST_PUB, _TEST_PRIV = _make_vapid_pair()
 
 
 @pytest.fixture(autouse=True)
@@ -23,8 +45,8 @@ def _reset_vapid(monkeypatch):
 
 def _set_vapid(monkeypatch, configured: bool):
     if configured:
-        monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", "BTEST_PUBLIC_KEY_BASE64URL")
-        monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", "test_private_key")
+        monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", _TEST_PUB)
+        monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
         monkeypatch.setattr(push, "VAPID_SUBJECT", "mailto:test@example.com")
     else:
         monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", "")
@@ -46,7 +68,7 @@ def test_public_key_enabled_when_configured(client: TestClient, auth_headers, mo
     assert r.status_code == 200
     body = r.json()
     assert body["enabled"] is True
-    assert body["public_key"] == "BTEST_PUBLIC_KEY_BASE64URL"
+    assert body["public_key"] == _TEST_PUB
 
 
 def test_subscribe_requires_vapid_configured(client: TestClient, auth_headers, monkeypatch):
@@ -119,3 +141,65 @@ def test_send_to_user_returns_zero_when_unconfigured(db_session, monkeypatch):
         db_session, user_id=1, title="hi", body="b", kind="motivate",
     )
     assert sent == 0
+
+
+# ── VAPID key validation ──────────────────────────────────────────────────────
+# These guard the operator-supplied env values: a malformed VAPID_PUBLIC_KEY
+# would otherwise reach the browser and surface as the cryptic "Invalid raw
+# ECDSA P-256 public key" from ``pushManager.subscribe``. With validation,
+# ``is_configured`` returns False and the public-key endpoint hides the key
+# so the toggle never appears.
+
+def test_validation_rejects_malformed_public_key(client: TestClient, auth_headers, monkeypatch):
+    monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", "definitely-not-base64url-of-a-p256-point")
+    monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
+    assert push.is_configured() is False
+    r = client.get("/api/notifications/push/public-key", headers=auth_headers)
+    body = r.json()
+    assert body["enabled"] is False
+    assert body["public_key"] is None
+
+
+def test_validation_rejects_wrong_length_public_key(monkeypatch):
+    # 64 bytes (missing the 0x04 uncompressed-point prefix) is a common
+    # operator mistake — some tools output just X||Y.
+    raw_pub_64 = b"\x01" * 64
+    monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", _b64url(raw_pub_64))
+    monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
+    assert push.is_configured() is False
+
+
+def test_validation_rejects_whitespace(monkeypatch):
+    # Trailing newline pasted in from `python -m app.gen_vapid` output.
+    monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", _TEST_PUB + "\n")
+    monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
+    assert push.is_configured() is False
+
+
+def test_validation_rejects_mismatched_pair(monkeypatch):
+    # Public from one key, private from another — half-applied rotation.
+    other_pub, _ = _make_vapid_pair()
+    monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", other_pub)
+    monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
+    assert push.is_configured() is False
+
+
+def test_validation_accepts_matching_pair(monkeypatch):
+    monkeypatch.setattr(push, "VAPID_PUBLIC_KEY", _TEST_PUB)
+    monkeypatch.setattr(push, "VAPID_PRIVATE_KEY", _TEST_PRIV)
+    assert push.is_configured() is True
+
+
+def test_validate_vapid_keys_returns_specific_errors():
+    # Pinpoint message helps the operator find the bug quickly.
+    err = push._validate_vapid_keys("AAAA", _TEST_PRIV)
+    assert err is not None and "65 bytes" in err
+
+    err = push._validate_vapid_keys(_TEST_PUB, "AAAA")
+    assert err is not None and "32-byte" in err
+
+    other_pub, _ = _make_vapid_pair()
+    err = push._validate_vapid_keys(other_pub, _TEST_PRIV)
+    assert err is not None and "does not match" in err
+
+    assert push._validate_vapid_keys(_TEST_PUB, _TEST_PRIV) is None

@@ -70,9 +70,18 @@ export async function subscribePush(authFetch: AuthFetch): Promise<void> {
     return;
   }
 
+  const appServerKey = urlBase64ToUint8Array(public_key);
+  if (appServerKey.length !== 65 || appServerKey[0] !== 0x04) {
+    // Bail before the browser turns this into the cryptic
+    // "Invalid raw ECDSA P-256 public key" — the operator needs to fix
+    // VAPID_PUBLIC_KEY on the server.
+    throw new Error(
+      "The server's push key is malformed. Ask the admin to regenerate VAPID keys.",
+    );
+  }
   sub = await reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(public_key) as BufferSource,
+    applicationServerKey: appServerKey as BufferSource,
   });
   await sendSubscription(authFetch, sub);
 }
