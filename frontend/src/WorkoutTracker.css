@@ -1746,14 +1746,14 @@ html, body { background: var(--bg); }
 .complete-actions > .btn-start,
 .complete-actions > .btn-secondary {
   flex: 1 1 140px; min-width: 0;
-  padding: 14px 10px;
+  padding: 14px 14px;
   letter-spacing: 1.5px;
-  gap: 6px;
+  gap: 8px;
   white-space: nowrap;
 }
-.complete-actions > .btn-start { width: auto; font-size: 16px; }
+.complete-actions > .btn-start { width: auto; font-size: 15px; }
 .complete-actions > .btn-start > svg,
-.complete-actions > .btn-secondary > svg { height: 1.3em; width: auto; }
+.complete-actions > .btn-secondary > svg { height: 1.1em; width: auto; flex-shrink: 0; }
 .btn-secondary {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
   letter-spacing: 2px; text-transform: uppercase; padding: 11px 18px; flex: 1;
