@@ -4,6 +4,7 @@ import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
 import { TYPE_COLOR } from "../../data/exercises";
+import { BAR_WEIGHT_KG, isBarbellExercise, readCountsBar } from "../../data/barbell";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 import SetRestButton, { type RestTier } from "./RestTimer";
 
@@ -103,6 +104,15 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
   const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
 
+  // Joke-feature hint: only shown when the user gave a definite answer
+  // ("yes" / "no") and the exercise is bar-loaded. "off" hides it entirely.
+  const countsBar = readCountsBar();
+  const showBarHint = ex.type === "strength" && isBarbellExercise(ex.id)
+    && (countsBar === "yes" || countsBar === "no");
+  const barHintText = countsBar === "no"
+    ? `+${BAR_WEIGHT_KG} kg bar`
+    : `bar incl.`;
+
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
 
@@ -201,7 +211,10 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
       <div className="set-table">
         <div className="set-col-hdr">
           <div className="col-lbl">#</div>
-          <div className="col-lbl">{wL}</div>
+          <div className="col-lbl">
+            {wL}
+            {showBarHint && <span className="bar-hint">{barHintText}</span>}
+          </div>
           <div className="col-lbl">{rL}</div>
           <div className="col-lbl"><Check size={11} /></div>
           <div className="col-lbl" />

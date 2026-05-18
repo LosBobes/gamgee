@@ -1077,6 +1077,13 @@ html, body { background: var(--bg); }
 .set-table { padding: 10px 12px; }
 .set-col-hdr { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
 .col-lbl { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); text-align: center; }
+.bar-hint {
+  display: inline-block; margin-left: 6px; padding: 1px 5px;
+  font-size: 8px; letter-spacing: 0.5px; text-transform: uppercase;
+  color: var(--accent); background: var(--ad);
+  border: 1px solid var(--border); border-radius: 999px;
+  vertical-align: 1px;
+}
 .set-row { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; align-items: center; margin-bottom: 10px; }
 .set-num { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--muted); text-align: center; transition: color 0.2s; }
 .set-num.done { color: var(--green); }
