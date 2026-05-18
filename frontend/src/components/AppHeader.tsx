@@ -135,6 +135,15 @@ export default function AppHeader({ active, elapsed, wStep, historyCount, prCoun
           }
           <div className="hdr-actions">
             {notifBell}
+            <button
+              className={`logout-btn hdr-settings-btn${tab === "settings" ? " active" : ""}`}
+              onClick={() => setTab("settings")}
+              title={t("Settings", "Settings", "Settings")}
+              aria-label="Settings"
+            >
+              <Settings size={15} />
+              <span className="logout-label">Settings</span>
+            </button>
             <button className="logout-btn hdr-help-btn" onClick={openHelp} title={t("Help & tour", "Help & tour", "Help & tour")}>
               <HelpCircle size={15} />
               <span className="logout-label">Help</span>

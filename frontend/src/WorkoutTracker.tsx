@@ -5,7 +5,9 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
+  RestPrefs,
 } from "./types";
+import { DEFAULT_REST_PREFS } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
@@ -104,6 +106,24 @@ export default function WorkoutTracker({
   const [progressionSpeed, setProgressionSpeed] = useState<ProgressionSpeed>(
     () => (localStorage.getItem("gamgee_progression_speed") as ProgressionSpeed | null) ?? "moderate"
   );
+  const [restPrefs, setRestPrefs] = useState<RestPrefs>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_rest_prefs");
+      if (!raw) return DEFAULT_REST_PREFS;
+      const parsed = JSON.parse(raw) as Partial<RestPrefs>;
+      const clamp = (n: unknown, fallback: number) => {
+        const v = Math.round(Number(n));
+        return Number.isFinite(v) && v >= 5 && v <= 3600 ? v : fallback;
+      };
+      return {
+        short:  clamp(parsed.short,  DEFAULT_REST_PREFS.short),
+        medium: clamp(parsed.medium, DEFAULT_REST_PREFS.medium),
+        long:   clamp(parsed.long,   DEFAULT_REST_PREFS.long),
+      };
+    } catch {
+      return DEFAULT_REST_PREFS;
+    }
+  });
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
@@ -177,6 +197,32 @@ export default function WorkoutTracker({
     localStorage.setItem("gamgee_progression_speed", progressionSpeed);
   }, [progressionSpeed]);
 
+  useEffect(() => {
+    localStorage.setItem("gamgee_rest_prefs", JSON.stringify(restPrefs));
+  }, [restPrefs]);
+
+  const updateRestPrefs = useCallback((next: Partial<RestPrefs>) => {
+    setRestPrefs(prev => {
+      const merged: RestPrefs = {
+        short:  next.short  ?? prev.short,
+        medium: next.medium ?? prev.medium,
+        long:   next.long   ?? prev.long,
+      };
+      const body: Record<string, number> = {};
+      if (next.short  !== undefined) body.rest_short_seconds  = merged.short;
+      if (next.medium !== undefined) body.rest_medium_seconds = merged.medium;
+      if (next.long   !== undefined) body.rest_long_seconds   = merged.long;
+      if (Object.keys(body).length) {
+        authFetch("/api/auth/preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }).catch(() => { /* best-effort; localStorage already updated */ });
+      }
+      return merged;
+    });
+  }, [authFetch]);
+
   const updateProgressionSpeed = useCallback((speed: ProgressionSpeed) => {
     setProgressionSpeed(speed);
     authFetch("/api/auth/preferences", {
@@ -240,7 +286,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -252,6 +298,15 @@ export default function WorkoutTracker({
         if (d.primary_color) setPrimaryColor(d.primary_color);
         if (d.progression_speed === "slow" || d.progression_speed === "moderate" || d.progression_speed === "fast") {
           setProgressionSpeed(d.progression_speed);
+        }
+        const clamp = (n: number | null | undefined, fallback: number) =>
+          n != null && Number.isFinite(n) && n >= 5 && n <= 3600 ? Math.round(n) : fallback;
+        if (d.rest_short_seconds != null || d.rest_medium_seconds != null || d.rest_long_seconds != null) {
+          setRestPrefs(prev => ({
+            short:  clamp(d.rest_short_seconds,  prev.short),
+            medium: clamp(d.rest_medium_seconds, prev.medium),
+            long:   clamp(d.rest_long_seconds,   prev.long),
+          }));
         }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -801,6 +856,7 @@ export default function WorkoutTracker({
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
+            restPrefs={restPrefs}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
@@ -885,7 +941,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

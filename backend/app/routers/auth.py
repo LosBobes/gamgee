@@ -138,6 +138,12 @@ def update_preferences(
         current_user.primary_color = body.primary_color
     if body.progression_speed is not None:
         current_user.progression_speed = body.progression_speed
+    if body.rest_short_seconds is not None:
+        current_user.rest_short_seconds = body.rest_short_seconds
+    if body.rest_medium_seconds is not None:
+        current_user.rest_medium_seconds = body.rest_medium_seconds
+    if body.rest_long_seconds is not None:
+        current_user.rest_long_seconds = body.rest_long_seconds
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -68,6 +68,11 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_pr BOOLEAN NOT NULL DEFAULT TRUE"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_motivate BOOLEAN NOT NULL DEFAULT TRUE"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS notify_live BOOLEAN NOT NULL DEFAULT TRUE"))
+        # Rest-timer presets (light / medium / long). Nullable so the client can
+        # detect "unset" and fall back to its built-in defaults.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_short_seconds INTEGER"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_medium_seconds INTEGER"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_long_seconds INTEGER"))
         # Live session rich-broadcast columns
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_id VARCHAR"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_name VARCHAR"))

@@ -2776,6 +2776,187 @@ html, body { background: var(--bg); }
   .hdr-help-btn { display: none; }
 }
 
+/* Settings gear stays visible from landscape upward, where the hamburger menu
+   isn't shown (the hamburger hides at >=481px). */
+.hdr-settings-btn { display: inline-flex; }
+.hdr-settings-btn.active {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: var(--ad);
+}
+@media (max-width: 480px) { .hdr-settings-btn { display: none; } }
+
+/* ── REST TIMER (per-exercise progress bar that doubles as the add-set CTA) ── */
+.rest-block {
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.btn-add-set-resting {
+  position: relative;
+  overflow: hidden;
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  color: var(--text);
+  background: color-mix(in srgb, var(--primary) 6%, transparent);
+  padding: 0;
+  min-height: 64px;
+  isolation: isolate;
+}
+.btn-add-set-resting:hover {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--primary) 9%, transparent);
+  transform: none;
+}
+.btn-add-set-resting .rest-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 0;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--primary) 28%, transparent) 0%,
+    color-mix(in srgb, var(--primary) 55%, transparent) 60%,
+    var(--accent) 100%
+  );
+  transition: width 0.25s linear;
+  box-shadow: 0 0 18px color-mix(in srgb, var(--primary) 35%, transparent);
+}
+.btn-add-set-resting .rest-fg {
+  position: relative;
+  z-index: 1;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  width: 100%; padding: 6px 12px;
+  pointer-events: none;
+}
+.btn-add-set-resting .rest-fg-time {
+  font-family: 'Nunito', sans-serif;
+  font-size: 22px; font-weight: 900;
+  letter-spacing: 3px;
+  color: var(--text);
+  text-shadow: 0 1px 2px color-mix(in srgb, var(--bg) 60%, transparent);
+}
+.btn-add-set-resting .rest-fg-sub {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 2.5px;
+  color: color-mix(in srgb, var(--text) 75%, transparent);
+}
+.btn-add-set-resting.rest-done {
+  border-color: var(--accent);
+  animation: restDonePulse 1.4s ease-in-out infinite;
+}
+.btn-add-set-resting.rest-done .rest-fg-time { color: #0a0804; }
+.btn-add-set-resting.rest-done .rest-fg-sub  { color: rgba(10,8,4,0.7); }
+.btn-add-set-resting.rest-done .rest-fg      { color: #0a0804; }
+.btn-add-set-resting.rest-done .rest-fg svg  { color: #0a0804; }
+
+@keyframes restDonePulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 0%, transparent); }
+}
+
+.rest-tier-row {
+  display: flex; gap: 8px; align-items: center;
+  flex-wrap: wrap;
+}
+.rest-tier-tiers {
+  display: flex; gap: 4px; flex: 1; flex-wrap: wrap;
+}
+.rest-tier {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 9px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.rest-tier:hover { color: var(--text); border-color: var(--muted); }
+.rest-tier.active {
+  color: #0a0804;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.rest-tier-sec {
+  font-size: 9px; font-weight: 700; letter-spacing: 0;
+  opacity: 0.85;
+}
+.rest-tier-adjust {
+  display: flex; gap: 4px;
+}
+.rest-tier-adjust button {
+  font-family: 'Nunito', sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 1px;
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 6px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.rest-tier-adjust button:hover { color: var(--text); border-color: var(--muted); }
+
+.rest-custom {
+  display: flex; gap: 8px; align-items: center;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--primary) 5%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: 8px;
+}
+.rest-custom input {
+  width: 80px;
+  font-family: 'Nunito', sans-serif; font-size: 13px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+.rest-custom span {
+  font-size: 11px; color: var(--muted); letter-spacing: 1px;
+}
+.rest-custom button {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 6px 12px;
+  background: var(--accent);
+  border: none; border-radius: 6px;
+  color: #0a0804;
+  cursor: pointer;
+  margin-left: auto;
+}
+.rest-custom button:hover { filter: brightness(1.08); }
+
+/* Rest-timer preset inputs in Settings */
+.rest-pref-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 10px;
+  background: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.rest-pref-label { flex: 1; min-width: 0; }
+.rest-pref-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.rest-pref-sub   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.rest-pref-input {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+.rest-pref-input input {
+  width: 56px; text-align: right;
+  background: transparent; border: none; outline: none;
+  color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
+}
+.rest-pref-input span { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
 /* ── SHARED CARD + BUTTON PRIMITIVES ── used by coaching, regimes, trainees, chat ── */
 .card {
   background: var(--s1);
