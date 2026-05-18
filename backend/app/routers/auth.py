@@ -144,6 +144,19 @@ def update_preferences(
         current_user.rest_medium_seconds = body.rest_medium_seconds
     if body.rest_long_seconds is not None:
         current_user.rest_long_seconds = body.rest_long_seconds
+    if body.rpe_multipliers is not None:
+        # Merge so a partial update doesn't blow away levels the client didn't send.
+        merged = dict(current_user.rpe_multipliers or {})
+        merged.update(body.rpe_multipliers)
+        current_user.rpe_multipliers = merged
+    if body.rpe_multipliers_by_exercise is not None:
+        merged_ex = dict(current_user.rpe_multipliers_by_exercise or {})
+        for ex_id, table in body.rpe_multipliers_by_exercise.items():
+            if not table:
+                merged_ex.pop(ex_id, None)
+            else:
+                merged_ex[ex_id] = table
+        current_user.rpe_multipliers_by_exercise = merged_ex
     db.commit()
     db.refresh(current_user)
     return current_user

@@ -1,4 +1,5 @@
-import type { WorkoutSession, StatusDef, ProgressionSpeed } from "./types";
+import type { WorkoutSession, StatusDef, ProgressionSpeed, RpeMultipliers, RpePerExerciseMultipliers } from "./types";
+import { DEFAULT_RPE_MULTIPLIERS } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1 } from "./utils";
 
@@ -11,13 +12,54 @@ export interface AnalysisResult {
   nextWeight: number;
   nextReps: number;
   reason: string;
+  /** RPE the user reported on the most recent session, if any. Useful for the
+   * UI so it can explain why the recommendation is bigger or smaller than
+   * the user's progression-speed setting alone would imply. */
+  lastRpe: number | null;
 }
 
 // Scales the default jump size when recommending the next weight. "moderate"
 // keeps the legacy 2.5kg upper / 5kg lower behaviour.
 const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fast: 2 };
 
-export function analyzeEx(exId: string, history: WorkoutSession[], speed: ProgressionSpeed = "moderate"): AnalysisResult | null {
+export interface AnalyzeOptions {
+  speed?:        ProgressionSpeed;
+  /** RPE (1..10) from the most recent session for this exercise. */
+  lastRpe?:      number | null;
+  /** Global RPE → step-multiplier table. Defaults to {@link DEFAULT_RPE_MULTIPLIERS}. */
+  rpeTable?:     RpeMultipliers;
+  /** Optional per-exercise overrides for individual RPE levels. */
+  rpePerEx?:     RpePerExerciseMultipliers;
+}
+
+/** Pull the multiplier for the given RPE, preferring a per-exercise override
+ * when present and falling back to the global table, then the defaults. */
+export function rpeMultiplier(
+  exId: string,
+  rpe:  number | null | undefined,
+  table:    RpeMultipliers          = DEFAULT_RPE_MULTIPLIERS,
+  perEx:    RpePerExerciseMultipliers = {},
+): number {
+  if (rpe == null || !Number.isFinite(rpe)) return 1;
+  const level    = String(Math.max(1, Math.min(10, Math.round(rpe))));
+  const override = perEx[exId]?.[level];
+  if (typeof override === "number" && Number.isFinite(override)) return override;
+  const global = table[level];
+  if (typeof global === "number" && Number.isFinite(global)) return global;
+  return DEFAULT_RPE_MULTIPLIERS[level] ?? 1;
+}
+
+export function analyzeEx(
+  exId: string,
+  history: WorkoutSession[],
+  speedOrOpts: ProgressionSpeed | AnalyzeOptions = "moderate",
+): AnalysisResult | null {
+  const opts: AnalyzeOptions = typeof speedOrOpts === "string" ? { speed: speedOrOpts } : speedOrOpts;
+  const speed     = opts.speed     ?? "moderate";
+  const lastRpe   = opts.lastRpe   ?? null;
+  const rpeTable  = opts.rpeTable  ?? DEFAULT_RPE_MULTIPLIERS;
+  const rpePerEx  = opts.rpePerEx  ?? {};
+
   const sessions: SessionSummary[] = [];
   [...history].reverse().forEach(w => {
     const f = w.exercises.find(e => e.id === exId);
@@ -44,7 +86,14 @@ export function analyzeEx(exId: string, history: WorkoutSession[], speed: Progre
   const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
   const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
   const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  const step   = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed];
+  const baseStep = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed];
+  // Apply RPE scaling on top of the user's progression speed so e.g. "fast"
+  // + RPE 9 still backs off, while "slow" + RPE 2 still adds plenty.
+  const rpeMult = rpeMultiplier(exId, lastRpe, rpeTable, rpePerEx);
+  const step    = baseStep * rpeMult;
+  // Round to the nearest plate-pair we'd actually load on a barbell.
+  const plate    = UPPER_IDS.has(exId) ? 2.5 : 5;
+  const roundUp  = (raw: number) => Math.max(plate, Math.round(raw / plate) * plate);
 
   let status: StatusDef;
   let nextWeight: number;
@@ -52,22 +101,37 @@ export function analyzeEx(exId: string, history: WorkoutSession[], speed: Progre
   let reason: string;
 
   if (sessions.length === 1) {
-    status = STATUS.NEW; nextWeight = last.topW + step; nextReps = last.topR || 8;
-    reason = `First session at ${last.topW}kg. Felt manageable? Add ${step}kg next time and match that rep count.`;
+    status = STATUS.NEW;
+    nextWeight = step > 0 ? last.topW + step : last.topW;
+    nextReps = last.topR || 8;
+    reason = step > 0
+      ? `First session at ${last.topW}kg. Felt manageable? Add ${step}kg next time and match that rep count.`
+      : `First session at ${last.topW}kg. Match the reps next time — that RPE says no extra load yet.`;
   } else {
     const wD = last.topW - prev!.topW;
     const rD = last.topR - prev!.topR;
     const stalled3 = back2 && back2.topW === last.topW && prev!.topW === last.topW;
     if (stalled3) {
-      status = STATUS.DELOAD; nextWeight = Math.round(last.topW * 0.85 / step) * step; nextReps = last.topR + 2;
+      status = STATUS.DELOAD;
+      const refStep = baseStep > 0 ? baseStep : plate;
+      nextWeight = Math.round(last.topW * 0.85 / refStep) * refStep;
+      nextReps = last.topR + 2;
       reason = `Three sessions at the same weight. Drop to ${nextWeight}kg (~85%), nail the reps with perfect form, then attack it fresh next block.`;
     } else if (wD > 0) {
-      status = STATUS.GAINING; nextWeight = last.topW + step; nextReps = last.topR;
-      reason = `Up ${wD}kg from last session. Keep adding ${step}kg while it's moving.`;
+      status = STATUS.GAINING;
+      nextWeight = step > 0 ? last.topW + step : last.topW;
+      nextReps = last.topR;
+      reason = step > 0
+        ? `Up ${wD}kg from last session. Keep adding ${step}kg while it's moving.`
+        : `Up ${wD}kg from last session — but RPE was max. Hold this weight and own it.`;
     } else if (wD === 0 && rD > 0) {
       if (last.topR >= 12) {
-        status = STATUS.READY; nextWeight = last.topW + step; nextReps = Math.max(6, last.topR - 4);
-        reason = `${last.topR} reps at ${last.topW}kg. Time to bump. Move to ${last.topW + step}kg, expect ~${Math.max(6, last.topR - 4)} reps. That's the deal.`;
+        status = STATUS.READY;
+        nextWeight = step > 0 ? roundUp(last.topW + step) : last.topW;
+        nextReps = Math.max(6, last.topR - 4);
+        reason = step > 0
+          ? `${last.topR} reps at ${last.topW}kg. Time to bump. Move to ${nextWeight}kg, expect ~${nextReps} reps. That's the deal.`
+          : `${last.topR} reps at ${last.topW}kg, but last RPE was brutal — repeat the weight, target ${nextReps} clean reps.`;
       } else {
         status = STATUS.BUILDING; nextWeight = last.topW; nextReps = last.topR + 1;
         reason = `Reps up to ${last.topR}. Keep milking this weight. Push for ${last.topR + 1} before touching the plates.`;
@@ -80,5 +144,5 @@ export function analyzeEx(exId: string, history: WorkoutSession[], speed: Progre
       reason = `Weight dropped from ${prev!.topW}kg to ${last.topW}kg. Step back, nail it, re-earn it.`;
     }
   }
-  return { sessions, last, est1RM, status, nextWeight, nextReps, reason };
+  return { sessions, last, est1RM, status, nextWeight, nextReps, reason, lastRpe };
 }

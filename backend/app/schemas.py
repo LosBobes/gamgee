@@ -12,6 +12,26 @@ _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 Gender = Literal["female", "male", "non_binary", "other", "prefer_not_to_say"]
 
 
+def _clean_rpe_table(raw: dict[str, Any]) -> dict[str, float]:
+    """Coerce a {'1'..'10' : number} mapping; drop anything else, clamp 0..5."""
+    out: dict[str, float] = {}
+    for k, v in raw.items():
+        try:
+            level = int(k)
+        except (TypeError, ValueError):
+            continue
+        if level < 1 or level > 10:
+            continue
+        try:
+            mult = float(v)
+        except (TypeError, ValueError):
+            continue
+        if mult != mult or mult < 0 or mult > 5:  # NaN-safe + clamp
+            mult = max(0.0, min(5.0, 0.0 if mult != mult else mult))
+        out[str(level)] = round(mult, 3)
+    return out
+
+
 class ItemBase(BaseModel):
     title: str
     description: str | None = None
@@ -93,6 +113,8 @@ class UserOut(BaseModel):
     rest_short_seconds: int | None = None
     rest_medium_seconds: int | None = None
     rest_long_seconds: int | None = None
+    rpe_multipliers: dict[str, float] | None = None
+    rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -164,6 +186,10 @@ class UserPreferences(BaseModel):
     rest_short_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_medium_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_long_seconds: int | None = Field(default=None, ge=5, le=3600)
+    # Map "1".."10" → step multiplier (clamped 0..5).
+    rpe_multipliers: dict[str, float] | None = None
+    # Per-exercise overrides: { exercise_id: { "1": float, ... } }.
+    rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
 
     @field_validator("primary_color")
     @classmethod
@@ -171,6 +197,25 @@ class UserPreferences(BaseModel):
         if v is not None and not _HEX_COLOR_RE.match(v):
             raise ValueError("primary_color must be a valid #RRGGBB hex color")
         return v
+
+    @field_validator("rpe_multipliers")
+    @classmethod
+    def _valid_rpe(cls, v: dict[str, Any] | None) -> dict[str, float] | None:
+        return _clean_rpe_table(v) if v is not None else None
+
+    @field_validator("rpe_multipliers_by_exercise")
+    @classmethod
+    def _valid_rpe_by_ex(cls, v: dict[str, dict[str, Any]] | None) -> dict[str, dict[str, float]] | None:
+        if v is None:
+            return None
+        cleaned: dict[str, dict[str, float]] = {}
+        for ex_id, table in v.items():
+            if not isinstance(ex_id, str) or not ex_id:
+                continue
+            cleaned_table = _clean_rpe_table(table) if isinstance(table, dict) else {}
+            if cleaned_table:
+                cleaned[ex_id[:80]] = cleaned_table
+        return cleaned
 
 
 class NotificationPreferences(BaseModel):
@@ -299,6 +344,7 @@ class WorkoutSessionCreate(BaseModel):
     duration: int
     focus: str | None = None
     exercises: list[Any] = []
+    rpe: int | None = Field(default=None, ge=1, le=10)
 
 
 class WorkoutSession(WorkoutSessionCreate):

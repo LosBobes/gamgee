@@ -73,6 +73,11 @@ if engine.dialect.name == "postgresql":
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_short_seconds INTEGER"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_medium_seconds INTEGER"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rest_long_seconds INTEGER"))
+        # RPE→step-multiplier table and optional per-exercise overrides.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers JSONB"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers_by_exercise JSONB"))
+        # Post-session RPE on workout records (used to scale next session's jump).
+        _conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS rpe INTEGER"))
         # Live session rich-broadcast columns
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_id VARCHAR"))
         _conn.execute(text("ALTER TABLE live_sessions ADD COLUMN IF NOT EXISTS current_exercise_name VARCHAR"))

@@ -5,9 +5,9 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
-  RestPrefs,
+  RestPrefs, RpeMultipliers, RpePerExerciseMultipliers,
 } from "./types";
-import { DEFAULT_REST_PREFS } from "./types";
+import { DEFAULT_REST_PREFS, DEFAULT_RPE_MULTIPLIERS } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
@@ -41,6 +41,39 @@ import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { registerServiceWorker } from "./push";
 
+
+/** Clamp + coerce an incoming partial RPE-multiplier table and merge it on
+ * top of the defaults so the resulting object always has 10 valid entries. */
+function mergeRpeTable(input: Partial<Record<string, unknown>> | null | undefined): RpeMultipliers {
+  const out: RpeMultipliers = { ...DEFAULT_RPE_MULTIPLIERS };
+  if (!input) return out;
+  for (const [k, v] of Object.entries(input)) {
+    const lvl = Number(k);
+    if (!Number.isInteger(lvl) || lvl < 1 || lvl > 10) continue;
+    const num = Number(v);
+    if (!Number.isFinite(num)) continue;
+    out[String(lvl)] = Math.max(0, Math.min(5, num));
+  }
+  return out;
+}
+
+function sanitizeRpePerEx(input: Record<string, Record<string, unknown>> | null | undefined): RpePerExerciseMultipliers {
+  if (!input) return {};
+  const out: RpePerExerciseMultipliers = {};
+  for (const [exId, table] of Object.entries(input)) {
+    if (!exId || typeof table !== "object" || !table) continue;
+    const cleaned: Partial<RpeMultipliers> = {};
+    for (const [k, v] of Object.entries(table)) {
+      const lvl = Number(k);
+      if (!Number.isInteger(lvl) || lvl < 1 || lvl > 10) continue;
+      const num = Number(v);
+      if (!Number.isFinite(num)) continue;
+      cleaned[String(lvl)] = Math.max(0, Math.min(5, num));
+    }
+    if (Object.keys(cleaned).length) out[exId] = cleaned;
+  }
+  return out;
+}
 
 interface WorkoutTrackerProps {
   initialAuthView?: "login" | "register" | "forgot" | "reset" | "verify";
@@ -124,6 +157,26 @@ export default function WorkoutTracker({
       return DEFAULT_REST_PREFS;
     }
   });
+  const [rpeMultipliers, setRpeMultipliers] = useState<RpeMultipliers>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_rpe_multipliers");
+      if (!raw) return { ...DEFAULT_RPE_MULTIPLIERS };
+      const parsed = JSON.parse(raw) as Partial<RpeMultipliers>;
+      return mergeRpeTable(parsed);
+    } catch {
+      return { ...DEFAULT_RPE_MULTIPLIERS };
+    }
+  });
+  const [rpePerExercise, setRpePerExercise] = useState<RpePerExerciseMultipliers>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_rpe_multipliers_by_exercise");
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as RpePerExerciseMultipliers;
+      return sanitizeRpePerEx(parsed);
+    } catch {
+      return {};
+    }
+  });
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
@@ -201,6 +254,43 @@ export default function WorkoutTracker({
     localStorage.setItem("gamgee_rest_prefs", JSON.stringify(restPrefs));
   }, [restPrefs]);
 
+  useEffect(() => {
+    localStorage.setItem("gamgee_rpe_multipliers", JSON.stringify(rpeMultipliers));
+  }, [rpeMultipliers]);
+
+  useEffect(() => {
+    localStorage.setItem("gamgee_rpe_multipliers_by_exercise", JSON.stringify(rpePerExercise));
+  }, [rpePerExercise]);
+
+  const updateRpeMultipliers = useCallback((next: Partial<RpeMultipliers>) => {
+    setRpeMultipliers(prev => {
+      const merged = mergeRpeTable({ ...prev, ...next });
+      authFetch("/api/auth/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rpe_multipliers: next }),
+      }).catch(() => { /* best-effort; localStorage already updated */ });
+      return merged;
+    });
+  }, [authFetch]);
+
+  const updateRpePerExercise = useCallback((exId: string, next: Partial<RpeMultipliers> | null) => {
+    setRpePerExercise(prev => {
+      const updated: RpePerExerciseMultipliers = { ...prev };
+      if (next === null || (next && Object.keys(next).length === 0)) {
+        delete updated[exId];
+      } else {
+        updated[exId] = { ...(prev[exId] ?? {}), ...next };
+      }
+      authFetch("/api/auth/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rpe_multipliers_by_exercise: { [exId]: next ?? {} } }),
+      }).catch(() => { /* best-effort; localStorage already updated */ });
+      return updated;
+    });
+  }, [authFetch]);
+
   const updateRestPrefs = useCallback((next: Partial<RestPrefs>) => {
     setRestPrefs(prev => {
       const merged: RestPrefs = {
@@ -269,6 +359,8 @@ export default function WorkoutTracker({
     setAssignments([]);
     setConversations([]);
     setActiveConvId(null);
+    setRpeMultipliers({ ...DEFAULT_RPE_MULTIPLIERS });
+    setRpePerExercise({});
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
       caches.delete("api-cache").catch(() => { /* best-effort */ });
@@ -286,7 +378,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, unknown> | null; rpe_multipliers_by_exercise?: Record<string, Record<string, unknown>> | null }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -307,6 +399,12 @@ export default function WorkoutTracker({
             medium: clamp(d.rest_medium_seconds, prev.medium),
             long:   clamp(d.rest_long_seconds,   prev.long),
           }));
+        }
+        if (d.rpe_multipliers && typeof d.rpe_multipliers === "object") {
+          setRpeMultipliers(mergeRpeTable(d.rpe_multipliers));
+        }
+        if (d.rpe_multipliers_by_exercise && typeof d.rpe_multipliers_by_exercise === "object") {
+          setRpePerExercise(sanitizeRpePerEx(d.rpe_multipliers_by_exercise));
         }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -592,7 +690,7 @@ export default function WorkoutTracker({
       return {
         ...def,
         uid: `${def.id}_${Date.now()}_${Math.random()}`,
-        sets: [{ weight: String(slot.minutes), reps: "", done: false }],
+        sets: [{ weight: String(slot.minutes), reps: "", done: false, prefilled: !!slot.minutes }],
       };
     };
 
@@ -603,7 +701,12 @@ export default function WorkoutTracker({
         if (lastSession) {
           const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
           if (lastEx.sets.length > 0)
-            initSets = lastEx.sets.map(s => ({ weight: s.weight, reps: s.reps, done: false }));
+            initSets = lastEx.sets.map(s => ({
+              weight:    s.weight,
+              reps:      s.reps,
+              done:      false,
+              prefilled: !!(s.weight || s.reps),
+            }));
         }
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
@@ -626,10 +729,21 @@ export default function WorkoutTracker({
   const removeExercise = (uid: string) =>
     setExercises(p => p.filter(e => e.uid !== uid));
 
+  /** Update a single set's weight/reps. The edited set loses its `prefilled`
+   * flag so it never gets overwritten again; any *following* sets that are
+   * still `prefilled` (and undone) inherit the new value so the suggested
+   * chain stays in sync with the user's latest correction. */
   const updateSet = (uid: string, idx: number, field: keyof WorkoutSet, value: string) =>
-    setExercises(p => p.map(ex =>
-      ex.uid !== uid ? ex : { ...ex, sets: ex.sets.map((s, i) => i === idx ? { ...s, [field]: value } : s) }
-    ));
+    setExercises(p => p.map(ex => {
+      if (ex.uid !== uid) return ex;
+      const sets = ex.sets.map((s, i) => {
+        if (i < idx) return s;
+        if (i === idx) return { ...s, [field]: value, prefilled: false };
+        if (s.done || s.prefilled === false) return s;
+        return { ...s, [field]: value, prefilled: true };
+      });
+      return { ...ex, sets };
+    }));
 
   const toggleSet = (uid: string, idx: number) =>
     setExercises(p => p.map(ex =>
@@ -637,14 +751,41 @@ export default function WorkoutTracker({
     ));
 
   const addSet = (uid: string) =>
-    setExercises(p => p.map(ex =>
-      ex.uid !== uid ? ex : { ...ex, sets: [...ex.sets, { weight: "", reps: "", done: false }] }
-    ));
+    setExercises(p => p.map(ex => {
+      if (ex.uid !== uid) return ex;
+      // Carry the previous set's weight/reps forward as a suggestion so the
+      // user doesn't have to retype values that probably won't change.
+      const last = ex.sets[ex.sets.length - 1];
+      const seed = last && (last.weight || last.reps)
+        ? { weight: last.weight, reps: last.reps, done: false, prefilled: true }
+        : { weight: "", reps: "", done: false };
+      return { ...ex, sets: [...ex.sets, seed] };
+    }));
 
   const removeSet = (uid: string, idx: number) =>
     setExercises(p => p.map(ex =>
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== idx) }
     ));
+
+  /** Apply the analyzer's recommendation (RPE- and progression-speed-aware)
+   * to every strength exercise's still-undone sets in one shot. The on-card
+   * APPLY button does the same thing for a single exercise — this is the
+   * top-of-workout "PROGRESS ALL" affordance. */
+  const applyProgressionAll = () => {
+    const opts = { speed: progressionSpeed, lastRpe: history[0]?.rpe ?? null, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
+    setExercises(p => p.map(ex => {
+      if (ex.type !== "strength") return ex;
+      const a = analyzeEx(ex.id, history, opts);
+      if (!a) return ex;
+      return {
+        ...ex,
+        sets: ex.sets.map(s => s.done
+          ? s
+          : { ...s, weight: String(a.nextWeight), reps: String(a.nextReps), prefilled: true }
+        ),
+      };
+    }));
+  };
 
   const isNewPr = (exId: string, weight: string): boolean => {
     const w = parseFloat(weight);
@@ -685,11 +826,16 @@ export default function WorkoutTracker({
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
+    // Strip the `prefilled` flag — it's a UI-only marker that doesn't belong
+    // in the persisted history.
     const done = exercises
-      .map(ex => ({ ...ex, sets: ex.sets.filter(s => s.done) }))
+      .map(ex => ({
+        ...ex,
+        sets: ex.sets.filter(s => s.done).map(s => ({ weight: s.weight, reps: s.reps, done: s.done })),
+      }))
       .filter(ex => ex.sets.length > 0);
     const session: WorkoutSession = {
-      id: crypto.randomUUID(), date: new Date().toISOString(), duration: dur, focus, exercises: done,
+      id: crypto.randomUUID(), date: new Date().toISOString(), duration: dur, focus, exercises: done, rpe: null,
     };
     const newPrs: PRDict = { ...prs };
     done.forEach(ex => ex.sets.forEach(s => {
@@ -724,6 +870,21 @@ export default function WorkoutTracker({
     setCompleted(null);
     setTab("history");
   };
+
+  /** Save the post-workout RPE the user picks on the completion screen.
+   * Writes through to the backend via PUT /api/workouts/{id}, then mirrors
+   * the value into local history so the next session's analyzer sees it. */
+  const saveSessionRpe = useCallback((sessionId: string, rpe: number | null) => {
+    setCompleted(prev => prev && prev.id === sessionId ? { ...prev, rpe } : prev);
+    setHistory(h => h.map(w => w.id === sessionId ? { ...w, rpe } : w));
+    const session = (completed && completed.id === sessionId) ? completed : history.find(w => w.id === sessionId);
+    if (!session) return;
+    authFetch(`/api/workouts/${sessionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...session, rpe }),
+    }).catch(() => { /* best-effort — local state is already up to date */ });
+  }, [authFetch, completed, history]);
 
   // ── History management ──
 
@@ -844,7 +1005,11 @@ export default function WorkoutTracker({
         ["chat", "coaching", "trainees", "regimes"].includes(tab) ? " content-wide" : ""
       }`}>
         {completed && (
-          <WorkoutComplete session={completed} onDone={dismissCompleted} />
+          <WorkoutComplete
+            session={completed}
+            onDone={dismissCompleted}
+            onSetRpe={rpe => saveSessionRpe(completed.id, rpe)}
+          />
         )}
         {!completed && tab === "workout" && (
           <WorkoutTab
@@ -857,11 +1022,14 @@ export default function WorkoutTracker({
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
             restPrefs={restPrefs}
+            rpeMultipliers={rpeMultipliers}
+            rpePerExercise={rpePerExercise}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
+            applyProgressionAll={applyProgressionAll}
           />
         )}
         {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
@@ -941,7 +1109,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

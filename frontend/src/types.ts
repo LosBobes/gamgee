@@ -8,12 +8,19 @@ export interface MuscleInfo { n: string; g: string; }
 export interface ExerciseDef { id: string; name: string; type: ExerciseType; cat?: string; }
 export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: number; newP?: string[]; ovP?: string[]; newS?: string[]; }
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
-export interface WorkoutSet { weight: string; reps: string; done: boolean; }
+/** A single set in an active workout.
+ *
+ * `prefilled` marks values that came from a "reapply last session" / progression
+ * suggestion rather than typed by the user. Sets that are still `prefilled`
+ * get overwritten when the user edits an earlier set so the suggested rep/load
+ * chain stays consistent; the moment the user touches a set's number, that
+ * set flips to `prefilled: false` and stops getting auto-overwritten. */
+export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; }
 export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
 export type CardioTiming = "none" | "before" | "after" | "both";
 export interface CardioSlot { exId: string; minutes: number; }
 export interface CardioPlan { timing: CardioTiming; before: CardioSlot | null; after: CardioSlot | null; }
-export interface WorkoutSession { id: string; date: string; duration: number; focus?: string | null; exercises: WorkoutExercise[]; }
+export interface WorkoutSession { id: string; date: string; duration: number; focus?: string | null; exercises: WorkoutExercise[]; rpe?: number | null; }
 export interface PersonalRecord { name: string; weight: number; reps: number; date: string; isCardio?: boolean; }
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
 export type PRDict = Record<string, PersonalRecord>;
@@ -31,6 +38,18 @@ export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>>;
 export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
+
+/** Map of RPE level "1".."10" → step multiplier used to scale the next-session
+ * weight jump. Low RPE (workout felt easy) → larger multiplier; high RPE
+ * (felt brutal) → smaller / zero multiplier. */
+export type RpeMultipliers = Record<string, number>;
+export const DEFAULT_RPE_MULTIPLIERS: RpeMultipliers = {
+  "1": 2.5, "2": 2.0, "3": 1.75, "4": 1.5, "5": 1.25,
+  "6": 1.0, "7": 0.75, "8": 0.5, "9": 0.25, "10": 0,
+};
+/** Per-exercise overrides keyed by exercise id. Missing levels fall back to
+ * the global table. */
+export type RpePerExerciseMultipliers = Record<string, Partial<RpeMultipliers>>;
 export interface MetricDef { id: string; label: string; unit: string; color: string; step: number; min: number; max: number; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 
