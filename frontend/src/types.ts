@@ -40,8 +40,9 @@ export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 
 /** Visual effect played during workout-wizard step transitions so the
- * delay between tap and next step feels intentional. */
-export type WizardTransitionStyle = "earthquake" | "ripple" | "wipe";
+ * delay between tap and next step feels intentional. `none` skips the fx
+ * entirely for users who want a quieter UI. */
+export type WizardTransitionStyle = "earthquake" | "ripple" | "wipe" | "none";
 export const DEFAULT_WIZARD_TRANSITION: WizardTransitionStyle = "earthquake";
 
 /** Map of RPE level "1".."10" → step multiplier used to scale the next-session

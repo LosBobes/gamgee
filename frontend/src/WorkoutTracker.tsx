@@ -183,11 +183,20 @@ export default function WorkoutTracker({
   );
   const [wizardTransition, setWizardTransitionState] = useState<WizardTransitionStyle>(() => {
     const raw = localStorage.getItem("gamgee_wizard_transition");
-    return raw === "earthquake" || raw === "ripple" || raw === "wipe" ? raw : DEFAULT_WIZARD_TRANSITION;
+    return raw === "earthquake" || raw === "ripple" || raw === "wipe" || raw === "none"
+      ? raw
+      : DEFAULT_WIZARD_TRANSITION;
   });
   const updateWizardTransition = useCallback((next: WizardTransitionStyle) => {
     setWizardTransitionState(next);
     localStorage.setItem("gamgee_wizard_transition", next);
+  }, []);
+  const [reducedMotion, setReducedMotionState] = useState<boolean>(
+    () => localStorage.getItem("gamgee_reduced_motion") === "1",
+  );
+  const updateReducedMotion = useCallback((next: boolean) => {
+    setReducedMotionState(next);
+    localStorage.setItem("gamgee_reduced_motion", next ? "1" : "0");
   }, []);
   const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
   // buddy/notif/live state
@@ -254,6 +263,19 @@ export default function WorkoutTracker({
     const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (meta) meta.content = primaryColor;
   }, [primaryColor]);
+
+  // Tag the root with the platform so platform-specific motion (e.g.
+  // back-gesture sweep direction) can key off CSS attribute selectors.
+  useEffect(() => {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const platform = /Android/i.test(ua) ? "android" : /iPad|iPhone|iPod/i.test(ua) ? "ios" : "other";
+    document.documentElement.setAttribute("data-platform", platform);
+  }, []);
+
+  useEffect(() => {
+    if (reducedMotion) document.documentElement.setAttribute("data-reduced-motion", "1");
+    else               document.documentElement.removeAttribute("data-reduced-motion");
+  }, [reducedMotion]);
 
   useEffect(() => {
     localStorage.setItem("gamgee_progression_speed", progressionSpeed);
@@ -1128,7 +1150,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

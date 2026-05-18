@@ -208,7 +208,7 @@ export default function WorkoutTab({
         </div>
       )}
       </div>
-      {quake && (
+      {quake && wizardTransition !== "none" && (
         <div
           key={quake.id}
           className={`wz-fx wz-fx-${wizardTransition}`}
