@@ -103,7 +103,9 @@ export default function WorkoutTracker({
   });
   const [wStep,     setWStep]     = useState(0);
   const [focus,     setFocus]     = useState<string | null>(null);
-  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: "none", before: null, after: null });
+  // `timing: null` means the user hasn't picked yet — the wizard screen lands
+  // with nothing pre-selected so they make a deliberate choice.
+  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: null, before: null, after: null });
   const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
   // logging
   const [active,    setActive]    = useState(false);

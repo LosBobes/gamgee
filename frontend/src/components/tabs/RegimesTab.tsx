@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Plus, Calendar, Trash2, Wand2 } from "lucide-react";
+import { Plus, Calendar, Trash2, Wand2, Pencil } from "lucide-react";
 import type { Regime, WeeklyPlan, WeekPlanDay, ProgressionSpeed } from "../../types";
 import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
+import RegimeEditor from "../regime/RegimeEditor";
 
 interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
@@ -21,6 +22,7 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
   const [building, setBuilding] = useState(false);
   const [loading, setLoading] = useState(true);
   const [appliedId, setAppliedId] = useState<number | null>(null);
+  const [editing, setEditing] = useState<Regime | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -36,7 +38,14 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
     const plan: WeeklyPlan = {};
     (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[]).forEach(k => {
       const d = regime.days?.[k];
-      if (d) plan[k] = { focus: d.focus, exerciseIds: d.exerciseIds, enabled: d.enabled };
+      if (d) plan[k] = {
+        focus: d.focus,
+        exerciseIds: d.exerciseIds,
+        enabled: d.enabled,
+        exerciseConfig: d.exerciseConfig,
+        mode: regime.mode ?? null,
+        general_rpe: regime.general_rpe ?? null,
+      };
     });
     setWeeklyPlan(plan);
     setAppliedId(regime.id);
@@ -48,6 +57,17 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
     await authFetch(`/api/regimes/${id}`, { method: "DELETE" });
     refresh();
   };
+
+  if (editing) {
+    return (
+      <RegimeEditor
+        authFetch={authFetch}
+        regime={editing}
+        onSaved={() => { setEditing(null); refresh(); }}
+        onCancel={() => setEditing(null)}
+      />
+    );
+  }
 
   return (
     <div className="regimes-tab tab-anim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -91,13 +111,21 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
                 <strong>{r.name}</strong>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {r.days_per_week} days/week · {r.goal || "general"} · {r.experience || "any"}
+                  {r.mode && (
+                    <> · {r.mode === "per_exercise_rpe" ? "per-exercise RPE"
+                         : r.mode === "general_rpe" ? `RPE ${r.general_rpe ?? "?"}`
+                         : "manual"}</>
+                  )}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 <button className="btn-pri" onClick={() => applyToWeek(r)}>
                   {appliedId === r.id ? "Applied!" : "Apply to my week"}
                 </button>
-                <button className="btn-sec" onClick={() => deleteRegime(r.id)}>
+                <button className="btn-sec" onClick={() => setEditing(r)} aria-label="Edit regime">
+                  <Pencil size={14} />
+                </button>
+                <button className="btn-sec" onClick={() => deleteRegime(r.id)} aria-label="Delete regime">
                   <Trash2 size={14} />
                 </button>
               </div>

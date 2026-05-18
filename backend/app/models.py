@@ -418,6 +418,15 @@ class Regime(Base):
     avoid_muscles = Column(JSONB, nullable=False, default=list)   # list[str] of muscle groups to skip
     equipment = Column(JSONB, nullable=False, default=list)       # list[str]: barbell|dumbbell|bodyweight|machine
     days = Column(JSONB, nullable=False, default=dict)            # mon..sun -> DayPlan
+    # How the regime drives weight/reps for scheduled workouts:
+    #   per_exercise_rpe — each exercise carries its own target RPE (stored in
+    #     days[*].exerciseConfig[id].rpe).
+    #   general_rpe — one RPE for the whole regime (`general_rpe` column);
+    #     applies to every exercise unless overridden.
+    #   manual — each exercise carries explicit sets/reps/weight in
+    #     days[*].exerciseConfig[id].{sets,reps,weight}; no auto-progression.
+    mode = Column(String(30), nullable=True)
+    general_rpe = Column(Integer, nullable=True)
     is_template = Column(Boolean, nullable=False, default=False)
     created_at = Column(BigInteger, nullable=False, default=0)
 

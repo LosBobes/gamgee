@@ -3,8 +3,7 @@ import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus,
 import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
-import { MI } from "../../data/muscles";
-import { EM, TYPE_COLOR } from "../../data/exercises";
+import { TYPE_COLOR } from "../../data/exercises";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
 import SetRestButton, { type RestTier } from "./RestTimer";
 
@@ -103,7 +102,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
-  const m      = EM[ex.id] || { p: [], s: [] };
 
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
@@ -165,10 +163,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                 <TrendingUp size={15} /> APPLY
               </button>
             )}
-          </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 5 }}>
-            {m.p.map(mid => <span key={mid} className="mtag new">{MI[mid]?.n}</span>)}
-            {m.s.slice(0, 2).map(mid => <span key={mid} className="mtag sec">{MI[mid]?.n}</span>)}
           </div>
         </div>
         <div className="ex-hdr-actions">

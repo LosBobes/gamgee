@@ -248,6 +248,7 @@ def _to_out(regime: models.Regime) -> schemas.RegimeOut:
         avoid_muscles=list(regime.avoid_muscles or []),
         equipment=list(regime.equipment or []),
         days={k: schemas.DayPlanIn(**v) for k, v in (regime.days or {}).items()},
+        mode=regime.mode, general_rpe=regime.general_rpe,
         is_template=bool(regime.is_template), created_at=regime.created_at,
     )
 
@@ -337,7 +338,8 @@ def create_regime(
         goal=body.goal, experience=body.experience, days_per_week=body.days_per_week,
         focus_areas=list(body.focus_areas), avoid_muscles=list(body.avoid_muscles),
         equipment=list(body.equipment),
-        days={k: v.model_dump() for k, v in (body.days or {}).items()},
+        days={k: v.model_dump(exclude_none=True) for k, v in (body.days or {}).items()},
+        mode=body.mode, general_rpe=body.general_rpe,
         is_template=False, created_at=now_ms(),
     )
     db.add(r)
@@ -390,7 +392,9 @@ def update_regime(
     r.focus_areas = list(body.focus_areas)
     r.avoid_muscles = list(body.avoid_muscles)
     r.equipment = list(body.equipment)
-    r.days = {k: v.model_dump() for k, v in (body.days or {}).items()}
+    r.days = {k: v.model_dump(exclude_none=True) for k, v in (body.days or {}).items()}
+    r.mode = body.mode
+    r.general_rpe = body.general_rpe
     db.commit()
     db.refresh(r)
     return _to_out(r)

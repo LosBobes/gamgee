@@ -3772,3 +3772,27 @@ html, body { background: var(--bg); }
   opacity: 0.6;
 }
 
+/* Regime editor — exercise rows, config chips and popovers. */
+.re-cfg-chip {
+  font-size: 11px; padding: 2px 8px; border-radius: 999px;
+  background: var(--ad2); color: var(--text);
+  border: 1px solid var(--ad); white-space: nowrap;
+}
+.re-popover {
+  margin-top: 6px; padding: 10px;
+  border: 1px solid var(--accent); border-radius: 8px;
+  background: var(--s1);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.re-popover-row { display: flex; align-items: center; justify-content: space-between; }
+.re-popover-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+}
+.re-popover-grid label {
+  display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted);
+}
+.re-popover-grid input {
+  width: 100%; padding: 6px 8px; box-sizing: border-box;
+  border: 1px solid var(--ad); border-radius: 6px; background: var(--s2); color: var(--text);
+}
+
