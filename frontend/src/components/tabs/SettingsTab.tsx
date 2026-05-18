@@ -102,19 +102,13 @@ function WizardTransitionCard({
 }) {
   const t = useTxt();
   const options: Array<{ id: WizardTransitionStyle; label: string }> = [
-    { id: "earthquake", label: "Earthquake" },
-    { id: "ripple",     label: "Ripple"     },
-    { id: "wipe",       label: "Wipe"       },
     { id: "none",       label: "None"       },
+    { id: "earthquake", label: "Earthquake" },
   ];
   const descriptions: Record<WizardTransitionStyle, string> = {
     earthquake: t("Page shakes and a shockwave radiates from your tap.",
                   "Whole page shakes. Shockwave rolls out from your tap.",
                   "Page shakes, bestie. Shockwave rolls out from your tap."),
-    ripple:     t("A soft accent-coloured ripple washes out from your tap.",
-                  "A clean accent ripple washes out from your tap.",
-                  "A soft accent ripple washes out from your tap, bestie."),
-    wipe:       "A bright vertical bar sweeps outward from your tap.",
     none:       t("No effect — wizard steps switch instantly.",
                   "No effect. Steps switch instantly.",
                   "No effect, bestie — steps switch instantly."),
