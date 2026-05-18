@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Users, UserPlus, Search, Check, X as XIcon, Trash2, Send,
-  Trophy, Flame, Zap, Bell, BellOff, Play, LogOut,
+  Trophy, Flame, Zap, Bell, Play, LogOut,
 } from "lucide-react";
 import type {
   Buddy, UserSearchResult, ScoreboardRow, MotivatePreset, LiveSession,
@@ -407,10 +407,17 @@ function BuddyCard({ buddy, authFetch, refresh, onToast, onLoading, onMotivate, 
 
 function PrefToggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
   return (
-    <button className={`pref-toggle${on ? " on" : ""}`} onClick={onClick}>
-      {on ? <Bell size={13} /> : <BellOff size={13} />}
-      <span>{label}</span>
-      <span className={`pref-pill${on ? " on" : ""}`}>{on ? "ON" : "OFF"}</span>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      className={`pref-toggle${on ? " on" : ""}`}
+      onClick={onClick}
+    >
+      <span className="pref-radio" aria-hidden="true" />
+      <span className="pref-toggle-body">
+        <span className="pref-toggle-label">{label}</span>
+      </span>
     </button>
   );
 }

@@ -21,6 +21,13 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
 
   useEffect(() => { setCustoms(getCustomFocuses()); }, []);
 
+  // Brief delay before advancing so the user sees the card's selected state
+  // flash before the wizard transitions to the next step.
+  const selectAndAdvance = (id: string) => {
+    setFocus(id);
+    window.setTimeout(onNext, 180);
+  };
+
   const handleCreate = () => {
     const name = newName.trim();
     if (!name) return;
@@ -36,7 +43,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
     setCreating(false);
     setNewName("");
     setNewIconName(ICON_OPTIONS[0].name);
-    setFocus(cf.id);
+    selectAndAdvance(cf.id);
   };
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -66,7 +73,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
 
       <div className="focus-grid">
         {Object.entries(FOCUS).map(([k, f]) => (
-          <div key={k} className={`focus-card${focus === k ? " selected" : ""}`} onClick={() => setFocus(k)}>
+          <div key={k} className={`focus-card${focus === k ? " selected" : ""}`} onClick={() => selectAndAdvance(k)}>
             <div className="focus-icon"><f.icon size={24} /></div>
             <div className="focus-name">{f.name}</div>
             <div className="focus-desc">{f.desc}</div>
@@ -76,7 +83,7 @@ export default function WizardFocus({ focus, setFocus, onBack, onNext }: Props) 
         {customs.map(cf => {
           const IconComp = (ICON_OPTIONS.find(o => o.name === cf.iconName) ?? ICON_OPTIONS[0]).icon;
           return (
-            <div key={cf.id} className={`focus-card focus-card-custom${focus === cf.id ? " selected" : ""}`} onClick={() => setFocus(cf.id)}>
+            <div key={cf.id} className={`focus-card focus-card-custom${focus === cf.id ? " selected" : ""}`} onClick={() => selectAndAdvance(cf.id)}>
               <button className="focus-card-del" onClick={(e) => handleDelete(cf.id, e)} title="Delete"><Trash2 size={11} /></button>
               <div className="focus-icon"><IconComp size={24} /></div>
               <div className="focus-name">{cf.name}</div>
