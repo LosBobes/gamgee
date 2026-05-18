@@ -1749,7 +1749,12 @@ html, body { background: var(--bg); }
   padding: 14px 10px;
   letter-spacing: 1.5px;
   gap: 6px;
-  white-space: nowrap;
+  /* Allow long labels (e.g. "YES, STRETCH →" in tone-specific variants) to
+     wrap inside the button instead of overflowing past the rounded edge on
+     narrow phones. */
+  white-space: normal;
+  text-align: center;
+  overflow-wrap: anywhere;
 }
 .complete-actions > .btn-start { width: auto; font-size: 16px; }
 .complete-actions > .btn-start > svg,
