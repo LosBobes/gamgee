@@ -1002,7 +1002,7 @@ html, body { background: var(--bg); }
               0 4px 14px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 .step-btn {
-  flex: 0 0 36px; min-width: 36px;
+  flex: 0 0 30px; min-width: 30px;
   background: transparent; border: none;
   color: var(--accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -1024,8 +1024,9 @@ html, body { background: var(--bg); }
 .step-inp {
   flex: 1 1 0; min-width: 0;
   background: transparent !important; border: none !important; border-radius: 0;
-  padding: 4px 2px; font-size: 17px; font-weight: 800;
-  letter-spacing: 0.5px;
+  padding: 4px 0; font-size: 17px; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
 }
 .step-inp:focus { background: transparent !important; }
 .stepper:has(.set-inp.done) {
@@ -1059,7 +1060,7 @@ html, body { background: var(--bg); }
 @media (max-width: 380px) {
   .set-col-hdr,
   .set-row { grid-template-columns: 16px 1fr 1fr 44px 22px; gap: 4px; }
-  .step-btn { flex-basis: 32px; min-width: 32px; }
+  .step-btn { flex-basis: 26px; min-width: 26px; }
   .step-inp { font-size: 16px; }
   .check-btn { width: 44px; height: 44px; }
   .rm-set-btn { width: 22px; height: 44px; }
