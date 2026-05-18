@@ -223,7 +223,9 @@ export default function ChatTab({
       });
       if (r.ok) {
         const msg: ChatMessage = await r.json();
-        setMessages(prev => [...prev, msg]);
+        // The WebSocket echo for our own message may have arrived first;
+        // dedup by id so we don't double-render on the sender's side.
+        setMessages(prev => (prev.some(x => x.id === msg.id) ? prev : [...prev, msg]));
         refreshConversations();
       } else {
         setInput(body);
