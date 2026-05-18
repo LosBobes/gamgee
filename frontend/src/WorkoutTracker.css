@@ -182,14 +182,22 @@ html, body { background: var(--bg); }
   animation: wzFxWipe 0.6s cubic-bezier(.22, 1, .36, 1) both;
 }
 
-/* BACK GESTURE — soft accent sweep left→right that plays whenever a
-   mobile back gesture (iOS edge-swipe, Android back button) is consumed,
-   confirming the app actually navigated. */
+/* BACK GESTURE — soft accent sweep that plays whenever a mobile back
+   gesture (iOS edge-swipe, Android back button) is consumed, confirming
+   the app actually navigated. Sweeps left→right on iOS (matching the
+   edge-swipe direction); reversed to right→left on Android so it tracks
+   the platform's back-navigation feel. */
 @keyframes backGestureSweep {
   0%   { transform: translateX(-100%); opacity: 0; }
   20%  {                               opacity: 1; }
   80%  {                               opacity: 1; }
   100% { transform: translateX(100%);  opacity: 0; }
+}
+@keyframes backGestureSweepReverse {
+  0%   { transform: translateX(100%);  opacity: 0; }
+  20%  {                               opacity: 1; }
+  80%  {                               opacity: 1; }
+  100% { transform: translateX(-100%); opacity: 0; }
 }
 .back-gesture-fx {
   position: fixed;
@@ -206,6 +214,14 @@ html, body { background: var(--bg); }
   );
   animation: backGestureSweep 0.42s cubic-bezier(.22, 1, .36, 1) both;
 }
+:root[data-platform="android"] .back-gesture-fx {
+  animation-name: backGestureSweepReverse;
+}
+/* Mirror the wizard wipe on Android so it contracts inward from the
+   edges toward the tap, opposite the outward sweep on iOS. */
+:root[data-platform="android"] .wz-fx-wipe {
+  animation-direction: reverse;
+}
 
 @media (prefers-reduced-motion: reduce) {
   .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
@@ -215,6 +231,18 @@ html, body { background: var(--bg); }
   .wz-fx            { display: none; }
   .back-gesture-fx  { display: none; }
 }
+
+/* Manual "Reduce motion" toggle in Settings → Appearance — applies the
+   same neutralisations as the system-level prefers-reduced-motion hint. */
+:root[data-reduced-motion="1"] .tab-anim,
+:root[data-reduced-motion="1"] .screen-anim,
+:root[data-reduced-motion="1"] .wstep-anim,
+:root[data-reduced-motion="1"] .wstep-anim-back {
+  animation: fadeIn 0.15s ease backwards;
+}
+:root[data-reduced-motion="1"] .earthquake-shake { animation: none; }
+:root[data-reduced-motion="1"] .wz-fx            { display: none; }
+:root[data-reduced-motion="1"] .back-gesture-fx  { display: none; }
 
 /* ── SPLASH SCREEN ── */
 @keyframes splashRingFill {

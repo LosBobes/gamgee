@@ -39,6 +39,8 @@ interface Props {
   onRpePerExerciseChange: (exId: string, next: Partial<RpeMultipliers> | null) => void;
   wizardTransition:         WizardTransitionStyle;
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
+  reducedMotion:            boolean;
+  onReducedMotionChange:    (next: boolean) => void;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
@@ -103,6 +105,7 @@ function WizardTransitionCard({
     { id: "earthquake", label: "Earthquake" },
     { id: "ripple",     label: "Ripple"     },
     { id: "wipe",       label: "Wipe"       },
+    { id: "none",       label: "None"       },
   ];
   const descriptions: Record<WizardTransitionStyle, string> = {
     earthquake: t("Page shakes and a shockwave radiates from your tap.",
@@ -112,6 +115,9 @@ function WizardTransitionCard({
                   "A clean accent ripple washes out from your tap.",
                   "A soft accent ripple washes out from your tap, bestie."),
     wipe:       "A bright vertical bar sweeps outward from your tap.",
+    none:       t("No effect — wizard steps switch instantly.",
+                  "No effect. Steps switch instantly.",
+                  "No effect, bestie — steps switch instantly."),
   };
   return (
     <div className="profile-card" style={{ marginBottom: 12 }}>
@@ -140,6 +146,44 @@ function WizardTransitionCard({
       </div>
       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 10, lineHeight: 1.4 }}>
         {descriptions[value]}
+      </div>
+    </div>
+  );
+}
+
+function ReducedMotionCard({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const t = useTxt();
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600 }}>
+            {t("Reduce motion", "Reduce motion", "Reduce motion")}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>
+            {t(
+              "Disable wizard transitions, back-gesture sweeps, and other decorative animations.",
+              "Kill the shake, sweep, and other decorative animations.",
+              "Kill the shake, sweep, and other decorative animations, bestie.",
+            )}
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={value}
+          onClick={() => onChange(!value)}
+          className={value ? "btn-primary" : "auth-toggle"}
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {value ? "On" : "Off"}
+        </button>
       </div>
     </div>
   );
@@ -854,6 +898,7 @@ export default function SettingsTab({
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
   rpeMultipliers, onRpeMultipliersChange, rpePerExercise, onRpePerExerciseChange,
   wizardTransition, onWizardTransitionChange,
+  reducedMotion, onReducedMotionChange,
   authFetch,
 }: Props) {
   const t = useTxt();
@@ -873,6 +918,7 @@ export default function SettingsTab({
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
       <WizardTransitionCard value={wizardTransition} onChange={onWizardTransitionChange} />
+      <ReducedMotionCard value={reducedMotion} onChange={onReducedMotionChange} />
 
       <div className="profile-section">{t("Workout", "Workout")}</div>
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
