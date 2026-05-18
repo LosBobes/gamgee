@@ -106,11 +106,13 @@ def delete_notification(
 @router.get("/push/public-key", response_model=schemas.PushPublicKeyOut)
 def get_push_public_key():
     """Return the server's VAPID public key so the browser can subscribe.
-    ``enabled`` is false when the server has no keys configured — the frontend
-    uses this to hide the opt-in toggle entirely instead of showing a dead one."""
+    ``enabled`` is false when the server has no keys configured *or* the
+    configured pair fails validation — the frontend uses this to hide the
+    opt-in toggle entirely instead of feeding a bad key to ``subscribe``."""
+    enabled = push.is_configured()
     return schemas.PushPublicKeyOut(
-        public_key=push.VAPID_PUBLIC_KEY or None,
-        enabled=push.is_configured(),
+        public_key=push.VAPID_PUBLIC_KEY if enabled else None,
+        enabled=enabled,
     )
 
 

@@ -12,18 +12,28 @@ endpoints still work, but :func:`send_to_user` is a no-op. This lets the
 existing in-app notification flow keep functioning during local dev without
 forcing every contributor to generate keys.
 
+The keys are also *validated* at every :func:`is_configured` call: malformed
+values (wrong length, stray whitespace, mismatched public/private pair) cause
+``is_configured`` to return ``False`` rather than letting the bad key reach the
+browser, where it surfaces as the cryptic ``Invalid raw ECDSA P-256 public
+key`` error from ``pushManager.subscribe``.
+
 Generate a fresh keypair with::
 
     python -m app.gen_vapid
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import logging
 import os
+import re
 import threading
 from typing import Iterable
 
+from cryptography.hazmat.primitives.asymmetric import ec
 from sqlalchemy.orm import Session
 
 from . import models
@@ -35,8 +45,79 @@ VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "").strip()
 VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "mailto:admin@example.com").strip()
 
 
+def _b64url_decode(s: str) -> bytes:
+    """Decode an unpadded URL-safe base64 string."""
+    return base64.urlsafe_b64decode(s.encode("ascii") + b"=" * (-len(s) % 4))
+
+
+def _validate_vapid_keys(pub: str, priv: str) -> str | None:
+    """Return ``None`` if the pair is usable, else a human-readable error.
+
+    Catches the common reasons a browser rejects ``applicationServerKey`` with
+    ``Invalid raw ECDSA P-256 public key``: stray whitespace, the standard
+    (non-URL-safe) base64 alphabet, wrong decoded length, missing 0x04
+    uncompressed-point prefix, and a public/private pair that don't match
+    (e.g. a half-applied rotation)."""
+    if re.search(r"\s", pub) or re.search(r"\s", priv):
+        return "VAPID key contains whitespace; check for stray newlines or spaces in .env."
+    if any(c in pub for c in "+/=") or any(c in priv for c in "+/="):
+        return "VAPID key uses standard base64; expected URL-safe (- and _, no = padding)."
+    try:
+        raw_pub = _b64url_decode(pub)
+    except (ValueError, binascii.Error) as exc:
+        return f"VAPID_PUBLIC_KEY is not valid base64url ({exc})."
+    try:
+        raw_priv = _b64url_decode(priv)
+    except (ValueError, binascii.Error) as exc:
+        return f"VAPID_PRIVATE_KEY is not valid base64url ({exc})."
+    if len(raw_pub) != 65 or raw_pub[0] != 0x04:
+        return (
+            f"VAPID_PUBLIC_KEY must decode to 65 bytes starting with 0x04 "
+            f"(uncompressed P-256 point); got {len(raw_pub)} bytes "
+            f"prefixed with 0x{raw_pub[0]:02x} (if non-empty). Regenerate "
+            f"with `python -m app.gen_vapid`."
+        )
+    if len(raw_priv) != 32:
+        return (
+            f"VAPID_PRIVATE_KEY must decode to a 32-byte raw scalar; got "
+            f"{len(raw_priv)} bytes. Regenerate with `python -m app.gen_vapid`."
+        )
+    try:
+        configured_pub = ec.EllipticCurvePublicKey.from_encoded_point(
+            ec.SECP256R1(), raw_pub
+        )
+    except (ValueError, Exception) as exc:  # noqa: BLE001
+        return f"VAPID_PUBLIC_KEY is not a valid P-256 point ({exc})."
+    try:
+        derived_priv = ec.derive_private_key(
+            int.from_bytes(raw_priv, "big"), ec.SECP256R1()
+        )
+    except (ValueError, Exception) as exc:  # noqa: BLE001
+        return f"VAPID_PRIVATE_KEY is not a valid P-256 scalar ({exc})."
+    if derived_priv.public_key().public_numbers() != configured_pub.public_numbers():
+        return (
+            "VAPID_PUBLIC_KEY does not match VAPID_PRIVATE_KEY. The pair was "
+            "likely rotated only partially. Regenerate both with "
+            "`python -m app.gen_vapid` and replace both values in .env."
+        )
+    return None
+
+
 def is_configured() -> bool:
-    return bool(VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY)
+    """True when the server has a valid VAPID keypair available."""
+    if not VAPID_PUBLIC_KEY or not VAPID_PRIVATE_KEY:
+        return False
+    return _validate_vapid_keys(VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY) is None
+
+
+# Warn loudly at import time if the operator pasted in keys that won't work —
+# without this, the only visible symptom is the browser-side "Invalid raw
+# ECDSA P-256 public key" with no hint at the server.
+if VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY:
+    _vapid_err = _validate_vapid_keys(VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+    if _vapid_err:
+        log.warning("Web Push disabled: %s", _vapid_err)
+    del _vapid_err
 
 
 def _send_one(sub: models.PushSubscription, payload: dict) -> tuple[bool, int | None]:
