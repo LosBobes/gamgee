@@ -78,10 +78,19 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
   const setDay = (updates: Partial<DayPlan>) =>
     setPlan(p => ({ ...p, [activeDay]: { ...(p[activeDay] ?? makeDayPlan(true)), ...updates } }));
 
-  const toggleExercise = (id: string) => {
-    const cur  = day.exerciseIds ?? [];
-    const next = cur.includes(id) ? cur.filter(x => x !== id) : [...cur, id];
-    setDay({ exerciseIds: next });
+  // Clicking an exercise only adds it. Unchecking by clicking the row used
+  // to wipe selections in surprising ways (especially combined with focus
+  // chip changes) — removal now lives on an explicit X button per row so
+  // the user is never one stray tap from losing their picks.
+  const addExercise = (id: string) => {
+    const cur = day.exerciseIds ?? [];
+    if (cur.includes(id)) return;
+    setDay({ exerciseIds: [...cur, id] });
+  };
+  const removeExercise = (id: string) => {
+    const cur = day.exerciseIds ?? [];
+    if (!cur.includes(id)) return;
+    setDay({ exerciseIds: cur.filter(x => x !== id) });
   };
 
   // Search filters across every known exercise, so users can pull in moves
@@ -96,15 +105,19 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
 
   const renderExerciseRow = (ex: ExerciseDef) => {
     const checked = day.exerciseIds.includes(ex.id);
+    // Once an exercise is checked, the row is no longer a toggle — taps on it
+    // are inert. Removal happens through the explicit X button below so we
+    // can't accidentally wipe a curated list with one stray tap.
+    const handleActivate = () => { if (!checked) addExercise(ex.id); };
     return (
       <div
         key={ex.id}
         role="button"
         tabIndex={0}
         className={`ww-ex-row${checked ? " checked" : ""}`}
-        onClick={() => toggleExercise(ex.id)}
+        onClick={handleActivate}
         onKeyDown={e => {
-          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleExercise(ex.id); }
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleActivate(); }
         }}
       >
         <span className="ww-ex-check">
@@ -125,6 +138,17 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
         >
           <Eye size={14} />
         </button>
+        {checked && (
+          <button
+            type="button"
+            className="ww-ex-info-btn"
+            onClick={e => { e.stopPropagation(); removeExercise(ex.id); }}
+            aria-label={`Remove ${ex.name}`}
+            title="Remove"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
     );
   };
@@ -255,7 +279,7 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
                 <button
                   key={k}
                   className={`ww-focus-chip${day.focus === k ? " selected" : ""}`}
-                  onClick={() => setDay({ focus: k, exerciseIds: [] })}
+                  onClick={() => setDay({ focus: k })}
                 >
                   <f.icon size={12} /> {f.name}
                 </button>

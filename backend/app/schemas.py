@@ -961,12 +961,26 @@ class TrainerLinkRequestCreate(BaseModel):
 
 RegimeGoal = Literal["strength", "hypertrophy", "endurance", "weight_loss", "general"]
 RegimeExperience = Literal["beginner", "intermediate", "advanced"]
+RegimeMode = Literal["per_exercise_rpe", "general_rpe", "manual"]
+
+
+class ExerciseConfigIn(BaseModel):
+    """Per-exercise overrides used by the regime modes. Every field is optional
+    so the same shape works for all three modes — only the relevant fields are
+    populated."""
+    rpe: int | None = Field(default=None, ge=1, le=10)
+    sets: int | None = Field(default=None, ge=1, le=99)
+    reps: int | None = Field(default=None, ge=1, le=999)
+    weight: float | None = Field(default=None, ge=0, le=2000)
 
 
 class DayPlanIn(BaseModel):
     focus: str
     exerciseIds: list[str] = Field(default_factory=list)
     enabled: bool = True
+    # Per-exercise overrides keyed by exercise id. Populated by the regime
+    # editor when the user picks per_exercise_rpe or manual mode.
+    exerciseConfig: dict[str, ExerciseConfigIn] | None = None
 
 
 class RegimeQuestionnaire(BaseModel):
@@ -996,6 +1010,8 @@ class RegimeOut(BaseModel):
     avoid_muscles: list[str] = []
     equipment: list[str] = []
     days: dict[str, DayPlanIn] = {}
+    mode: RegimeMode | None = None
+    general_rpe: int | None = None
     is_template: bool = False
     created_at: int = 0
 
@@ -1013,6 +1029,8 @@ class RegimeCreate(BaseModel):
     avoid_muscles: list[str] = Field(default_factory=list)
     equipment: list[str] = Field(default_factory=list)
     days: dict[str, DayPlanIn] = Field(default_factory=dict)
+    mode: RegimeMode | None = None
+    general_rpe: int | None = Field(default=None, ge=1, le=10)
 
 
 class AssignmentCreate(BaseModel):

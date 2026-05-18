@@ -17,7 +17,9 @@ export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds:
  * set flips to `prefilled: false` and stops getting auto-overwritten. */
 export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; }
 export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
-export type CardioTiming = "none" | "before" | "after" | "both";
+/** `null` = the user hasn't picked yet (default when entering the cardio screen).
+ *  `"none"` = the user explicitly chose to skip cardio. */
+export type CardioTiming = "none" | "before" | "after" | "both" | null;
 export interface CardioSlot { exId: string; minutes: number; }
 export interface CardioPlan { timing: CardioTiming; before: CardioSlot | null; after: CardioSlot | null; }
 export interface WorkoutSession { id: string; date: string; duration: number; focus?: string | null; exercises: WorkoutExercise[]; rpe?: number | null; }
@@ -33,7 +35,23 @@ export interface CustomFocusDef { id: string; name: string; iconName: string; de
 export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; instructions?: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }
 export type WeekPlanDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-export interface DayPlan { focus: string; exerciseIds: string[]; enabled: boolean; }
+/** Per-exercise overrides used by the regime modes. Every field is optional
+ * so the same shape works for all three modes — only the relevant fields are
+ * populated. `rpe` 1–10. */
+export interface ExerciseConfig { rpe?: number; sets?: number; reps?: number; weight?: number; }
+export interface DayPlan {
+  focus: string;
+  exerciseIds: string[];
+  enabled: boolean;
+  /** Per-exercise overrides keyed by exercise id. Populated when the parent
+   * regime is in per_exercise_rpe or manual mode and applied to the week. */
+  exerciseConfig?: Record<string, ExerciseConfig>;
+  /** Mode the parent regime was using when applied. Copied so the active
+   * workout can drive recommendations without re-fetching the regime. */
+  mode?: RegimeMode | null;
+  /** Single RPE for the whole regime — present when mode === "general_rpe". */
+  general_rpe?: number | null;
+}
 export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>>;
 export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
@@ -215,6 +233,12 @@ export interface TrainerLink {
 
 export type RegimeGoal = "strength" | "hypertrophy" | "endurance" | "weight_loss" | "general";
 export type RegimeExperience = "beginner" | "intermediate" | "advanced";
+/** How a regime drives weight/reps for scheduled workouts.
+ *  - `per_exercise_rpe`: each exercise has its own target RPE (1–10).
+ *  - `general_rpe`:     one RPE for the whole regime; auto-adjusts every lift.
+ *  - `manual`:          explicit sets/reps/weight per exercise; no auto-progression.
+ */
+export type RegimeMode = "per_exercise_rpe" | "general_rpe" | "manual";
 
 export interface RegimeQuestionnaire {
   name?: string;
@@ -240,6 +264,8 @@ export interface Regime {
   avoid_muscles: string[];
   equipment: string[];
   days: Record<string, DayPlan>;
+  mode?: RegimeMode | null;
+  general_rpe?: number | null;
   is_template: boolean;
   created_at: number;
 }
@@ -254,6 +280,8 @@ export interface RegimeDraft {
   avoid_muscles: string[];
   equipment: string[];
   days: Record<string, DayPlan>;
+  mode?: RegimeMode | null;
+  general_rpe?: number | null;
 }
 
 export interface RegimeAssignment {

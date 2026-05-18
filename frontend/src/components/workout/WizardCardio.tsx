@@ -15,7 +15,9 @@ const CARDIO_EX = EX.Cardio;
 const DEFAULT_MIN = 10;
 const DURATIONS = [5, 10, 15, 20, 30, 45, 60];
 
-const TIMING_OPTIONS: { id: CardioTiming; label: string; desc: string; descBro: string; descGrl: string; Icon: typeof Heart }[] = [
+// Each card represents an explicit timing choice — null is not a card option,
+// it's the "haven't picked yet" sentinel the screen starts with.
+const TIMING_OPTIONS: { id: Exclude<CardioTiming, null>; label: string; desc: string; descBro: string; descGrl: string; Icon: typeof Heart }[] = [
   { id: "none",   label: "Skip Cardio",    desc: "Skip and go straight to lifting",      descBro: "Straight to the iron, no detours",           descGrl: "Straight to the iron, no detours",    Icon: Ban },
   { id: "before", label: "Before",         desc: "Warm up with cardio",                  descBro: "Fire up the engine first",                    descGrl: "Warm up the era first",                Icon: Sunrise },
   { id: "after",  label: "After",          desc: "Cool down with cardio",                descBro: "Bring it home with some steady state",        descGrl: "Cool down with a hot girl walk",       Icon: Sunset },
@@ -75,7 +77,7 @@ function SlotEditor({ label, slot, onChange }: { label: string; slot: CardioSlot
 
 export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
   const t = useTxt();
-  const setTiming = (timing: CardioTiming) => {
+  const setTiming = (timing: Exclude<CardioTiming, null>) => {
     const wantsBefore = timing === "before" || timing === "both";
     const wantsAfter  = timing === "after"  || timing === "both";
     setPlan({
@@ -89,7 +91,11 @@ export default function WizardCardio({ plan, setPlan, onBack, onNext }: Props) {
     if (timing === "none") window.setTimeout(onNext, 180);
   };
 
+  // Until the user picks one of the four cards, the BUILD button stays
+  // disabled — the screen now opens with nothing selected so they make a
+  // deliberate choice instead of inheriting a quiet "Skip" default.
   const slotsValid =
+    plan.timing !== null &&
     (!plan.before || plan.before.minutes > 0) &&
     (!plan.after  || plan.after.minutes  > 0);
 
