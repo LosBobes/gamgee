@@ -20,8 +20,9 @@ interface Props {
   addSet:     () => void;
   removeSet:  (idx: number) => void;
   /** Set/clear the per-exercise effort rating (1..10). Drives next session's
-   * progression for this exercise specifically. */
-  onSetRpe:   (rpe: number | null) => void;
+   * progression for this exercise specifically. Omitted when the user has
+   * disabled the RPE feature globally — the chip selector won't render. */
+  onSetRpe?:  (rpe: number | null) => void;
   isNewPr:    (weight: string) => boolean;
   onPickRestTier: (tier: Exclude<RestTier, "custom">) => void;
   onAdjustRest:   (deltaSec: number) => void;
@@ -347,7 +348,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
           />
         )}
       </div>
-      {ex.type === "strength" && doneCt > 0 && doneCt === ex.sets.length && !rest && (
+      {onSetRpe && ex.type === "strength" && doneCt > 0 && doneCt === ex.sets.length && !rest && (
         <ExerciseRpeRow rpe={ex.rpe ?? null} onSetRpe={onSetRpe} />
       )}
     </div>

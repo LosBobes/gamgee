@@ -40,6 +40,11 @@ class User(Base):
     # rpe_multipliers_by_exercise, keyed by Exercise.id (same keys per ex).
     rpe_multipliers = Column(JSONB, nullable=True)
     rpe_multipliers_by_exercise = Column(JSONB, nullable=True)
+    # Master switch for the whole RPE / per-exercise effort feature. When
+    # off, the inline rating chips, post-session prompt, and progression
+    # scaling all disappear and analyzeEx uses the plain progression-speed
+    # step. Existing users default to True so behaviour is unchanged.
+    rpe_enabled = Column(Boolean, nullable=False, default=True)
 
 
 class PasswordResetToken(Base):

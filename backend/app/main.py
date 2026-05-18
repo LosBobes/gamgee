@@ -76,6 +76,8 @@ if engine.dialect.name == "postgresql":
         # RPE→step-multiplier table and optional per-exercise overrides.
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers JSONB"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers_by_exercise JSONB"))
+        # Per-user opt-out for the whole RPE feature; existing rows stay on.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_enabled BOOLEAN NOT NULL DEFAULT TRUE"))
         # Post-session RPE on workout records (used to scale next session's jump).
         _conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS rpe INTEGER"))
         # Live session rich-broadcast columns

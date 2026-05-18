@@ -17,6 +17,7 @@ interface Props {
   restPrefs:      RestPrefs;
   rpeMultipliers: RpeMultipliers;
   rpePerExercise: RpePerExerciseMultipliers;
+  rpeEnabled:     boolean;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -38,7 +39,7 @@ interface RestState {
 
 export default function ActiveWorkout({
   exercises, prs, history, doneSets, progressionSpeed, restPrefs,
-  rpeMultipliers, rpePerExercise,
+  rpeMultipliers, rpePerExercise, rpeEnabled,
   onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet,
   setExerciseRpe, isNewPr,
   applyProgressionAll,
@@ -54,10 +55,12 @@ export default function ActiveWorkout({
   // Progression scales per-exercise: each exercise pulls the RPE the user
   // gave it on its most recent appearance in history (not the overall
   // session RPE), so a brutal squat day doesn't shrink the next bench jump
-  // and vice versa.
+  // and vice versa. When the user has the RPE feature off, lastRpe stays
+  // null so rpeMultiplier returns 1× and progression follows the
+  // progression-speed setting alone.
   const analyzeOptsFor = (exId: string) => ({
     speed: progressionSpeed,
-    lastRpe: lastExerciseRpe(exId, history),
+    lastRpe: rpeEnabled ? lastExerciseRpe(exId, history) : null,
     rpeTable: rpeMultipliers,
     rpePerEx: rpePerExercise,
   });
@@ -169,7 +172,7 @@ export default function ActiveWorkout({
           toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
           addSet={() => handleAddSet(ex.uid)}
           removeSet={(idx) => removeSet(ex.uid, idx)}
-          onSetRpe={(rpe) => setExerciseRpe(ex.uid, rpe)}
+          onSetRpe={rpeEnabled ? ((rpe) => setExerciseRpe(ex.uid, rpe)) : undefined}
           isNewPr={(w) => isNewPr(ex.id, w)}
           onPickRestTier={(tier) => handlePickTier(ex.uid, tier)}
           onAdjustRest={(delta) => handleAdjust(ex.uid, delta)}

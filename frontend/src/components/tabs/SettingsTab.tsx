@@ -37,6 +37,8 @@ interface Props {
   onRpeMultipliersChange: (next: Partial<RpeMultipliers>) => void;
   rpePerExercise:  RpePerExerciseMultipliers;
   onRpePerExerciseChange: (exId: string, next: Partial<RpeMultipliers> | null) => void;
+  rpeEnabled:      boolean;
+  onRpeEnabledChange: (next: boolean) => void;
   wizardTransition:         WizardTransitionStyle;
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
   reducedMotion:            boolean;
@@ -710,6 +712,57 @@ function RestTimerCard({ prefs, onChange }: { prefs: RestPrefs; onChange: (next:
   );
 }
 
+function RpeFeatureCard({
+  enabled, onChange,
+}: {
+  enabled: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  const t = useTxt();
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Flame size={14} style={{ color: "var(--primary)" }} />
+        <div style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          {t("RPE / effort tracking", "RPE / effort tracking", "RPE / effort tracking")}
+        </div>
+      </div>
+      <div style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5, marginBottom: 12 }}>
+        {t(
+          "After every set of a strength exercise we ask 'how hard?' on a 1–10 scale. Your rating for THAT exercise scales how much weight we recommend next time you train it — easy days mean a bigger jump, brutal days mean we hold or back off. Each exercise progresses on its own rating, so a brutal squat day won't shrink your next bench jump. Turn it off if you'd rather progression just follow the progression-speed setting and nothing else.",
+          "Each strength exercise gets a 'how hard?' 1–10 tap after the last set. That number scales next session's jump for THAT lift only — easy = bigger bump, brutal = we hold. Off = progression-speed alone drives the jumps.",
+          "Each strength exercise gets a 'how hard?' 1–10 tap after the last set, bestie. That score scales next session's jump for THAT lift only — easy = bigger bump, brutal = we ease up. Off = vibes-free progression, just the speed setting."
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        {[
+          { id: true,  label: t("On",  "On",  "On")  },
+          { id: false, label: t("Off", "Off", "Off") },
+        ].map(({ id, label }) => {
+          const active = enabled === id;
+          return (
+            <button
+              key={String(id)}
+              type="button"
+              onClick={() => onChange(id)}
+              style={{
+                flex: 1, padding: "10px 4px", borderRadius: 8,
+                fontSize: 12, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
+                background: active ? "var(--primary)" : "transparent",
+                color: active ? "#000" : "var(--muted)",
+                border: active ? "none" : "1px solid var(--border)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function RpeMultiplierCard({
   globalTable, onGlobalChange, perEx, onPerExChange,
 }: {
@@ -891,6 +944,7 @@ export default function SettingsTab({
   name, email, gender, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
   rpeMultipliers, onRpeMultipliersChange, rpePerExercise, onRpePerExerciseChange,
+  rpeEnabled, onRpeEnabledChange,
   wizardTransition, onWizardTransitionChange,
   reducedMotion, onReducedMotionChange,
   authFetch,
@@ -916,12 +970,15 @@ export default function SettingsTab({
 
       <div className="profile-section">{t("Workout", "Workout")}</div>
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
-      <RpeMultiplierCard
-        globalTable={rpeMultipliers}
-        onGlobalChange={onRpeMultipliersChange}
-        perEx={rpePerExercise}
-        onPerExChange={onRpePerExerciseChange}
-      />
+      <RpeFeatureCard enabled={rpeEnabled} onChange={onRpeEnabledChange} />
+      {rpeEnabled && (
+        <RpeMultiplierCard
+          globalTable={rpeMultipliers}
+          onGlobalChange={onRpeMultipliersChange}
+          perEx={rpePerExercise}
+          onPerExChange={onRpePerExerciseChange}
+        />
+      )}
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />

@@ -157,6 +157,8 @@ def update_preferences(
             else:
                 merged_ex[ex_id] = table
         current_user.rpe_multipliers_by_exercise = merged_ex
+    if body.rpe_enabled is not None:
+        current_user.rpe_enabled = body.rpe_enabled
     db.commit()
     db.refresh(current_user)
     return current_user

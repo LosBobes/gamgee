@@ -178,6 +178,15 @@ export default function WorkoutTracker({
       return {};
     }
   });
+  /** Master switch for the whole RPE / per-exercise effort feature.
+   * When off, the inline chip selector during the workout, the post-session
+   * "How hard was it?" prompt, and the RPE-driven progression scaling all
+   * disappear. Defaults to true so existing users keep the current behaviour;
+   * synced from `user.rpe_enabled` once the auth response lands. */
+  const [rpeEnabled, setRpeEnabledState] = useState<boolean>(() => {
+    const raw = localStorage.getItem("gamgee_rpe_enabled");
+    return raw === null ? true : raw === "true";
+  });
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
@@ -293,6 +302,10 @@ export default function WorkoutTracker({
     localStorage.setItem("gamgee_rpe_multipliers_by_exercise", JSON.stringify(rpePerExercise));
   }, [rpePerExercise]);
 
+  useEffect(() => {
+    localStorage.setItem("gamgee_rpe_enabled", String(rpeEnabled));
+  }, [rpeEnabled]);
+
   const updateRpeMultipliers = useCallback((next: Partial<RpeMultipliers>) => {
     setRpeMultipliers(prev => {
       const merged = mergeRpeTable({ ...prev, ...next });
@@ -353,6 +366,15 @@ export default function WorkoutTracker({
     }).catch(() => { /* best-effort; localStorage already updated */ });
   }, [authFetch]);
 
+  const updateRpeEnabled = useCallback((enabled: boolean) => {
+    setRpeEnabledState(enabled);
+    authFetch("/api/auth/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rpe_enabled: enabled }),
+    }).catch(() => { /* best-effort; localStorage already updated */ });
+  }, [authFetch]);
+
   useEffect(() => {
     localStorage.setItem("gamgee_tone", toneMode);
   }, [toneMode]);
@@ -392,6 +414,7 @@ export default function WorkoutTracker({
     setActiveConvId(null);
     setRpeMultipliers({ ...DEFAULT_RPE_MULTIPLIERS });
     setRpePerExercise({});
+    setRpeEnabledState(true);
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
       caches.delete("api-cache").catch(() => { /* best-effort */ });
@@ -409,7 +432,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, unknown> | null; rpe_multipliers_by_exercise?: Record<string, Record<string, unknown>> | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, unknown> | null; rpe_multipliers_by_exercise?: Record<string, Record<string, unknown>> | null; rpe_enabled?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -436,6 +459,9 @@ export default function WorkoutTracker({
         }
         if (d.rpe_multipliers_by_exercise && typeof d.rpe_multipliers_by_exercise === "object") {
           setRpePerExercise(sanitizeRpePerEx(d.rpe_multipliers_by_exercise));
+        }
+        if (typeof d.rpe_enabled === "boolean") {
+          setRpeEnabledState(d.rpe_enabled);
         }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -813,7 +839,7 @@ export default function WorkoutTracker({
       if (ex.type !== "strength") return ex;
       const a = analyzeEx(ex.id, history, {
         speed: progressionSpeed,
-        lastRpe: lastExerciseRpe(ex.id, history),
+        lastRpe: rpeEnabled ? lastExerciseRpe(ex.id, history) : null,
         rpeTable: rpeMultipliers,
         rpePerEx: rpePerExercise,
       });
@@ -1059,7 +1085,7 @@ export default function WorkoutTracker({
           <WorkoutComplete
             session={completed}
             onDone={dismissCompleted}
-            onSetRpe={rpe => saveSessionRpe(completed.id, rpe)}
+            onSetRpe={rpeEnabled ? (rpe => saveSessionRpe(completed.id, rpe)) : undefined}
           />
         )}
         {!completed && tab === "workout" && (
@@ -1075,6 +1101,7 @@ export default function WorkoutTracker({
             restPrefs={restPrefs}
             rpeMultipliers={rpeMultipliers}
             rpePerExercise={rpePerExercise}
+            rpeEnabled={rpeEnabled}
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
@@ -1162,7 +1189,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} rpeEnabled={rpeEnabled} onRpeEnabledChange={updateRpeEnabled} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

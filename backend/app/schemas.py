@@ -115,6 +115,7 @@ class UserOut(BaseModel):
     rest_long_seconds: int | None = None
     rpe_multipliers: dict[str, float] | None = None
     rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
+    rpe_enabled: bool = True
 
     model_config = {"from_attributes": True}
 
@@ -190,6 +191,8 @@ class UserPreferences(BaseModel):
     rpe_multipliers: dict[str, float] | None = None
     # Per-exercise overrides: { exercise_id: { "1": float, ... } }.
     rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
+    # Master on/off switch for the RPE / per-exercise effort feature.
+    rpe_enabled: bool | None = None
 
     @field_validator("primary_color")
     @classmethod
