@@ -25,6 +25,15 @@ function rpeLabel(level: number): string {
   return "Max effort";
 }
 
+/** Color the RPE in the same green→red ramp as the slider track. */
+function rpeColor(level: number): string {
+  if (level <= 2) return "#6FCF97";
+  if (level <= 4) return "#82D27E";
+  if (level <= 6) return "#E8C547";
+  if (level <= 8) return "#FF9F43";
+  return "#FF6B6B";
+}
+
 // Collect every muscle group hit during the session (primary + secondary).
 function workedGroups(session: WorkoutSession): Set<string> {
   const groups = new Set<string>();
@@ -42,7 +51,7 @@ function workedGroups(session: WorkoutSession): Set<string> {
 export default function WorkoutComplete({ session, onDone, onSetRpe }: Props) {
   const [stage, setStage] = useState<"rpe" | "prompt" | "stretch">(onSetRpe ? "rpe" : "prompt");
   const [doneIdx, setDoneIdx] = useState<Set<number>>(new Set());
-  const [rpeHover, setRpeHover] = useState<number | null>(null);
+  const [rpeValue, setRpeValue] = useState<number>(session.rpe ?? 5);
   const t = useTxt();
 
   const groups = useMemo(() => workedGroups(session), [session]);
@@ -54,8 +63,8 @@ export default function WorkoutComplete({ session, onDone, onSetRpe }: Props) {
   };
 
   if (stage === "rpe") {
-    const levels = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    const focused = rpeHover ?? session.rpe ?? null;
+    const color = rpeColor(rpeValue);
+    const pct = ((rpeValue - 1) / 9) * 100;
     return (
       <div className="complete-screen tab-anim">
         <div className="complete-icon"><Flame size={48} /></div>
@@ -68,35 +77,33 @@ export default function WorkoutComplete({ session, onDone, onSetRpe }: Props) {
           )}
         </p>
 
-        <div className="rpe-scale" role="radiogroup" aria-label="Session RPE">
-          {levels.map(level => {
-            const selected = session.rpe === level;
-            return (
-              <button
-                key={level}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                className={`rpe-btn${selected ? " selected" : ""}`}
-                data-level={level}
-                onMouseEnter={() => setRpeHover(level)}
-                onMouseLeave={() => setRpeHover(null)}
-                onFocus={() => setRpeHover(level)}
-                onBlur={() => setRpeHover(null)}
-                onClick={() => commitRpe(level)}
-              >
-                {level}
-              </button>
-            );
-          })}
-        </div>
-        <div className="rpe-hint">
-          {focused != null ? `${focused} — ${rpeLabel(focused)}` : t("Tap a number", "Tap a number", "Pick a number, bestie")}
+        <div className="rpe-slider-wrap">
+          <div className="rpe-value" style={{ color }}>{rpeValue}</div>
+          <div className="rpe-value-label">{rpeLabel(rpeValue)}</div>
+          <input
+            type="range"
+            min={1}
+            max={10}
+            step={1}
+            value={rpeValue}
+            onChange={(e) => setRpeValue(Number(e.target.value))}
+            className="rpe-slider"
+            aria-label="Session RPE"
+            style={{ ["--rpe-thumb-color" as string]: color, ["--rpe-pct" as string]: `${pct}%` }}
+          />
+          <div className="rpe-slider-ticks" aria-hidden="true">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+              <span key={n} className={`rpe-tick${n === rpeValue ? " rpe-tick-active" : ""}`}>{n}</span>
+            ))}
+          </div>
         </div>
 
         <div className="complete-actions">
           <button className="btn-secondary" onClick={() => commitRpe(null)}>
             <X size={14} /> SKIP
+          </button>
+          <button className="btn-start" onClick={() => commitRpe(rpeValue)}>
+            {t("CONFIRM", "LOCK IT IN", "CONFIRM")} <ArrowRight size={14} />
           </button>
         </div>
       </div>
