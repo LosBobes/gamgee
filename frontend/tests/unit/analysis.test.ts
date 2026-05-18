@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeEx } from "../../src/analysis";
+import { analyzeEx, lastExerciseRpe } from "../../src/analysis";
 import type { WorkoutSession } from "../../src/types";
 
 const session = (date: string, weight: string, reps: string): WorkoutSession => ({
@@ -196,5 +196,34 @@ describe("analyzeEx", () => {
       ],
     };
     expect(analyzeEx("bench", [empty])).toBeNull();
+  });
+});
+
+describe("lastExerciseRpe", () => {
+  const makeSession = (id: string, exId: string, rpe: number | null): WorkoutSession => ({
+    id, date: id, duration: 0,
+    exercises: [{ id: exId, name: exId, type: "strength", uid: `${exId}_${id}`, sets: [{ weight: "60", reps: "8", done: true }], rpe }],
+  });
+
+  it("returns null when the exercise is missing from history", () => {
+    expect(lastExerciseRpe("bench", [])).toBeNull();
+    expect(lastExerciseRpe("bench", [makeSession("a", "squat", 7)])).toBeNull();
+  });
+
+  it("returns null when the exercise was never rated", () => {
+    expect(lastExerciseRpe("bench", [makeSession("a", "bench", null)])).toBeNull();
+  });
+
+  it("returns the rating from the most recent session (newest-first history)", () => {
+    const newest = makeSession("c", "bench", 9);
+    const middle = makeSession("b", "bench", 5);
+    const oldest = makeSession("a", "bench", 2);
+    expect(lastExerciseRpe("bench", [newest, middle, oldest])).toBe(9);
+  });
+
+  it("skips sessions where this exercise has no rating", () => {
+    const newer = makeSession("b", "bench", null);
+    const older = makeSession("a", "bench", 6);
+    expect(lastExerciseRpe("bench", [newer, older])).toBe(6);
   });
 });

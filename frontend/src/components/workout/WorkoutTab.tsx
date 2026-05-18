@@ -40,6 +40,7 @@ interface Props {
   toggleSet:       (uid: string, idx: number) => void;
   addSet:          (uid: string) => void;
   removeSet:       (uid: string, idx: number) => void;
+  setExerciseRpe:  (uid: string, rpe: number | null) => void;
   isNewPr:         (exId: string, weight: string) => boolean;
   finishWorkout:   () => void;
   applyProgressionAll: () => void;
@@ -50,7 +51,7 @@ export default function WorkoutTab({
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, wizardTransition, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
-  updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
+  updateSet, toggleSet, addSet, removeSet, setExerciseRpe, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack   = wStep < prevStepRef.current;
@@ -202,6 +203,7 @@ export default function WorkoutTab({
             toggleSet={toggleSet}
             addSet={addSet}
             removeSet={removeSet}
+            setExerciseRpe={setExerciseRpe}
             isNewPr={isNewPr}
             applyProgressionAll={applyProgressionAll}
           />

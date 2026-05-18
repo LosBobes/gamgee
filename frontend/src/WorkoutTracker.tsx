@@ -34,7 +34,7 @@ import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
-import { analyzeEx } from "./analysis";
+import { analyzeEx, lastExerciseRpe } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { useChatSocket } from "./hooks/useChatSocket";
@@ -760,6 +760,12 @@ export default function WorkoutTracker({
   const removeExercise = (uid: string) =>
     setExercises(p => p.filter(e => e.uid !== uid));
 
+  /** Capture the user's per-exercise effort rating (1..10, or null to clear)
+   * so the next session's progression scales from THIS exercise's grind
+   * rather than the overall session feeling. */
+  const setExerciseRpe = (uid: string, rpe: number | null) =>
+    setExercises(p => p.map(ex => ex.uid === uid ? { ...ex, rpe } : ex));
+
   /** Update a single set's weight/reps. The edited set loses its `prefilled`
    * flag so it never gets overwritten again; any *following* sets that are
    * still `prefilled` (and undone) inherit the new value so the suggested
@@ -803,10 +809,14 @@ export default function WorkoutTracker({
    * APPLY button does the same thing for a single exercise — this is the
    * top-of-workout "PROGRESS ALL" affordance. */
   const applyProgressionAll = () => {
-    const opts = { speed: progressionSpeed, lastRpe: history[0]?.rpe ?? null, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
     setExercises(p => p.map(ex => {
       if (ex.type !== "strength") return ex;
-      const a = analyzeEx(ex.id, history, opts);
+      const a = analyzeEx(ex.id, history, {
+        speed: progressionSpeed,
+        lastRpe: lastExerciseRpe(ex.id, history),
+        rpeTable: rpeMultipliers,
+        rpePerEx: rpePerExercise,
+      });
       if (!a) return ex;
       return {
         ...ex,
@@ -862,6 +872,7 @@ export default function WorkoutTracker({
     const done = exercises
       .map(ex => ({
         ...ex,
+        rpe: ex.rpe ?? null,
         sets: ex.sets.filter(s => s.done).map(s => ({ weight: s.weight, reps: s.reps, done: s.done })),
       }))
       .filter(ex => ex.sets.length > 0);
@@ -1069,6 +1080,7 @@ export default function WorkoutTracker({
             startFromWizard={startFromWizard}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
+            setExerciseRpe={setExerciseRpe}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
             applyProgressionAll={applyProgressionAll}
           />

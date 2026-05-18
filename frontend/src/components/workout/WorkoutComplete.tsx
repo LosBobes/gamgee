@@ -71,9 +71,9 @@ export default function WorkoutComplete({ session, onDone, onSetRpe }: Props) {
         <h1 className="complete-hero">{t("HOW HARD", "HOW HARD", "HOW HARD")}<br /><span>{t("WAS IT?", "WAS IT?", "WAS IT?")}</span></h1>
         <p className="complete-sub">
           {t(
-            "Pick a number 1–10. We'll use it to scale the next session's progression — easy days mean we add more weight, brutal days mean we back off.",
-            "Rate the grind 1–10. Easy day? We add weight. Brutal? We back off next session.",
-            "Rate it 1–10, bestie. Easy day = bigger jump next time. Brutal day = we ease up."
+            "Rate the whole session 1–10 just to log the vibe. Progression already scales from the per-exercise effort you tagged during the workout.",
+            "Rate the whole grind 1–10 — just a journal entry. Per-exercise ratings already drive next session's progression.",
+            "Rate the whole vibe 1–10, bestie — just for the diary. Per-exercise ratings already steer next session."
           )}
         </p>
 

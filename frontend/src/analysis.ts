@@ -24,12 +24,26 @@ const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fa
 
 export interface AnalyzeOptions {
   speed?:        ProgressionSpeed;
-  /** RPE (1..10) from the most recent session for this exercise. */
+  /** RPE (1..10) the user reported for this specific exercise in the most
+   * recent session that included it. Callers usually compute this with
+   * {@link lastExerciseRpe} so progression scales from per-exercise effort,
+   * not the overall session feeling. */
   lastRpe?:      number | null;
   /** Global RPE → step-multiplier table. Defaults to {@link DEFAULT_RPE_MULTIPLIERS}. */
   rpeTable?:     RpeMultipliers;
   /** Optional per-exercise overrides for individual RPE levels. */
   rpePerEx?:     RpePerExerciseMultipliers;
+}
+
+/** Find the most recent per-exercise effort rating for `exId` by walking
+ * history newest-first. Returns null when the user hasn't rated this
+ * exercise yet. */
+export function lastExerciseRpe(exId: string, history: WorkoutSession[]): number | null {
+  for (const w of history) {
+    const ex = w.exercises.find(e => e.id === exId);
+    if (ex && ex.rpe != null && Number.isFinite(ex.rpe)) return ex.rpe;
+  }
+  return null;
 }
 
 /** Pull the multiplier for the given RPE, preferring a per-exercise override

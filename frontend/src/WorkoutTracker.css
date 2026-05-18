@@ -1068,6 +1068,39 @@ html, body { background: var(--bg); }
   transition: box-shadow 0.2s;
 }
 .ex-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+
+/* Per-exercise effort selector — appears once every set is checked off */
+.ex-rpe-row {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px 12px;
+  background: color-mix(in srgb, var(--s2) 60%, transparent);
+  animation: fadeUp 0.22s ease both;
+}
+.ex-rpe-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.ex-rpe-title {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+}
+.ex-rpe-summary {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase;
+}
+.ex-rpe-chips {
+  display: grid; grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+}
+.ex-rpe-chip {
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  background: transparent; border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 0; min-width: 0;
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s, background 0.15s, border-color 0.15s, color 0.15s;
+}
+.ex-rpe-chip:hover { border-color: currentColor; }
+.ex-rpe-chip.active { transform: scale(1.04); }
 .ex-hdr { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px 12px 12px 14px; border-bottom: 1px solid var(--border); gap: 8px; }
 .ex-name { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px; }
 .ex-meta { font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }

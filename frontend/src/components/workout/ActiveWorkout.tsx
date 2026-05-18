@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Dumbbell, TrendingUp } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers } from "../../types";
-import { analyzeEx } from "../../analysis";
+import { analyzeEx, lastExerciseRpe } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
 import type { RestTier } from "./RestTimer";
@@ -24,6 +24,7 @@ interface Props {
   toggleSet:      (uid: string, idx: number) => void;
   addSet:         (uid: string) => void;
   removeSet:      (uid: string, idx: number) => void;
+  setExerciseRpe: (uid: string, rpe: number | null) => void;
   isNewPr:        (exId: string, weight: string) => boolean;
   applyProgressionAll: () => void;
 }
@@ -38,7 +39,8 @@ interface RestState {
 export default function ActiveWorkout({
   exercises, prs, history, doneSets, progressionSpeed, restPrefs,
   rpeMultipliers, rpePerExercise,
-  onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr,
+  onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet,
+  setExerciseRpe, isNewPr,
   applyProgressionAll,
 }: Props) {
   const [showPick, setShowPick] = useState(false);
@@ -49,17 +51,22 @@ export default function ActiveWorkout({
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
 
-  // Use the RPE of the most recent recorded session as the multiplier source
-  // for THIS session's progression suggestion. analyzeEx merges this with the
-  // global table + per-exercise overrides.
-  const lastRpe = history[0]?.rpe ?? null;
-  const analyzeOpts = { speed: progressionSpeed, lastRpe, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
+  // Progression scales per-exercise: each exercise pulls the RPE the user
+  // gave it on its most recent appearance in history (not the overall
+  // session RPE), so a brutal squat day doesn't shrink the next bench jump
+  // and vice versa.
+  const analyzeOptsFor = (exId: string) => ({
+    speed: progressionSpeed,
+    lastRpe: lastExerciseRpe(exId, history),
+    rpeTable: rpeMultipliers,
+    rpePerEx: rpePerExercise,
+  });
 
   // Show the "PROGRESS ALL" affordance only when at least one strength
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
   // has been logged yet — once you start checking sets, the per-card APPLY
   // remains available for surgical adjustments.
-  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && analyzeEx(ex.id, history, analyzeOpts) !== null);
+  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && analyzeEx(ex.id, history, analyzeOptsFor(ex.id)) !== null);
 
   const tierSeconds = (tier: RestTier) =>
     tier === "custom" ? lastCustomSec : restPrefs[tier];
@@ -154,7 +161,7 @@ export default function ActiveWorkout({
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={analyzeEx(ex.id, history, analyzeOpts)}
+          analysis={analyzeEx(ex.id, history, analyzeOptsFor(ex.id))}
           restPrefs={restPrefs}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
@@ -162,6 +169,7 @@ export default function ActiveWorkout({
           toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
           addSet={() => handleAddSet(ex.uid)}
           removeSet={(idx) => removeSet(ex.uid, idx)}
+          onSetRpe={(rpe) => setExerciseRpe(ex.uid, rpe)}
           isNewPr={(w) => isNewPr(ex.id, w)}
           onPickRestTier={(tier) => handlePickTier(ex.uid, tier)}
           onAdjustRest={(delta) => handleAdjust(ex.uid, delta)}

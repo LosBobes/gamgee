@@ -19,10 +19,31 @@ interface Props {
   toggleSet:  (idx: number) => void;
   addSet:     () => void;
   removeSet:  (idx: number) => void;
+  /** Set/clear the per-exercise effort rating (1..10). Drives next session's
+   * progression for this exercise specifically. */
+  onSetRpe:   (rpe: number | null) => void;
   isNewPr:    (weight: string) => boolean;
   onPickRestTier: (tier: Exclude<RestTier, "custom">) => void;
   onAdjustRest:   (deltaSec: number) => void;
   onStartCustomRest: (seconds: number) => void;
+}
+
+const RPE_COLORS = [
+  "#6FCF97", "#6FCF97", "#82D27E", "#82D27E",
+  "#E8C547", "#E8C547", "#FF9F43", "#FF9F43",
+  "#FF6B6B", "#FF6B6B",
+];
+function rpeColor(level: number): string {
+  return RPE_COLORS[Math.max(0, Math.min(9, level - 1))];
+}
+function rpeShortLabel(level: number): string {
+  if (level <= 2) return "Too easy";
+  if (level <= 4) return "Easy";
+  if (level <= 6) return "On point";
+  if (level <= 7) return "Solid";
+  if (level <= 8) return "Hard";
+  if (level <= 9) return "Brutal";
+  return "Max effort";
 }
 
 const colLabels = (ex: WorkoutExercise): [string, string] =>
@@ -98,7 +119,7 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, toggleSet, addSet, removeSet, onSetRpe, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
@@ -326,6 +347,9 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
           />
         )}
       </div>
+      {ex.type === "strength" && doneCt > 0 && doneCt === ex.sets.length && !rest && (
+        <ExerciseRpeRow rpe={ex.rpe ?? null} onSetRpe={onSetRpe} />
+      )}
     </div>
     {inspectOpen && (
       <ExerciseInspectModal
@@ -335,5 +359,44 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
       />
     )}
     </>
+  );
+}
+
+interface ExerciseRpeRowProps {
+  rpe: number | null;
+  onSetRpe: (rpe: number | null) => void;
+}
+function ExerciseRpeRow({ rpe, onSetRpe }: ExerciseRpeRowProps) {
+  return (
+    <div className="ex-rpe-row" role="group" aria-label="How hard was this exercise?">
+      <div className="ex-rpe-head">
+        <span className="ex-rpe-title">HOW HARD?</span>
+        {rpe != null && (
+          <span className="ex-rpe-summary" style={{ color: rpeColor(rpe) }}>
+            {rpe} · {rpeShortLabel(rpe)}
+          </span>
+        )}
+      </div>
+      <div className="ex-rpe-chips">
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+          const active = rpe === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              className={`ex-rpe-chip${active ? " active" : ""}`}
+              style={active
+                ? { background: rpeColor(n), borderColor: rpeColor(n), color: "#0a0804" }
+                : { color: rpeColor(n) }}
+              aria-pressed={active}
+              aria-label={`Effort ${n}: ${rpeShortLabel(n)}`}
+              onClick={() => onSetRpe(active ? null : n)}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

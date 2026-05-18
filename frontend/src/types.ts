@@ -16,7 +16,10 @@ export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds:
  * chain stays consistent; the moment the user touches a set's number, that
  * set flips to `prefilled: false` and stops getting auto-overwritten. */
 export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; }
-export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
+/** `rpe` is the user's perceived effort (1..10) for this specific exercise
+ * in this session. Drives the next session's progression for the same
+ * exercise via {@link rpeMultiplier} when present. */
+export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; rpe?: number | null; }
 export type CardioTiming = "none" | "before" | "after" | "both";
 export interface CardioSlot { exId: string; minutes: number; }
 export interface CardioPlan { timing: CardioTiming; before: CardioSlot | null; after: CardioSlot | null; }
