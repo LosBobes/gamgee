@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers, WizardTransitionStyle } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -30,6 +30,7 @@ interface Props {
   restPrefs:       RestPrefs;
   rpeMultipliers:  RpeMultipliers;
   rpePerExercise:  RpePerExerciseMultipliers;
+  wizardTransition: WizardTransitionStyle;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
@@ -47,7 +48,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, wizardTransition, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -105,9 +106,11 @@ export default function WorkoutTab({
     ? ({ "--quake-x": `${quake.vx}px`, "--quake-y": `${quake.vy}px` } as CSSProperties)
     : undefined;
 
+  const shakingNow = quake && wizardTransition === "earthquake";
+
   return (
     <>
-      <div ref={hostRef} className={`wtab-quake-host${quake ? " earthquake-shake" : ""}`} style={hostStyle}>
+      <div ref={hostRef} className={`wtab-quake-host${shakingNow ? " earthquake-shake" : ""}`} style={hostStyle}>
       {/* Step 0 — landing */}
       {!active && wStep === 0 && (
         <div key="wstep-0" className={stepAnim}>
@@ -206,7 +209,12 @@ export default function WorkoutTab({
       )}
       </div>
       {quake && (
-        <div key={quake.id} className="earthquake-ripple" style={rippleStyle} aria-hidden />
+        <div
+          key={quake.id}
+          className={`wz-fx wz-fx-${wizardTransition}`}
+          style={rippleStyle}
+          aria-hidden
+        />
       )}
     </>
   );

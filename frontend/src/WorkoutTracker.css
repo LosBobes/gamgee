@@ -81,9 +81,12 @@ html, body { background: var(--bg); }
 .wstep-anim       { animation: wstepInFwd  0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .wstep-anim-back  { animation: wstepInBack 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 
-/* ── EARTHQUAKE: rapid shake + shockwave ripple from the click point.
-   Used to bridge the perceived delay between a wizard button tap and the
-   next step rendering. Origin is set via --quake-x / --quake-y CSS vars. */
+/* ── WIZARD STEP TRANSITION EFFECTS
+   Bridge the perceived delay between a wizard button tap and the next
+   step rendering. The user picks one in Settings. All effects key off
+   --quake-x / --quake-y CSS vars set at tap time. */
+
+/* EARTHQUAKE — page shakes + small shockwave ring from the tap. */
 @keyframes earthquakeShake {
   0%   { transform: translate(0, 0)       rotate(0); }
   8%   { transform: translate(-5px, -2px) rotate(-0.45deg); }
@@ -99,18 +102,24 @@ html, body { background: var(--bg); }
   88%  { transform: translate(-1px, 0)    rotate(0); }
   100% { transform: translate(0, 0)       rotate(0); }
 }
-@keyframes earthquakeRipple {
-  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.55; }
-  35%  {                                              opacity: 0.45; }
-  100% { transform: translate(-50%, -50%) scale(100); opacity: 0; }
-}
 .earthquake-shake {
   animation: earthquakeShake 0.55s cubic-bezier(.36, .07, .19, .97) both;
   transform-origin: var(--quake-x, 50%) var(--quake-y, 50%);
   will-change: transform;
 }
-.earthquake-ripple {
+
+.wz-fx {
   position: fixed;
+  pointer-events: none;
+  z-index: 9998;
+}
+
+@keyframes wzFxEarthquake {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.55; }
+  35%  {                                              opacity: 0.45; }
+  100% { transform: translate(-50%, -50%) scale(100); opacity: 0; }
+}
+.wz-fx-earthquake {
   left: var(--quake-x, 50%);
   top:  var(--quake-y, 50%);
   width: 40px;
@@ -119,18 +128,66 @@ html, body { background: var(--bg); }
   border: 2px solid var(--primary);
   background: color-mix(in srgb, var(--primary) 16%, transparent);
   box-shadow: 0 0 24px color-mix(in srgb, var(--primary) 45%, transparent);
-  pointer-events: none;
-  z-index: 9998;
   transform: translate(-50%, -50%) scale(0);
-  animation: earthquakeRipple 0.6s cubic-bezier(.22, 1, .36, 1) both;
+  animation: wzFxEarthquake 0.6s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+/* RIPPLE — large, soft, accent-coloured wash that expands from the tap. */
+@keyframes wzFxRipple {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.7; }
+  60%  {                                              opacity: 0.35; }
+  100% { transform: translate(-50%, -50%) scale(180); opacity: 0; }
+}
+.wz-fx-ripple {
+  left: var(--quake-x, 50%);
+  top:  var(--quake-y, 50%);
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--primary) 75%, transparent) 0%,
+      color-mix(in srgb, var(--primary) 35%, transparent) 55%,
+      transparent 85%
+    );
+  transform: translate(-50%, -50%) scale(0);
+  animation: wzFxRipple 0.75s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+/* WIPE — vertical accent-coloured bar that sweeps outward from the tap x. */
+@keyframes wzFxWipe {
+  0%   { transform: scaleX(0);   opacity: 0; }
+  18%  {                         opacity: 0.85; }
+  55%  { transform: scaleX(60);  opacity: 0.85; }
+  100% { transform: scaleX(120); opacity: 0; }
+}
+.wz-fx-wipe {
+  left: var(--quake-x, 50%);
+  top: 0;
+  width: 36px;
+  height: 100vh;
+  margin-left: -18px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--primary) 35%, transparent) 30%,
+    var(--primary) 50%,
+    color-mix(in srgb, var(--primary) 35%, transparent) 70%,
+    transparent 100%
+  );
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--primary) 60%, transparent));
+  transform-origin: center center;
+  transform: scaleX(0);
+  animation: wzFxWipe 0.6s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
     animation: fadeIn 0.15s ease backwards;
   }
-  .earthquake-shake  { animation: none; }
-  .earthquake-ripple { display: none; }
+  .earthquake-shake { animation: none; }
+  .wz-fx            { display: none; }
 }
 
 /* ── SPLASH SCREEN ── */
