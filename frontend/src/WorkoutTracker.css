@@ -81,10 +81,56 @@ html, body { background: var(--bg); }
 .wstep-anim       { animation: wstepInFwd  0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .wstep-anim-back  { animation: wstepInBack 0.32s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 
+/* ── EARTHQUAKE: rapid shake + shockwave ripple from the click point.
+   Used to bridge the perceived delay between a wizard button tap and the
+   next step rendering. Origin is set via --quake-x / --quake-y CSS vars. */
+@keyframes earthquakeShake {
+  0%   { transform: translate(0, 0)       rotate(0); }
+  8%   { transform: translate(-5px, -2px) rotate(-0.45deg); }
+  16%  { transform: translate(5px, 1px)   rotate(0.45deg); }
+  24%  { transform: translate(-4px, 3px)  rotate(-0.35deg); }
+  32%  { transform: translate(4px, -3px)  rotate(0.35deg); }
+  40%  { transform: translate(-3px, 2px)  rotate(-0.25deg); }
+  48%  { transform: translate(3px, 2px)   rotate(0.2deg); }
+  56%  { transform: translate(-2px, -2px) rotate(-0.15deg); }
+  64%  { transform: translate(2px, 1px)   rotate(0.12deg); }
+  72%  { transform: translate(-2px, 1px)  rotate(-0.08deg); }
+  80%  { transform: translate(1px, 0)     rotate(0.05deg); }
+  88%  { transform: translate(-1px, 0)    rotate(0); }
+  100% { transform: translate(0, 0)       rotate(0); }
+}
+@keyframes earthquakeRipple {
+  0%   { transform: translate(-50%, -50%) scale(0);   opacity: 0.55; }
+  35%  {                                              opacity: 0.45; }
+  100% { transform: translate(-50%, -50%) scale(100); opacity: 0; }
+}
+.earthquake-shake {
+  animation: earthquakeShake 0.55s cubic-bezier(.36, .07, .19, .97) both;
+  transform-origin: var(--quake-x, 50%) var(--quake-y, 50%);
+  will-change: transform;
+}
+.earthquake-ripple {
+  position: fixed;
+  left: var(--quake-x, 50%);
+  top:  var(--quake-y, 50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  box-shadow: 0 0 24px color-mix(in srgb, var(--primary) 45%, transparent);
+  pointer-events: none;
+  z-index: 9998;
+  transform: translate(-50%, -50%) scale(0);
+  animation: earthquakeRipple 0.6s cubic-bezier(.22, 1, .36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tab-anim, .screen-anim, .wstep-anim, .wstep-anim-back {
     animation: fadeIn 0.15s ease backwards;
   }
+  .earthquake-shake  { animation: none; }
+  .earthquake-ripple { display: none; }
 }
 
 /* ── SPLASH SCREEN ── */
