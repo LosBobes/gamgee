@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -26,6 +26,7 @@ interface Props {
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
   progressionSpeed: ProgressionSpeed;
   onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
+  restPrefs:       RestPrefs;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
@@ -42,7 +43,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout,
 }: Props) {
@@ -134,6 +135,7 @@ export default function WorkoutTab({
             history={history}
             doneSets={doneSets}
             progressionSpeed={progressionSpeed}
+            restPrefs={restPrefs}
             onFinish={finishWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}

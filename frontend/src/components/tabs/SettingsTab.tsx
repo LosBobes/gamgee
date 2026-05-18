@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff } from "lucide-react";
+import { Bell, BellOff, Timer } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
+import type { RestPrefs } from "../../types";
+import { DEFAULT_REST_PREFS } from "../../types";
 import { APP_VERSION } from "../../version";
 
 type Gender = "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
@@ -28,6 +30,8 @@ interface Props {
   onProfileUpdate: (name: string | null, email: string | null, gender: string | null) => void;
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
+  restPrefs:       RestPrefs;
+  onRestPrefsChange: (next: Partial<RestPrefs>) => void;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
@@ -513,6 +517,98 @@ function NotificationTypesCard({ authFetch }: { authFetch: Props["authFetch"] })
   );
 }
 
+function RestTimerCard({ prefs, onChange }: { prefs: RestPrefs; onChange: (next: Partial<RestPrefs>) => void }) {
+  const t = useTxt();
+  const [shortVal,  setShortVal]  = useState(String(prefs.short));
+  const [mediumVal, setMediumVal] = useState(String(prefs.medium));
+  const [longVal,   setLongVal]   = useState(String(prefs.long));
+  const [err, setErr] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => { setShortVal(String(prefs.short)); }, [prefs.short]);
+  useEffect(() => { setMediumVal(String(prefs.medium)); }, [prefs.medium]);
+  useEffect(() => { setLongVal(String(prefs.long)); }, [prefs.long]);
+
+  const parseSec = (v: string): number | null => {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < 5 || n > 3600) return null;
+    return Math.round(n);
+  };
+
+  const commit = (field: keyof RestPrefs, raw: string) => {
+    const sec = parseSec(raw);
+    if (sec === null) {
+      setErr("Rest must be between 5 and 3600 seconds.");
+      return;
+    }
+    if (sec === prefs[field]) return;
+    setErr(null);
+    onChange({ [field]: sec });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  const resetDefaults = () => {
+    onChange(DEFAULT_REST_PREFS);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1500);
+  };
+
+  const row = (
+    label: string,
+    sub: string,
+    val: string,
+    setVal: (v: string) => void,
+    field: keyof RestPrefs,
+  ) => (
+    <div className="rest-pref-row">
+      <div className="rest-pref-label">
+        <div className="rest-pref-title">{label}</div>
+        <div className="rest-pref-sub">{sub}</div>
+      </div>
+      <div className="rest-pref-input">
+        <input
+          type="number" min={5} max={3600} step={5}
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onBlur={() => commit(field, val)}
+          onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+          aria-label={`${label} rest seconds`}
+        />
+        <span>sec</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="profile-card">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Timer size={14} style={{ color: "var(--primary)" }} />
+        <div style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
+          {t("Rest timer presets", "Rest timer presets", "Rest timer presets")}
+        </div>
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, lineHeight: 1.45 }}>
+        {t(
+          "Set how long each preset waits before the bar fills. Custom rest is always available on the timer itself.",
+          "Pick your default rest windows. You can still punch in a custom rest mid-workout.",
+          "Pick your default rest windows, bestie. Custom rest is still one tap away during a workout."
+        )}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {row("Light", "Isolation / accessory", shortVal,  setShortVal,  "short")}
+        {row("Medium", "Default for most sets", mediumVal, setMediumVal, "medium")}
+        {row("Long", "Heavy compounds / max effort", longVal, setLongVal, "long")}
+      </div>
+      {err && <p className="auth-err" style={{ marginTop: 8, marginBottom: 0 }}>{err}</p>}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
+        <button type="button" className="auth-toggle" onClick={resetDefaults}>Reset to defaults</button>
+        {saved && <span style={{ color: "var(--green)", fontSize: 11 }}>Saved.</span>}
+      </div>
+    </div>
+  );
+}
+
 function OnboardingCard() {
   const t = useTxt();
   const { openWelcome, resetHints, dismissedHints } = useOnboarding();
@@ -556,7 +652,7 @@ function OnboardingCard() {
 
 export default function SettingsTab({
   name, email, gender, token, primaryColor, onColorChange, onProfileUpdate,
-  toneMode, onToneChange, authFetch,
+  toneMode, onToneChange, restPrefs, onRestPrefsChange, authFetch,
 }: Props) {
   const t = useTxt();
 
@@ -574,6 +670,9 @@ export default function SettingsTab({
       <div className="profile-section">{t("Appearance", "Appearance")}</div>
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
+
+      <div className="profile-section">{t("Workout", "Workout")}</div>
+      <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />

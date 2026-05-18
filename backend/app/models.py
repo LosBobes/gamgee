@@ -30,6 +30,11 @@ class User(Base):
     notify_pr = Column(Boolean, nullable=False, default=True)
     notify_motivate = Column(Boolean, nullable=False, default=True)
     notify_live = Column(Boolean, nullable=False, default=True)
+    # Rest-timer presets surfaced after a set is checked off. Null = client
+    # falls back to 60 / 90 / 180s; range-validated by the schema layer.
+    rest_short_seconds = Column(Integer, nullable=True)
+    rest_medium_seconds = Column(Integer, nullable=True)
+    rest_long_seconds = Column(Integer, nullable=True)
 
 
 class PasswordResetToken(Base):

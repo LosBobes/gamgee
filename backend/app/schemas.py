@@ -90,6 +90,9 @@ class UserOut(BaseModel):
     notify_pr: bool = True
     notify_motivate: bool = True
     notify_live: bool = True
+    rest_short_seconds: int | None = None
+    rest_medium_seconds: int | None = None
+    rest_long_seconds: int | None = None
 
     model_config = {"from_attributes": True}
 
@@ -158,6 +161,9 @@ class TrainerProfileUpdate(BaseModel):
 class UserPreferences(BaseModel):
     primary_color: str | None = None
     progression_speed: Literal["slow", "moderate", "fast"] | None = None
+    rest_short_seconds: int | None = Field(default=None, ge=5, le=3600)
+    rest_medium_seconds: int | None = Field(default=None, ge=5, le=3600)
+    rest_long_seconds: int | None = Field(default=None, ge=5, le=3600)
 
     @field_validator("primary_color")
     @classmethod

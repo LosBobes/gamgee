@@ -1,22 +1,28 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye } from "lucide-react";
-import type { WorkoutExercise, PersonalRecord, WorkoutSet } from "../../types";
+import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, TYPE_COLOR } from "../../data/exercises";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
+import SetRestButton, { type RestTier } from "./RestTimer";
 
 interface Props {
   ex:         WorkoutExercise;
   pr:         PersonalRecord | undefined;
   analysis:   AnalysisResult | null;
+  restPrefs:  RestPrefs;
+  rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
   onRemove:   () => void;
   updateSet:  (idx: number, field: keyof WorkoutSet, value: string) => void;
   toggleSet:  (idx: number) => void;
   addSet:     () => void;
   removeSet:  (idx: number) => void;
   isNewPr:    (weight: string) => boolean;
+  onPickRestTier: (tier: Exclude<RestTier, "custom">) => void;
+  onAdjustRest:   (deltaSec: number) => void;
+  onStartCustomRest: (seconds: number) => void;
 }
 
 const colLabels = (ex: WorkoutExercise): [string, string] =>
@@ -92,7 +98,7 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
@@ -273,7 +279,18 @@ export default function ExerciseCard({ ex, pr, analysis, onRemove, updateSet, to
             );
           })
         )}
-        <button className="btn-add-set" onClick={addSet}>+ add set</button>
+        {ex.type === "strength" ? (
+          <SetRestButton
+            prefs={restPrefs}
+            rest={rest}
+            onAddSet={addSet}
+            onPickTier={onPickRestTier}
+            onAdjust={onAdjustRest}
+            onStartCustom={onStartCustomRest}
+          />
+        ) : (
+          <button className="btn-add-set" onClick={addSet}>+ add set</button>
+        )}
       </div>
     </div>
     {inspectOpen && (

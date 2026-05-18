@@ -29,6 +29,8 @@ export type WeekPlanDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
 export interface DayPlan { focus: string; exerciseIds: string[]; enabled: boolean; }
 export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>>;
 export type ProgressionSpeed = "slow" | "moderate" | "fast";
+export interface RestPrefs { short: number; medium: number; long: number; }
+export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 export interface MetricDef { id: string; label: string; unit: string; color: string; step: number; min: number; max: number; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 

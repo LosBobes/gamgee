@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Check, Dumbbell } from "lucide-react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed } from "../../types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
+import type { RestTier } from "./RestTimer";
 import { useTxt } from "../../context/ToneContext";
 import OnboardingHint from "../OnboardingHint";
 
@@ -13,6 +14,7 @@ interface Props {
   history:        WorkoutSession[];
   doneSets:       number;
   progressionSpeed: ProgressionSpeed;
+  restPrefs:      RestPrefs;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -23,22 +25,77 @@ interface Props {
   isNewPr:        (exId: string, weight: string) => boolean;
 }
 
-export default function ActiveWorkout({ exercises, prs, history, doneSets, progressionSpeed, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
+interface RestState {
+  uid:      string;
+  endAt:    number;
+  totalSec: number;
+  tier:     RestTier;
+}
+
+export default function ActiveWorkout({ exercises, prs, history, doneSets, progressionSpeed, restPrefs, onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr }: Props) {
   const [showPick, setShowPick] = useState(false);
+  // Most recent tier the user picked, reused as the auto-start default on the
+  // next set check-off. Defaults to "medium" until they tell us otherwise.
+  const [lastTier, setLastTier]       = useState<RestTier>("medium");
+  const [lastCustomSec, setLastCustomSec] = useState<number>(restPrefs.medium);
+  const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
+
+  const tierSeconds = (tier: RestTier) =>
+    tier === "custom" ? lastCustomSec : restPrefs[tier];
 
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
     setShowPick(false);
   };
 
+  // Wrap toggleSet so we start the rest timer when a strength set transitions
+  // undone -> done. Cardio/timed sets have their own pacing.
+  const handleToggleSet = (uid: string, idx: number) => {
+    const ex = exercises.find(e => e.uid === uid);
+    const set = ex?.sets[idx];
+    const becomingDone = !!ex && !!set && !set.done && ex.type === "strength";
+    toggleSet(uid, idx);
+    if (becomingDone) {
+      const secs = tierSeconds(lastTier);
+      setRest({ uid, endAt: Date.now() + secs * 1000, totalSec: secs, tier: lastTier });
+    }
+  };
+
+  const handleAddSet = (uid: string) => {
+    addSet(uid);
+    if (rest?.uid === uid) setRest(null);
+  };
+
+  const handlePickTier = (uid: string, tier: Exclude<RestTier, "custom">) => {
+    if (rest?.uid !== uid) return;
+    const secs = restPrefs[tier];
+    setLastTier(tier);
+    setRest({ uid, endAt: Date.now() + secs * 1000, totalSec: secs, tier });
+  };
+
+  const handleAdjust = (uid: string, delta: number) => {
+    if (rest?.uid !== uid) return;
+    setRest(r => r && r.uid === uid
+      ? { ...r, endAt: Math.max(Date.now() + 1000, r.endAt + delta * 1000), totalSec: Math.max(5, r.totalSec + delta) }
+      : r);
+  };
+
+  const handleStartCustom = (uid: string, seconds: number) => {
+    if (rest?.uid !== uid) return;
+    const secs = Math.max(5, Math.min(3600, Math.round(seconds)));
+    setLastTier("custom");
+    setLastCustomSec(secs);
+    setRest({ uid, endAt: Date.now() + secs * 1000, totalSec: secs, tier: "custom" });
+  };
+
   return (
     <>
       <OnboardingHint hintKey="active" step="GO TIME" title={t("Log each set as you go", "Log each set as you go", "Log each set as you serve")}>
         {t(
-          "For every set: type weight + reps, then check the box. The timer at the top tracks your session. Hit FINISH when you're done — at least one set has to be checked off.",
-          "Punch in weight + reps, tap the checkbox. Timer up top tracks the session. Hit FINISH when you're cooked — needs at least one set checked.",
-          "Punch in weight + reps, tap the checkbox. Timer up top tracks the session. Hit FINISH when you're cooked — needs at least one set checked, bestie."
+          "For every set: type weight + reps, then check the box. The bar at the bottom of the card fills up while you rest — when it's full, tap it to start your next set.",
+          "Punch in weight + reps, tap the checkbox. The bar at the bottom fills up while you rest — tap it when it's full for your next set. Hit FINISH when you're cooked.",
+          "Punch in weight + reps, tap the checkbox. Rest bar fills while you breathe — tap it when full for the next set. Hit FINISH when you're cooked, bestie."
         )}
       </OnboardingHint>
 
@@ -60,12 +117,17 @@ export default function ActiveWorkout({ exercises, prs, history, doneSets, progr
           ex={ex}
           pr={prs[ex.id]}
           analysis={analyzeEx(ex.id, history, progressionSpeed)}
+          restPrefs={restPrefs}
+          rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
           updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
-          toggleSet={(idx) => toggleSet(ex.uid, idx)}
-          addSet={() => addSet(ex.uid)}
+          toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
+          addSet={() => handleAddSet(ex.uid)}
           removeSet={(idx) => removeSet(ex.uid, idx)}
           isNewPr={(w) => isNewPr(ex.id, w)}
+          onPickRestTier={(tier) => handlePickTier(ex.uid, tier)}
+          onAdjustRest={(delta) => handleAdjust(ex.uid, delta)}
+          onStartCustomRest={(s) => handleStartCustom(ex.uid, s)}
         />
       ))}
 
