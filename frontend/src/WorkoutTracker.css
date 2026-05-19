@@ -591,15 +591,72 @@ html, body { background: var(--bg); }
 .ww-focus-chip.selected { background: var(--ad); border-color: var(--ad2); color: var(--accent); }
 .ww-exercise-list { display: flex; flex-direction: column; gap: 4px; }
 .ww-ex-row {
-  display: flex; align-items: center; gap: 10px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 6px;
   min-height: 40px; padding: 8px 10px; background: var(--s1); border: 1px solid transparent;
   border-radius: 8px; cursor: pointer; transition: all 0.15s;
   font-family: 'Nunito', sans-serif; text-align: left; width: 100%;
   -webkit-tap-highlight-color: transparent;
   box-sizing: border-box;
 }
+.ww-ex-main { display: flex; align-items: center; gap: 10px; min-height: 24px; width: 100%; }
 .ww-ex-row:hover { border-color: var(--ad2); }
 .ww-ex-row.checked { background: var(--ad); border-color: var(--ad2); }
+.ww-rpe-row {
+  display: flex; align-items: center; gap: 10px; padding: 4px 4px 2px 30px;
+  border-top: 1px dashed color-mix(in srgb, var(--primary) 18%, transparent);
+  cursor: default;
+}
+.ww-rpe-label {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: var(--muted);
+  text-transform: uppercase; flex-shrink: 0; min-width: 0;
+}
+.ww-rpe-val {
+  font-size: 13px; font-weight: 800; color: var(--text);
+  min-width: 18px; text-align: right; letter-spacing: 0;
+}
+.ww-rpe-hint {
+  font-size: 9px; font-weight: 500; color: var(--muted); opacity: 0.7;
+  letter-spacing: 0; text-transform: lowercase; font-style: italic; margin-left: 2px;
+}
+.ww-rpe-row-set .ww-rpe-val { color: var(--accent); }
+.ww-rpe-slider {
+  flex: 1; min-width: 60px; height: 18px; accent-color: var(--accent);
+  background: transparent; cursor: pointer;
+}
+.ww-week-bar {
+  display: flex; flex-direction: column; gap: 6px;
+  margin: 4px 0 10px;
+}
+.ww-week-tabs {
+  display: flex; flex-wrap: wrap; gap: 5px; align-items: center;
+}
+.ww-week-tab {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.5px; padding: 5px 10px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--ad);
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ww-week-tab:hover { border-color: var(--ad2); color: var(--text); }
+.ww-week-tab.active { background: var(--ad2); border-color: var(--accent); color: var(--accent); }
+.ww-week-add {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.5px; padding: 5px 10px; border-radius: 999px;
+  background: transparent; border: 1px dashed var(--ad2);
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.ww-week-add:hover { color: var(--accent); border-color: var(--accent); background: var(--ad); }
+.ww-week-controls { display: flex; align-items: center; gap: 6px; }
+.ww-week-name {
+  flex: 1; min-width: 0; font-family: 'Nunito', sans-serif; font-size: 12px;
+  padding: 6px 10px; border-radius: 6px;
+  background: var(--s1); border: 1px solid var(--border); color: var(--text);
+  box-sizing: border-box;
+}
+.ww-week-name:focus { outline: none; border-color: var(--accent); }
 .ww-ex-check {
   width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--border);
   background: var(--s2); display: flex; align-items: center; justify-content: center;
