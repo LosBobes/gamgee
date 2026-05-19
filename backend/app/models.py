@@ -399,9 +399,12 @@ class TrainerLink(Base):
 # ── Regimes / Assignments ────────────────────────────────────────────────────
 
 class Regime(Base):
-    """A multi-day workout plan: a `days` JSON object keyed by mon..sun whose
-    values are `{focus, exerciseIds, enabled}` records. `goal`, `focus_areas`,
-    and `avoid_muscles` are stored alongside so the generator can be re-run."""
+    """A multi-week workout plan. `weeks` is a JSON list of `{label, days}` blocks
+    where each day maps mon..sun to `{focus, exerciseIds, enabled, exerciseConfig}`.
+    Each `exerciseConfig` entry holds the user's reference max (max_weight ×
+    max_reps), target RPE, and warmup/working set counts so the active workout
+    can prescribe both warmup ramps and working loads. `days` is kept for
+    backward-compat reads — when present it acts as a single-week alias."""
     __tablename__ = "regimes"
     __table_args__ = (
         Index("ix_regimes_owner", "owner_id"),
@@ -417,14 +420,17 @@ class Regime(Base):
     focus_areas = Column(JSONB, nullable=False, default=list)     # list[str] of muscle groups
     avoid_muscles = Column(JSONB, nullable=False, default=list)   # list[str] of muscle groups to skip
     equipment = Column(JSONB, nullable=False, default=list)       # list[str]: barbell|dumbbell|bodyweight|machine
-    days = Column(JSONB, nullable=False, default=dict)            # mon..sun -> DayPlan
-    # How the regime drives weight/reps for scheduled workouts:
-    #   per_exercise_rpe — each exercise carries its own target RPE (stored in
-    #     days[*].exerciseConfig[id].rpe).
-    #   general_rpe — one RPE for the whole regime (`general_rpe` column);
-    #     applies to every exercise unless overridden.
-    #   manual — each exercise carries explicit sets/reps/weight in
-    #     days[*].exerciseConfig[id].{sets,reps,weight}; no auto-progression.
+    # Legacy single-week structure (mon..sun -> DayPlan). Treated as week 1
+    # when `weeks` is empty. Always populated from weeks[0] on write so older
+    # clients reading the regime still see something coherent.
+    days = Column(JSONB, nullable=False, default=dict)
+    # Multi-week structure. List of `{label, days}` blocks. Each week has its
+    # own day-by-day plan with its own per-exercise configs, so the same lift
+    # can carry a different RPE / max / working-reps target in week 2 than in
+    # week 1.
+    weeks = Column(JSONB, nullable=False, default=list)
+    # Legacy "mode" — kept for backward compat on read but unused by writes
+    # since per-exercise config now carries everything (effort + max + sets).
     mode = Column(String(30), nullable=True)
     general_rpe = Column(Integer, nullable=True)
     is_template = Column(Boolean, nullable=False, default=False)

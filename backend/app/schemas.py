@@ -12,26 +12,6 @@ _HEX_COLOR_RE = re.compile(r"^#[0-9A-Fa-f]{6}$")
 Gender = Literal["female", "male", "non_binary", "other", "prefer_not_to_say"]
 
 
-def _clean_rpe_table(raw: dict[str, Any]) -> dict[str, float]:
-    """Coerce a {'1'..'10' : number} mapping; drop anything else, clamp 0..5."""
-    out: dict[str, float] = {}
-    for k, v in raw.items():
-        try:
-            level = int(k)
-        except (TypeError, ValueError):
-            continue
-        if level < 1 or level > 10:
-            continue
-        try:
-            mult = float(v)
-        except (TypeError, ValueError):
-            continue
-        if mult != mult or mult < 0 or mult > 5:  # NaN-safe + clamp
-            mult = max(0.0, min(5.0, 0.0 if mult != mult else mult))
-        out[str(level)] = round(mult, 3)
-    return out
-
-
 class ItemBase(BaseModel):
     title: str
     description: str | None = None
@@ -113,8 +93,6 @@ class UserOut(BaseModel):
     rest_short_seconds: int | None = None
     rest_medium_seconds: int | None = None
     rest_long_seconds: int | None = None
-    rpe_multipliers: dict[str, float] | None = None
-    rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -186,10 +164,6 @@ class UserPreferences(BaseModel):
     rest_short_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_medium_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_long_seconds: int | None = Field(default=None, ge=5, le=3600)
-    # Map "1".."10" → step multiplier (clamped 0..5).
-    rpe_multipliers: dict[str, float] | None = None
-    # Per-exercise overrides: { exercise_id: { "1": float, ... } }.
-    rpe_multipliers_by_exercise: dict[str, dict[str, float]] | None = None
 
     @field_validator("primary_color")
     @classmethod
@@ -197,25 +171,6 @@ class UserPreferences(BaseModel):
         if v is not None and not _HEX_COLOR_RE.match(v):
             raise ValueError("primary_color must be a valid #RRGGBB hex color")
         return v
-
-    @field_validator("rpe_multipliers")
-    @classmethod
-    def _valid_rpe(cls, v: dict[str, Any] | None) -> dict[str, float] | None:
-        return _clean_rpe_table(v) if v is not None else None
-
-    @field_validator("rpe_multipliers_by_exercise")
-    @classmethod
-    def _valid_rpe_by_ex(cls, v: dict[str, dict[str, Any]] | None) -> dict[str, dict[str, float]] | None:
-        if v is None:
-            return None
-        cleaned: dict[str, dict[str, float]] = {}
-        for ex_id, table in v.items():
-            if not isinstance(ex_id, str) or not ex_id:
-                continue
-            cleaned_table = _clean_rpe_table(table) if isinstance(table, dict) else {}
-            if cleaned_table:
-                cleaned[ex_id[:80]] = cleaned_table
-        return cleaned
 
 
 class NotificationPreferences(BaseModel):
@@ -965,10 +920,24 @@ RegimeMode = Literal["per_exercise_rpe", "general_rpe", "manual"]
 
 
 class ExerciseConfigIn(BaseModel):
-    """Per-exercise overrides used by the regime modes. Every field is optional
-    so the same shape works for all three modes — only the relevant fields are
-    populated."""
+    """Per-exercise prescription used by the regime editor. Carries the user's
+    reference max (max_weight × max_reps), the target effort (rpe), and the
+    warmup/working set counts so the active workout can build a complete
+    ramp + working block for every exercise on every day. Legacy fields
+    (`sets`, `reps`, `weight`) are accepted on input for backward compat with
+    older saved regimes but not produced by the new editor."""
+    # Target effort for the working sets (1 easy … 10 max). RIR = 10 - rpe.
     rpe: int | None = Field(default=None, ge=1, le=10)
+    # Reference max: weight the user can lift for max_reps clean reps. Used to
+    # back into an estimated 1RM and then prescribe each working set.
+    max_weight: float | None = Field(default=None, ge=0, le=2000)
+    max_reps: int | None = Field(default=None, ge=1, le=999)
+    # Number of warmup sets to prepend before the working sets. Default 2.
+    warmup_sets: int | None = Field(default=None, ge=0, le=10)
+    # Working set prescription.
+    working_sets: int | None = Field(default=None, ge=1, le=20)
+    working_reps: int | None = Field(default=None, ge=1, le=100)
+    # Legacy fields kept for backward compat.
     sets: int | None = Field(default=None, ge=1, le=99)
     reps: int | None = Field(default=None, ge=1, le=999)
     weight: float | None = Field(default=None, ge=0, le=2000)
@@ -978,9 +947,15 @@ class DayPlanIn(BaseModel):
     focus: str
     exerciseIds: list[str] = Field(default_factory=list)
     enabled: bool = True
-    # Per-exercise overrides keyed by exercise id. Populated by the regime
-    # editor when the user picks per_exercise_rpe or manual mode.
+    # Per-exercise prescription keyed by exercise id (rpe, max, set counts).
     exerciseConfig: dict[str, ExerciseConfigIn] | None = None
+
+
+class WeekPlanIn(BaseModel):
+    """One week of a multi-week regime. Each week has its own day-by-day
+    plan, so RPEs and exercises can differ across weeks."""
+    label: str | None = Field(default=None, max_length=80)
+    days: dict[str, DayPlanIn] = Field(default_factory=dict)
 
 
 class RegimeQuestionnaire(BaseModel):
@@ -1009,6 +984,11 @@ class RegimeOut(BaseModel):
     focus_areas: list[str] = []
     avoid_muscles: list[str] = []
     equipment: list[str] = []
+    # Multi-week structure (canonical). Always populated — single-week regimes
+    # come back as a one-element list.
+    weeks: list[WeekPlanIn] = Field(default_factory=list)
+    # Legacy single-week field, populated from weeks[0] so older clients still
+    # render the first week without crashing.
     days: dict[str, DayPlanIn] = {}
     mode: RegimeMode | None = None
     general_rpe: int | None = None
@@ -1019,7 +999,9 @@ class RegimeOut(BaseModel):
 
 
 class RegimeCreate(BaseModel):
-    """Save a generated or manually-built regime."""
+    """Save a generated or manually-built regime. Either `weeks` (preferred)
+    or the legacy `days` may be supplied — on save the server normalises both
+    so reads always see a populated `weeks` and a `days` mirror of week 1."""
     name: str = Field(min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=2000)
     goal: RegimeGoal | None = None
@@ -1028,6 +1010,7 @@ class RegimeCreate(BaseModel):
     focus_areas: list[str] = Field(default_factory=list)
     avoid_muscles: list[str] = Field(default_factory=list)
     equipment: list[str] = Field(default_factory=list)
+    weeks: list[WeekPlanIn] | None = None
     days: dict[str, DayPlanIn] = Field(default_factory=dict)
     mode: RegimeMode | None = None
     general_rpe: int | None = Field(default=None, ge=1, le=10)

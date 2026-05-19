@@ -1,14 +1,13 @@
-import { useMemo, useState, useEffect } from "react";
-import { Bell, BellOff, Flame, Timer, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, BellOff, Timer } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
-import type { RestPrefs, RpeMultipliers, RpePerExerciseMultipliers, WizardTransitionStyle } from "../../types";
-import { DEFAULT_REST_PREFS, DEFAULT_RPE_MULTIPLIERS } from "../../types";
-import { ALL_EX } from "../../data/exercises";
+import type { RestPrefs, WizardTransitionStyle } from "../../types";
+import { DEFAULT_REST_PREFS } from "../../types";
 import { readCountsBar, writeCountsBar, type CountsBar } from "../../data/barbell";
 import { APP_VERSION } from "../../version";
 
@@ -34,10 +33,6 @@ interface Props {
   onToneChange:    (mode: ToneMode) => void;
   restPrefs:       RestPrefs;
   onRestPrefsChange: (next: Partial<RestPrefs>) => void;
-  rpeMultipliers:  RpeMultipliers;
-  onRpeMultipliersChange: (next: Partial<RpeMultipliers>) => void;
-  rpePerExercise:  RpePerExerciseMultipliers;
-  onRpePerExerciseChange: (exId: string, next: Partial<RpeMultipliers> | null) => void;
   wizardTransition:         WizardTransitionStyle;
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
   reducedMotion:            boolean;
@@ -777,142 +772,6 @@ function RestTimerCard({ prefs, onChange }: { prefs: RestPrefs; onChange: (next:
   );
 }
 
-function RpeMultiplierCard({
-  globalTable, onGlobalChange, perEx, onPerExChange,
-}: {
-  globalTable:    RpeMultipliers;
-  onGlobalChange: (next: Partial<RpeMultipliers>) => void;
-  perEx:          RpePerExerciseMultipliers;
-  onPerExChange:  (exId: string, next: Partial<RpeMultipliers> | null) => void;
-}) {
-  const t = useTxt();
-  // The picker shows "global" by default and switches to a single exercise.
-  // Per-exercise rows inherit from the global table when the user hasn't
-  // overridden them, so a fresh user only ever sees one table to think about.
-  const [selectedEx, setSelectedEx] = useState<string>("");
-
-  const strengthExercises = useMemo(
-    () => ALL_EX.filter(ex => ex.type === "strength")
-                .slice()
-                .sort((a, b) => a.name.localeCompare(b.name)),
-    [],
-  );
-
-  const overriddenIds = useMemo(() => new Set(Object.keys(perEx)), [perEx]);
-  const exTable: Partial<RpeMultipliers> = (selectedEx && perEx[selectedEx]) || {};
-
-  const effectiveValue = (level: string): number => {
-    if (!selectedEx) return globalTable[level] ?? DEFAULT_RPE_MULTIPLIERS[level] ?? 1;
-    const override = exTable[level];
-    if (typeof override === "number") return override;
-    return globalTable[level] ?? DEFAULT_RPE_MULTIPLIERS[level] ?? 1;
-  };
-
-  const commit = (level: string, raw: string) => {
-    const n = Number(raw);
-    if (!Number.isFinite(n)) return;
-    const clamped = Math.max(0, Math.min(5, n));
-    if (selectedEx) {
-      onPerExChange(selectedEx, { [level]: clamped });
-    } else {
-      onGlobalChange({ [level]: clamped });
-    }
-  };
-
-  const resetGlobal = () => onGlobalChange(DEFAULT_RPE_MULTIPLIERS);
-  const resetExercise = () => { if (selectedEx) onPerExChange(selectedEx, null); };
-
-  return (
-    <div className="profile-card">
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <Flame size={14} style={{ color: "var(--primary)" }} />
-        <div style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {t("RPE progression", "RPE progression", "RPE progression")}
-        </div>
-      </div>
-      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, lineHeight: 1.45 }}>
-        {t(
-          "After every session we ask 'How hard was that?' on a 1–10 scale. The number you pick multiplies how much weight we add for the next session: 1× is normal, 0 means no jump, 2× means twice the bump. Tune each level here.",
-          "Each session ends with an RPE 1–10 ask. That number scales your next jump — 1× is normal, 0 holds the weight, 2× doubles it. Tune each level.",
-          "Each session ends with an RPE 1–10 ask, bestie. That number scales your next jump — 1× is normal, 0 holds the weight, 2× doubles it. Tune each level."
-        )}
-      </div>
-
-      <label style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 12 }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color: "var(--muted)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
-          Customize for
-        </span>
-        <select
-          className="field-input"
-          value={selectedEx}
-          onChange={e => setSelectedEx(e.target.value)}
-        >
-          <option value="">Every exercise (global)</option>
-          {strengthExercises.map(ex => (
-            <option key={ex.id} value={ex.id}>
-              {overriddenIds.has(ex.id) ? "★ " : ""}{ex.name}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <div className="rpe-pref-grid">
-        {Array.from({ length: 10 }, (_, i) => i + 1).map(level => {
-          const key = String(level);
-          const effective = effectiveValue(key);
-          const override  = selectedEx ? exTable[key] : undefined;
-          return (
-            <div key={key} className="rpe-pref-row">
-              <div className="rpe-pref-level">
-                <span className="rpe-pref-num">{level}</span>
-                <span className="rpe-pref-label">
-                  {level <= 2 ? "Way too easy" : level <= 4 ? "Easy" : level <= 6 ? "Moderate" : level <= 8 ? "Hard" : "Max"}
-                </span>
-              </div>
-              <div className="rpe-pref-input">
-                <input
-                  type="number" min={0} max={5} step={0.05}
-                  value={effective}
-                  onChange={e => commit(key, e.target.value)}
-                  aria-label={`RPE ${level} multiplier`}
-                />
-                <span>×</span>
-              </div>
-              {selectedEx && override === undefined && (
-                <span className="rpe-pref-inherit" title="Inheriting global value">inherits</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, gap: 8 }}>
-        {selectedEx ? (
-          <button
-            type="button"
-            className="auth-toggle"
-            onClick={resetExercise}
-            disabled={!perEx[selectedEx]}
-          >
-            <RotateCcw size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
-            Clear override
-          </button>
-        ) : (
-          <button type="button" className="auth-toggle" onClick={resetGlobal}>
-            <RotateCcw size={11} style={{ marginRight: 4, verticalAlign: -1 }} />
-            Reset to defaults
-          </button>
-        )}
-        <span style={{ fontSize: 10, color: "var(--muted)" }}>
-          {selectedEx
-            ? overriddenIds.has(selectedEx) ? "Per-exercise override active" : "Inheriting global table"
-            : `${overriddenIds.size} exercise${overriddenIds.size === 1 ? "" : "s"} overridden`}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function OnboardingCard() {
   const t = useTxt();
   const { openWelcome, resetHints, dismissedHints } = useOnboarding();
@@ -957,7 +816,6 @@ function OnboardingCard() {
 export default function SettingsTab({
   name, email, gender, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
-  rpeMultipliers, onRpeMultipliersChange, rpePerExercise, onRpePerExerciseChange,
   wizardTransition, onWizardTransitionChange,
   reducedMotion, onReducedMotionChange,
   authFetch,
@@ -984,12 +842,6 @@ export default function SettingsTab({
       <div className="profile-section">{t("Workout", "Workout")}</div>
       <CountsBarCard />
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
-      <RpeMultiplierCard
-        globalTable={rpeMultipliers}
-        onGlobalChange={onRpeMultipliersChange}
-        perEx={rpePerExercise}
-        onPerExChange={onRpePerExerciseChange}
-      />
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeEx } from "../../src/analysis";
+import { analyzeEx, prescribeExercise, weightForRpe } from "../../src/analysis";
 import type { WorkoutSession } from "../../src/types";
 
 const session = (date: string, weight: string, reps: string): WorkoutSession => ({
@@ -159,25 +159,22 @@ describe("analyzeEx", () => {
     expect(res.last.topR).toBe(8);
   });
 
-  it("scales the next-weight bump by the RPE multiplier", () => {
-    // Baseline: bench, 60kg×8, NEW status → 62.5kg next (step 2.5 × 1.0).
-    const base = [session("2026-05-01", "60", "8")];
-    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 6 })!.nextWeight).toBe(62.5);
-    // RPE 2 should DOUBLE the jump (default multiplier 2.0).
-    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 2 })!.nextWeight).toBe(65);
-    // RPE 10 should pin the weight (multiplier 0).
-    expect(analyzeEx("bench", base, { speed: "moderate", lastRpe: 10 })!.nextWeight).toBe(60);
-  });
-
-  it("honours per-exercise RPE overrides over the global table", () => {
-    const base = [session("2026-05-01", "60", "8")];
-    const res = analyzeEx("bench", base, {
-      speed:    "moderate",
-      lastRpe:  10,
-      rpeTable: { "10": 0 },             // global says "hold"
-      rpePerEx: { bench: { "10": 1 } },  // but bench-specific says "normal step"
-    })!;
-    expect(res.nextWeight).toBe(62.5);
+  it("ignores warmup sets when finding the top set", () => {
+    // A heavy "warmup" shouldn't be treated as a working set.
+    const s: WorkoutSession = {
+      id: "wu", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "bench", name: "Bench Press", type: "strength", uid: "bench_wu",
+        sets: [
+          { weight: "100", reps: "5", done: true, is_warmup: true },
+          { weight: "80", reps: "8", done: true },
+        ],
+      }],
+    };
+    const res = analyzeEx("bench", [s])!;
+    // Top set is the working 80kg×8, not the warmup 100kg×5.
+    expect(res.last.topW).toBe(80);
+    expect(res.last.topR).toBe(8);
   });
 
   it("skips sets with no parsable weight", () => {
@@ -196,5 +193,91 @@ describe("analyzeEx", () => {
       ],
     };
     expect(analyzeEx("bench", [empty])).toBeNull();
+  });
+});
+
+describe("weightForRpe", () => {
+  it("returns the 1RM at RPE 10 with target_reps 1", () => {
+    // 1RM × 1.0, no RIR, 1 rep: load = 1RM / (1 + 1/30) = 0.968 × 1RM.
+    // Close enough to the 1RM — RPE 10 single is "to failure at 1 rep".
+    const w = weightForRpe(100, 1, 10);
+    expect(w).toBeGreaterThan(95);
+    expect(w).toBeLessThan(100);
+  });
+
+  it("backs off with lower RPE", () => {
+    const max = 100;
+    const r10 = weightForRpe(max, 5, 10);
+    const r8  = weightForRpe(max, 5, 8);
+    const r6  = weightForRpe(max, 5, 6);
+    expect(r10).toBeGreaterThan(r8);
+    expect(r8).toBeGreaterThan(r6);
+  });
+
+  it("returns 0 for invalid 1RM", () => {
+    expect(weightForRpe(0, 5, 8)).toBe(0);
+    expect(weightForRpe(NaN, 5, 8)).toBe(0);
+  });
+});
+
+describe("prescribeExercise", () => {
+  it("returns null when nothing useful is configured", () => {
+    expect(prescribeExercise("bench", undefined)).toBeNull();
+    expect(prescribeExercise("bench", { rpe: 7 })).toBeNull();  // no max, no weight
+  });
+
+  it("builds a warmup ramp + working set block from max", () => {
+    const presc = prescribeExercise("bench", {
+      rpe: 7,
+      max_weight: 100, max_reps: 5,
+      warmup_sets: 2, working_sets: 3, working_reps: 8,
+    })!;
+    expect(presc.derived).toBe(true);
+    expect(presc.warmup.length).toBe(2);
+    expect(presc.working.count).toBe(3);
+    expect(presc.working.reps).toBe(8);
+    // Warmups should ramp up, working weight greater than any warmup.
+    presc.warmup.forEach(w => expect(w.weight).toBeLessThan(presc.working.weight));
+    expect(presc.warmup[0].weight).toBeLessThan(presc.warmup[1].weight);
+    // est_1RM from 100 × 5 ≈ 100 × (1 + 5/30) ≈ 117 (orm1 rounds to integer).
+    expect(presc.est1RM).toBe(117);
+  });
+
+  it("rounds working weight to 2.5kg increments for upper-body lifts", () => {
+    const presc = prescribeExercise("bench", {
+      rpe: 8, max_weight: 100, max_reps: 5,
+      warmup_sets: 0, working_sets: 3, working_reps: 5,
+    })!;
+    // Bench is in UPPER_IDS → 2.5kg plate.
+    expect(presc.working.weight % 2.5).toBe(0);
+  });
+
+  it("rounds working weight to 5kg increments for lower-body lifts", () => {
+    const presc = prescribeExercise("squat", {
+      rpe: 8, max_weight: 120, max_reps: 5,
+      warmup_sets: 0, working_sets: 3, working_reps: 5,
+    })!;
+    expect(presc.working.weight % 5).toBe(0);
+  });
+
+  it("falls back to legacy weight when max isn't set", () => {
+    const presc = prescribeExercise("bench", {
+      rpe: 7, weight: 80, sets: 3, reps: 8,
+    })!;
+    expect(presc.derived).toBe(false);
+    expect(presc.working.weight).toBe(80);
+    expect(presc.working.count).toBe(3);
+    expect(presc.working.reps).toBe(8);
+  });
+
+  it("uses a denser warmup ramp when warmup_sets is high", () => {
+    const presc = prescribeExercise("bench", {
+      rpe: 7, max_weight: 100, max_reps: 5,
+      warmup_sets: 4, working_sets: 3, working_reps: 5,
+    })!;
+    expect(presc.warmup.length).toBe(4);
+    // 4 warmups: 30/50/70/85% — ascending pattern.
+    const ws = presc.warmup.map(w => w.weight);
+    for (let i = 1; i < ws.length; i++) expect(ws[i]).toBeGreaterThanOrEqual(ws[i - 1]);
   });
 });

@@ -1,6 +1,6 @@
 import { Calendar, Zap, ArrowLeft } from "lucide-react";
 import type { DayPlan, WeeklyPlan } from "../../types";
-import { WEEK_DAYS, getTodayKey } from "../../data/weeklyPlan";
+import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
 import { ALL_EX } from "../../data/exercises";
 import { useTxt } from "../../context/ToneContext";
@@ -18,9 +18,13 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
-  const todayPlan = weeklyPlan?.[todayKey];
+  // dayMapForCurrentWeek transparently handles both legacy single-week plans
+  // (where days hang directly off the WeeklyPlan) and the new multi-week
+  // structure (where the current week's days live in weeks[current_week_index]).
+  const todayMap  = dayMapForCurrentWeek(weeklyPlan);
+  const todayPlan = todayMap[todayKey];
   const focusDef  = todayPlan?.enabled ? (getFocusDef(todayPlan.focus) ?? null) : null;
-  const hasAnyPlan = !!weeklyPlan && Object.values(weeklyPlan).some(d => d?.enabled);
+  const hasAnyPlan = Object.values(todayMap).some(d => d?.enabled);
 
   return (
     <>

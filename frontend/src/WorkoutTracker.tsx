@@ -5,10 +5,10 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, ProgressionSpeed,
-  RestPrefs, RpeMultipliers, RpePerExerciseMultipliers,
+  RestPrefs,
   WizardTransitionStyle,
 } from "./types";
-import { DEFAULT_REST_PREFS, DEFAULT_RPE_MULTIPLIERS, DEFAULT_WIZARD_TRANSITION } from "./types";
+import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
@@ -34,7 +34,7 @@ import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
-import { analyzeEx } from "./analysis";
+import { analyzeEx, prescribeExercise } from "./analysis";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { useChatSocket } from "./hooks/useChatSocket";
@@ -42,39 +42,6 @@ import { ToneProvider, type ToneMode } from "./context/ToneContext";
 import { OnboardingProvider } from "./context/OnboardingContext";
 import { registerServiceWorker } from "./push";
 
-
-/** Clamp + coerce an incoming partial RPE-multiplier table and merge it on
- * top of the defaults so the resulting object always has 10 valid entries. */
-function mergeRpeTable(input: Partial<Record<string, unknown>> | null | undefined): RpeMultipliers {
-  const out: RpeMultipliers = { ...DEFAULT_RPE_MULTIPLIERS };
-  if (!input) return out;
-  for (const [k, v] of Object.entries(input)) {
-    const lvl = Number(k);
-    if (!Number.isInteger(lvl) || lvl < 1 || lvl > 10) continue;
-    const num = Number(v);
-    if (!Number.isFinite(num)) continue;
-    out[String(lvl)] = Math.max(0, Math.min(5, num));
-  }
-  return out;
-}
-
-function sanitizeRpePerEx(input: Record<string, Record<string, unknown>> | null | undefined): RpePerExerciseMultipliers {
-  if (!input) return {};
-  const out: RpePerExerciseMultipliers = {};
-  for (const [exId, table] of Object.entries(input)) {
-    if (!exId || typeof table !== "object" || !table) continue;
-    const cleaned: Partial<RpeMultipliers> = {};
-    for (const [k, v] of Object.entries(table)) {
-      const lvl = Number(k);
-      if (!Number.isInteger(lvl) || lvl < 1 || lvl > 10) continue;
-      const num = Number(v);
-      if (!Number.isFinite(num)) continue;
-      cleaned[String(lvl)] = Math.max(0, Math.min(5, num));
-    }
-    if (Object.keys(cleaned).length) out[exId] = cleaned;
-  }
-  return out;
-}
 
 interface WorkoutTrackerProps {
   initialAuthView?: "login" | "register" | "forgot" | "reset" | "verify";
@@ -107,6 +74,10 @@ export default function WorkoutTracker({
   // with nothing pre-selected so they make a deliberate choice.
   const [cardio,    setCardio]    = useState<CardioPlan>({ timing: null, before: null, after: null });
   const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
+  // Per-exercise prescription from the day's regime (warmup/working sets, RPE,
+  // reference max). Populated by loadTodayPlan; consumed by startFromWizard
+  // to pre-populate the active workout with prescribed warmup + working sets.
+  const [plannedConfigs, setPlannedConfigs] = useState<Record<string, import("./types").ExerciseConfig>>({});
   // logging
   const [active,    setActive]    = useState(false);
   const [startTs,   setStartTs]   = useState<number | null>(null);
@@ -158,26 +129,6 @@ export default function WorkoutTracker({
       };
     } catch {
       return DEFAULT_REST_PREFS;
-    }
-  });
-  const [rpeMultipliers, setRpeMultipliers] = useState<RpeMultipliers>(() => {
-    try {
-      const raw = localStorage.getItem("gamgee_rpe_multipliers");
-      if (!raw) return { ...DEFAULT_RPE_MULTIPLIERS };
-      const parsed = JSON.parse(raw) as Partial<RpeMultipliers>;
-      return mergeRpeTable(parsed);
-    } catch {
-      return { ...DEFAULT_RPE_MULTIPLIERS };
-    }
-  });
-  const [rpePerExercise, setRpePerExercise] = useState<RpePerExerciseMultipliers>(() => {
-    try {
-      const raw = localStorage.getItem("gamgee_rpe_multipliers_by_exercise");
-      if (!raw) return {};
-      const parsed = JSON.parse(raw) as RpePerExerciseMultipliers;
-      return sanitizeRpePerEx(parsed);
-    } catch {
-      return {};
     }
   });
   const [toneMode, setToneMode] = useState<ToneMode>(
@@ -287,43 +238,6 @@ export default function WorkoutTracker({
     localStorage.setItem("gamgee_rest_prefs", JSON.stringify(restPrefs));
   }, [restPrefs]);
 
-  useEffect(() => {
-    localStorage.setItem("gamgee_rpe_multipliers", JSON.stringify(rpeMultipliers));
-  }, [rpeMultipliers]);
-
-  useEffect(() => {
-    localStorage.setItem("gamgee_rpe_multipliers_by_exercise", JSON.stringify(rpePerExercise));
-  }, [rpePerExercise]);
-
-  const updateRpeMultipliers = useCallback((next: Partial<RpeMultipliers>) => {
-    setRpeMultipliers(prev => {
-      const merged = mergeRpeTable({ ...prev, ...next });
-      authFetch("/api/auth/preferences", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rpe_multipliers: next }),
-      }).catch(() => { /* best-effort; localStorage already updated */ });
-      return merged;
-    });
-  }, [authFetch]);
-
-  const updateRpePerExercise = useCallback((exId: string, next: Partial<RpeMultipliers> | null) => {
-    setRpePerExercise(prev => {
-      const updated: RpePerExerciseMultipliers = { ...prev };
-      if (next === null || (next && Object.keys(next).length === 0)) {
-        delete updated[exId];
-      } else {
-        updated[exId] = { ...(prev[exId] ?? {}), ...next };
-      }
-      authFetch("/api/auth/preferences", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rpe_multipliers_by_exercise: { [exId]: next ?? {} } }),
-      }).catch(() => { /* best-effort; localStorage already updated */ });
-      return updated;
-    });
-  }, [authFetch]);
-
   const updateRestPrefs = useCallback((next: Partial<RestPrefs>) => {
     setRestPrefs(prev => {
       const merged: RestPrefs = {
@@ -392,8 +306,6 @@ export default function WorkoutTracker({
     setAssignments([]);
     setConversations([]);
     setActiveConvId(null);
-    setRpeMultipliers({ ...DEFAULT_RPE_MULTIPLIERS });
-    setRpePerExercise({});
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
       caches.delete("api-cache").catch(() => { /* best-effort */ });
@@ -411,7 +323,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, unknown> | null; rpe_multipliers_by_exercise?: Record<string, Record<string, unknown>> | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -432,12 +344,6 @@ export default function WorkoutTracker({
             medium: clamp(d.rest_medium_seconds, prev.medium),
             long:   clamp(d.rest_long_seconds,   prev.long),
           }));
-        }
-        if (d.rpe_multipliers && typeof d.rpe_multipliers === "object") {
-          setRpeMultipliers(mergeRpeTable(d.rpe_multipliers));
-        }
-        if (d.rpe_multipliers_by_exercise && typeof d.rpe_multipliers_by_exercise === "object") {
-          setRpePerExercise(sanitizeRpePerEx(d.rpe_multipliers_by_exercise));
         }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -729,7 +635,28 @@ export default function WorkoutTracker({
 
     const mainExercises: WorkoutExercise[] = planned.map(ex => {
       let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
-      if (autoFill) {
+      // Regime-driven prescription takes precedence — if the day plan has a
+      // config for this exercise (with a max or working weight), lay out
+      // warmup ramp + working sets so the user just confirms each set.
+      const cfg = plannedConfigs[ex.id];
+      const presc = ex.type === "strength" ? prescribeExercise(ex.id, cfg) : null;
+      if (presc) {
+        const warmupSets: WorkoutSet[] = presc.warmup.map(w => ({
+          weight: String(w.weight),
+          reps: String(w.reps),
+          done: false,
+          prefilled: true,
+          is_warmup: true,
+        }));
+        const workingSets: WorkoutSet[] = Array.from({ length: presc.working.count }, () => ({
+          weight: String(presc.working.weight),
+          reps: String(presc.working.reps),
+          done: false,
+          prefilled: true,
+          is_warmup: false,
+        }));
+        initSets = [...warmupSets, ...workingSets];
+      } else if (autoFill) {
         const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
         if (lastSession) {
           const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
@@ -739,6 +666,7 @@ export default function WorkoutTracker({
               reps:      s.reps,
               done:      false,
               prefilled: !!(s.weight || s.reps),
+              is_warmup: s.is_warmup,
             }));
         }
       }
@@ -753,6 +681,7 @@ export default function WorkoutTracker({
       ...(after ? [after] : []),
     ]);
     setPlanned([]);
+    setPlannedConfigs({});
     setCardio({ timing: "none", before: null, after: null });
   };
 
@@ -800,19 +729,18 @@ export default function WorkoutTracker({
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== idx) }
     ));
 
-  /** Apply the analyzer's recommendation (RPE- and progression-speed-aware)
-   * to every strength exercise's still-undone sets in one shot. The on-card
+  /** Apply the analyzer's recommendation (progression-speed-aware) to every
+   * strength exercise's still-undone working sets in one shot. The on-card
    * APPLY button does the same thing for a single exercise — this is the
    * top-of-workout "PROGRESS ALL" affordance. */
   const applyProgressionAll = () => {
-    const opts = { speed: progressionSpeed, lastRpe: history[0]?.rpe ?? null, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
     setExercises(p => p.map(ex => {
       if (ex.type !== "strength") return ex;
-      const a = analyzeEx(ex.id, history, opts);
+      const a = analyzeEx(ex.id, history, { speed: progressionSpeed });
       if (!a) return ex;
       return {
         ...ex,
-        sets: ex.sets.map(s => s.done
+        sets: ex.sets.map(s => (s.done || s.is_warmup)
           ? s
           : { ...s, weight: String(a.nextWeight), reps: String(a.nextReps), prefilled: true }
         ),
@@ -827,6 +755,10 @@ export default function WorkoutTracker({
 
   const loadTodayPlan = (dayPlan: DayPlan) => {
     setFocus(dayPlan.focus);
+    // Capture the day's per-exercise prescription so startFromWizard can lay
+    // out warmup + working sets. Empty object when the user hasn't configured
+    // anything, in which case we fall back to a blank single set.
+    setPlannedConfigs(dayPlan.exerciseConfig ?? {});
     if (dayPlan.exerciseIds.length > 0) {
       const exs = dayPlan.exerciseIds
         .map(id => ALL_EX.find(e => e.id === id))
@@ -864,7 +796,10 @@ export default function WorkoutTracker({
     const done = exercises
       .map(ex => ({
         ...ex,
-        sets: ex.sets.filter(s => s.done).map(s => ({ weight: s.weight, reps: s.reps, done: s.done })),
+        sets: ex.sets.filter(s => s.done).map(s => ({
+          weight: s.weight, reps: s.reps, done: s.done,
+          ...(s.is_warmup ? { is_warmup: true } : {}),
+        })),
       }))
       .filter(ex => ex.sets.length > 0);
     const session: WorkoutSession = {
@@ -872,6 +807,9 @@ export default function WorkoutTracker({
     };
     const newPrs: PRDict = { ...prs };
     done.forEach(ex => ex.sets.forEach(s => {
+      // Warmup sets are explicitly excluded from PR comparisons — a 40% ramp
+      // shouldn't dethrone a real PR.
+      if (s.is_warmup) return;
       const wt = parseFloat(s.weight), r = parseInt(s.reps) || 0;
       if (!isNaN(wt) && wt > 0) {
         const cur = newPrs[ex.id];
@@ -1064,8 +1002,6 @@ export default function WorkoutTracker({
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
             restPrefs={restPrefs}
-            rpeMultipliers={rpeMultipliers}
-            rpePerExercise={rpePerExercise}
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
@@ -1152,7 +1088,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} rpePerExercise={rpePerExercise} onRpePerExerciseChange={updateRpePerExercise} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

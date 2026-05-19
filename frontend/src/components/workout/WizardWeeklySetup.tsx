@@ -43,10 +43,19 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
   });
 
   const applyGeneratedRegime = (regime: Regime) => {
+    // Take week 1 of the (possibly multi-week) generated regime for the local
+    // weekly-plan editor. The user can apply the full multi-week version via
+    // the Regimes tab if they want all weeks tracked.
+    const week1Days = regime.weeks && regime.weeks.length > 0
+      ? regime.weeks[0].days
+      : regime.days;
     const next: WeeklyPlan = {};
     (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[]).forEach(k => {
-      const d = regime.days?.[k];
-      if (d) next[k] = { focus: d.focus, exerciseIds: d.exerciseIds, enabled: d.enabled };
+      const d = week1Days?.[k];
+      if (d) next[k] = {
+        focus: d.focus, exerciseIds: d.exerciseIds, enabled: d.enabled,
+        exerciseConfig: d.exerciseConfig,
+      };
     });
     setPlan(next);
     // closeOnSave on the questionnaire flips showGenerator back to false,

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Dumbbell, TrendingUp } from "lucide-react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers } from "../../types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
@@ -15,8 +15,6 @@ interface Props {
   doneSets:       number;
   progressionSpeed: ProgressionSpeed;
   restPrefs:      RestPrefs;
-  rpeMultipliers: RpeMultipliers;
-  rpePerExercise: RpePerExerciseMultipliers;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -37,7 +35,6 @@ interface RestState {
 
 export default function ActiveWorkout({
   exercises, prs, history, doneSets, progressionSpeed, restPrefs,
-  rpeMultipliers, rpePerExercise,
   onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr,
   applyProgressionAll,
 }: Props) {
@@ -49,11 +46,7 @@ export default function ActiveWorkout({
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
 
-  // Use the RPE of the most recent recorded session as the multiplier source
-  // for THIS session's progression suggestion. analyzeEx merges this with the
-  // global table + per-exercise overrides.
-  const lastRpe = history[0]?.rpe ?? null;
-  const analyzeOpts = { speed: progressionSpeed, lastRpe, rpeTable: rpeMultipliers, rpePerEx: rpePerExercise };
+  const analyzeOpts = { speed: progressionSpeed };
 
   // Show the "PROGRESS ALL" affordance only when at least one strength
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
