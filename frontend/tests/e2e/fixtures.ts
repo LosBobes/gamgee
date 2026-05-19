@@ -33,11 +33,12 @@ export async function mockApi(page: Page, state: MockState = defaultState()): Pr
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   // Pin the UI tone so button text and copy are stable across tests, and
-  // pre-dismiss the first-launch welcome modal so its overlay doesn't
-  // intercept clicks on the underlying tabs/buttons.
+  // pre-dismiss the first-launch modals so their overlays don't intercept
+  // clicks on the underlying tabs/buttons.
   await page.addInitScript(() => {
     window.localStorage.setItem("gamgee_tone", "pro");
     window.localStorage.setItem("gamgee_welcome_seen", "1");
+    window.localStorage.setItem("gamgee_counts_bar", "off");
   });
 
   const json = (route: Route, body: unknown, status = 200) =>
