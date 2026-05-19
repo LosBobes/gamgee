@@ -239,7 +239,28 @@ def _generate_plan(
     return days
 
 
+def _days_dict_from(raw: dict) -> dict[str, schemas.DayPlanIn]:
+    return {k: schemas.DayPlanIn(**v) for k, v in (raw or {}).items()}
+
+
+def _weeks_from_regime(regime: models.Regime) -> list[schemas.WeekPlanIn]:
+    """Always return a populated list of weeks. Legacy regimes that only set
+    `days` are surfaced as a single-week list so the new client never has to
+    deal with the empty case."""
+    weeks_raw = list(regime.weeks or [])
+    if weeks_raw:
+        return [
+            schemas.WeekPlanIn(label=w.get("label"), days=_days_dict_from(w.get("days") or {}))
+            for w in weeks_raw
+        ]
+    return [schemas.WeekPlanIn(label=None, days=_days_dict_from(regime.days or {}))]
+
+
 def _to_out(regime: models.Regime) -> schemas.RegimeOut:
+    weeks = _weeks_from_regime(regime)
+    # Mirror week 1's days into the legacy `days` field so any older client
+    # reading the response still sees something coherent.
+    first_days = weeks[0].days if weeks else {}
     return schemas.RegimeOut(
         id=regime.id, owner_id=regime.owner_id, name=regime.name,
         description=regime.description, goal=regime.goal, experience=regime.experience,
@@ -247,10 +268,29 @@ def _to_out(regime: models.Regime) -> schemas.RegimeOut:
         focus_areas=list(regime.focus_areas or []),
         avoid_muscles=list(regime.avoid_muscles or []),
         equipment=list(regime.equipment or []),
-        days={k: schemas.DayPlanIn(**v) for k, v in (regime.days or {}).items()},
+        weeks=weeks,
+        days=first_days,
         mode=regime.mode, general_rpe=regime.general_rpe,
         is_template=bool(regime.is_template), created_at=regime.created_at,
     )
+
+
+def _serialize_weeks(body: schemas.RegimeCreate) -> tuple[list[dict], dict]:
+    """Normalise a RegimeCreate payload: accept either `weeks` (preferred) or
+    the legacy single-week `days` field and produce the canonical pair to
+    persist (`weeks_json`, `days_json` where days_json mirrors week 1)."""
+    weeks_in = body.weeks
+    if weeks_in is None or len(weeks_in) == 0:
+        # Legacy single-week payload — wrap it.
+        days_json = {k: v.model_dump(exclude_none=True) for k, v in (body.days or {}).items()}
+        weeks_json = [{"label": None, "days": days_json}]
+        return weeks_json, days_json
+    weeks_json: list[dict] = []
+    for idx, w in enumerate(weeks_in):
+        days_json = {k: v.model_dump(exclude_none=True) for k, v in (w.days or {}).items()}
+        weeks_json.append({"label": w.label, "days": days_json})
+    first_days = weeks_json[0]["days"] if weeks_json else {}
+    return weeks_json, first_days
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -271,12 +311,17 @@ def generate(
     effective_body = body.model_copy(update={"days_per_week": effective_days})
     name = body.name or _name_for(effective_body)
     desc = _describe(effective_body)
+    week1 = schemas.WeekPlanIn(
+        label="Week 1",
+        days={k: schemas.DayPlanIn(**v) for k, v in days.items()},
+    )
     return schemas.RegimeCreate(
         name=name, description=desc, goal=body.goal, experience=body.experience,
         days_per_week=effective_days,
         focus_areas=body.focus_areas, avoid_muscles=body.avoid_muscles,
         equipment=body.equipment,
-        days={k: schemas.DayPlanIn(**v) for k, v in days.items()},
+        weeks=[week1],
+        days=week1.days,
     )
 
 
@@ -333,12 +378,13 @@ def create_regime(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ):
+    weeks_json, days_json = _serialize_weeks(body)
     r = models.Regime(
         owner_id=current_user.id, name=body.name, description=body.description,
         goal=body.goal, experience=body.experience, days_per_week=body.days_per_week,
         focus_areas=list(body.focus_areas), avoid_muscles=list(body.avoid_muscles),
         equipment=list(body.equipment),
-        days={k: v.model_dump(exclude_none=True) for k, v in (body.days or {}).items()},
+        days=days_json, weeks=weeks_json,
         mode=body.mode, general_rpe=body.general_rpe,
         is_template=False, created_at=now_ms(),
     )
@@ -392,7 +438,9 @@ def update_regime(
     r.focus_areas = list(body.focus_areas)
     r.avoid_muscles = list(body.avoid_muscles)
     r.equipment = list(body.equipment)
-    r.days = {k: v.model_dump(exclude_none=True) for k, v in (body.days or {}).items()}
+    weeks_json, days_json = _serialize_weeks(body)
+    r.weeks = weeks_json
+    r.days = days_json
     r.mode = body.mode
     r.general_rpe = body.general_rpe
     db.commit()

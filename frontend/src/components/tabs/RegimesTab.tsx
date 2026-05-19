@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Calendar, Trash2, Wand2, Pencil } from "lucide-react";
-import type { Regime, WeeklyPlan, WeekPlanDay, ProgressionSpeed } from "../../types";
+import type { Regime, WeeklyPlan, WeekPlanDay, ProgressionSpeed, WeekPlan } from "../../types";
+import { weeklyPlanFromWeeks } from "../../data/weeklyPlan";
 import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
 import RegimeEditor from "../regime/RegimeEditor";
 
@@ -35,18 +36,17 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
   useEffect(() => { refresh(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const applyToWeek = (regime: Regime) => {
-    const plan: WeeklyPlan = {};
-    (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[]).forEach(k => {
-      const d = regime.days?.[k];
-      if (d) plan[k] = {
-        focus: d.focus,
-        exerciseIds: d.exerciseIds,
-        enabled: d.enabled,
-        exerciseConfig: d.exerciseConfig,
-        mode: regime.mode ?? null,
-        general_rpe: regime.general_rpe ?? null,
-      };
-    });
+    const weeks: WeekPlan[] = (regime.weeks && regime.weeks.length > 0)
+      ? regime.weeks.map(w => ({ label: w.label ?? null, days: { ...w.days } }))
+      : [{
+          label: "Week 1",
+          days: Object.fromEntries(
+            (["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as WeekPlanDay[])
+              .map(k => [k, regime.days?.[k]])
+              .filter(([, v]) => v),
+          ) as WeeklyPlan,
+        }];
+    const plan = weeklyPlanFromWeeks(weeks);
     setWeeklyPlan(plan);
     setAppliedId(regime.id);
     setTimeout(() => setAppliedId(null), 2500);
@@ -111,10 +111,8 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
                 <strong>{r.name}</strong>
                 <div style={{ fontSize: 12, color: "var(--muted)" }}>
                   {r.days_per_week} days/week · {r.goal || "general"} · {r.experience || "any"}
-                  {r.mode && (
-                    <> · {r.mode === "per_exercise_rpe" ? "per-exercise RPE"
-                         : r.mode === "general_rpe" ? `RPE ${r.general_rpe ?? "?"}`
-                         : "manual"}</>
+                  {r.weeks && r.weeks.length > 1 && (
+                    <> · <strong>{r.weeks.length}-week program</strong></>
                   )}
                 </div>
               </div>

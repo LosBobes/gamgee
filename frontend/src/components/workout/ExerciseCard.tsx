@@ -219,6 +219,9 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
           <div className="col-lbl"><Check size={11} /></div>
           <div className="col-lbl" />
         </div>
+        {/* Warmup-vs-work label: shown next to the set number column for
+            regime-prescribed workouts. A "WORK" label is added to the first
+            non-warmup set so the transition is visually unmistakable. */}
         {ex.type === "timed" ? (
           ex.sets.map((set, idx) => (
             <TimedSetRow
@@ -233,21 +236,29 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
           ))
         ) : (
           ex.sets.map((set, idx) => {
-            const showPrTag = ex.type === "strength" && isNewPr(set.weight) && !!set.weight;
+            const showPrTag = ex.type === "strength" && !set.is_warmup && isNewPr(set.weight) && !!set.weight;
             // For strength: only the in-progress set is interactive. Earlier
             // sets are read-only (checked off). Later sets are locked until
             // the current one is checked, so the user can't ghost-fill ahead.
             const isLocked = ex.type === "strength" && !set.done && idx !== activeIdx;
             const isHidden = setIsHidden(set);
+            // Mark the first non-warmup set as the "work transition" so the
+            // UI clearly indicates "warmup ramp ends here, working sets start".
+            const prevIsWarmup = idx > 0 && ex.sets[idx - 1].is_warmup;
+            const isFirstWorking = !set.is_warmup && (idx === 0 ? false : prevIsWarmup);
             const rowCls   = [
               "set-row",
               set.done   ? "set-done"   : "",
               isLocked   ? "set-locked" : "",
               isHidden   ? "set-hidden" : "",
+              set.is_warmup ? "set-warmup" : "",
+              isFirstWorking ? "set-first-working" : "",
             ].filter(Boolean).join(" ");
             return (
               <div key={idx} className={rowCls} aria-hidden={isHidden || undefined}>
-                <div className={`set-num ${set.done ? "done" : ""}`}>{idx + 1}</div>
+                <div className={`set-num ${set.done ? "done" : ""}`}>
+                  {set.is_warmup ? <span className="set-type-tag set-type-warmup">WU</span> : (idx + 1)}
+                </div>
                 <div className="stepper inp-wrap">
                   <button
                     type="button" className="step-btn step-minus"

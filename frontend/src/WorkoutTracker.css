@@ -3603,6 +3603,50 @@ html, body { background: var(--bg); }
   pointer-events: none;
 }
 
+/* ── Warmup vs working set styling ────────────────────────────────────────
+   Warmup rows are dimmed and tinted; the first working set carries a
+   top border + "WORK" label so the transition is unmistakable on game day. */
+.set-row.set-warmup {
+  opacity: 0.78;
+  background: color-mix(in srgb, var(--muted) 6%, transparent);
+  border-radius: 6px;
+}
+.set-row.set-warmup .set-inp { color: var(--muted); }
+.set-row.set-first-working {
+  border-top: 1px dashed var(--ad);
+  padding-top: 6px;
+  margin-top: 6px;
+  position: relative;
+}
+.set-row.set-first-working::before {
+  content: "WORK";
+  position: absolute;
+  top: -7px;
+  left: 24px;
+  background: var(--bg);
+  color: var(--accent);
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  padding: 0 6px;
+  border-radius: 2px;
+}
+.set-type-tag {
+  display: inline-block;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--muted);
+}
+.set-type-warmup { color: var(--muted); }
+
+/* ── Regime editor popover section ─────────────────────────────────────── */
+.re-popover-section { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.re-popover-section:last-child { margin-bottom: 0; }
+
 /* ── Top-of-workout PROGRESS ALL button ─────────────────────────────────── */
 .btn-progress-all {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;

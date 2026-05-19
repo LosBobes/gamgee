@@ -93,6 +93,11 @@ if engine.dialect.name == "postgresql":
         # live inside the JSONB `days` column under day.exerciseConfig.
         _conn.execute(text("ALTER TABLE regimes ADD COLUMN IF NOT EXISTS mode VARCHAR(30)"))
         _conn.execute(text("ALTER TABLE regimes ADD COLUMN IF NOT EXISTS general_rpe INTEGER"))
+        # Multi-week regime structure. `weeks` holds the canonical list of
+        # {label, days} blocks; the legacy `days` column is kept in sync with
+        # weeks[0] so older clients keep working. Default empty list lets us
+        # detect "legacy single-week" rows on read and synthesize a wrapper.
+        _conn.execute(text("ALTER TABLE regimes ADD COLUMN IF NOT EXISTS weeks JSONB NOT NULL DEFAULT '[]'::jsonb"))
 
 app = FastAPI(title="Gamgee API", version=__version__, redirect_slashes=False)
 

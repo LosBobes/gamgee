@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, RpeMultipliers, RpePerExerciseMultipliers, WizardTransitionStyle } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, WizardTransitionStyle } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -28,8 +28,6 @@ interface Props {
   progressionSpeed: ProgressionSpeed;
   onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
   restPrefs:       RestPrefs;
-  rpeMultipliers:  RpeMultipliers;
-  rpePerExercise:  RpePerExerciseMultipliers;
   wizardTransition: WizardTransitionStyle;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
@@ -48,7 +46,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, rpeMultipliers, rpePerExercise, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, wizardTransition, authFetch, onLoadToday,
   startFromWizard, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -193,8 +191,6 @@ export default function WorkoutTab({
             doneSets={doneSets}
             progressionSpeed={progressionSpeed}
             restPrefs={restPrefs}
-            rpeMultipliers={rpeMultipliers}
-            rpePerExercise={rpePerExercise}
             onFinish={finishWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}

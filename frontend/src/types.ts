@@ -10,12 +10,18 @@ export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: n
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
 /** A single set in an active workout.
  *
- * `prefilled` marks values that came from a "reapply last session" / progression
- * suggestion rather than typed by the user. Sets that are still `prefilled`
- * get overwritten when the user edits an earlier set so the suggested rep/load
- * chain stays consistent; the moment the user touches a set's number, that
- * set flips to `prefilled: false` and stops getting auto-overwritten. */
-export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; }
+ * `prefilled` marks values that came from a "reapply last session" / regime
+ * prescription / progression suggestion rather than typed by the user. Sets
+ * that are still `prefilled` get overwritten when the user edits an earlier
+ * set so the suggested rep/load chain stays consistent; the moment the user
+ * touches a set's number, that set flips to `prefilled: false` and stops
+ * getting auto-overwritten.
+ *
+ * `is_warmup` distinguishes warmup ramps from working sets — populated by the
+ * regime-driven prescription when a regime exposes `warmup_sets` for an
+ * exercise. The active workout renders warmup sets visually distinct and the
+ * post-session save persists the flag so PR detection can ignore them. */
+export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; is_warmup?: boolean; }
 export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
 /** `null` = the user hasn't picked yet (default when entering the cardio screen).
  *  `"none"` = the user explicitly chose to skip cardio. */
@@ -35,24 +41,59 @@ export interface CustomFocusDef { id: string; name: string; iconName: string; de
 export interface CustomExerciseDef { id: string; name: string; type: ExerciseType; cat: string; primary: string[]; secondary: string[]; instructions?: string; }
 export interface BodyMetric { id: number; metric_type: string; value: number; unit: string; date: string; note?: string | null; }
 export type WeekPlanDay = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-/** Per-exercise overrides used by the regime modes. Every field is optional
- * so the same shape works for all three modes — only the relevant fields are
- * populated. `rpe` 1–10. */
-export interface ExerciseConfig { rpe?: number; sets?: number; reps?: number; weight?: number; }
+/** Per-exercise prescription for a specific day inside a regime.
+ *
+ * The new builder captures: the user's reference max (max_weight × max_reps),
+ * the target effort (rpe, 1–10) for the working sets, the warmup-set count,
+ * the working-set count, and the target reps for each working set. The active
+ * workout uses these to lay out a warmup ramp then prescribe the working
+ * weight via an Epley-derived 1RM × (1 - 0.0333 × (target_reps + RIR)) curve.
+ *
+ * Legacy fields (`sets`, `reps`, `weight`) are still accepted on read so older
+ * saved regimes don't lose information — they're treated as raw working
+ * targets when the new fields are absent. */
+export interface ExerciseConfig {
+  /** Target effort for the working sets (1 easy … 10 max). RIR = 10 - rpe. */
+  rpe?: number;
+  /** Reference max — weight the user can lift for max_reps clean reps. */
+  max_weight?: number;
+  /** Reps the user can hit at max_weight (e.g. 5 if it's a 5RM). */
+  max_reps?: number;
+  /** Number of warmup sets prepended before the working sets. */
+  warmup_sets?: number;
+  /** Number of working sets. */
+  working_sets?: number;
+  /** Target reps per working set. */
+  working_reps?: number;
+  /** Legacy single-block fields, kept for backward compat with older regimes. */
+  sets?: number;
+  reps?: number;
+  weight?: number;
+}
 export interface DayPlan {
   focus: string;
   exerciseIds: string[];
   enabled: boolean;
-  /** Per-exercise overrides keyed by exercise id. Populated when the parent
-   * regime is in per_exercise_rpe or manual mode and applied to the week. */
+  /** Per-exercise prescription keyed by exercise id. */
   exerciseConfig?: Record<string, ExerciseConfig>;
-  /** Mode the parent regime was using when applied. Copied so the active
-   * workout can drive recommendations without re-fetching the regime. */
+  /** Legacy regime-mode marker carried over from older saved regimes. The
+   * active workout no longer branches on this — every exercise just reads its
+   * own ExerciseConfig — but the field is preserved so a re-save round-trips. */
   mode?: RegimeMode | null;
-  /** Single RPE for the whole regime — present when mode === "general_rpe". */
   general_rpe?: number | null;
 }
-export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>>;
+export interface WeekPlan {
+  label?: string | null;
+  days: Partial<Record<WeekPlanDay, DayPlan>>;
+}
+/** Applied weekly plan. Multi-week regimes store every week along with the
+ * user's current position so the active workout can prescribe the right
+ * effort/exercises automatically. Single-week applications keep `weeks: null`
+ * and use the flat day map as before. */
+export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>> & {
+  weeks?: WeekPlan[] | null;
+  current_week_index?: number | null;
+};
 export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
@@ -63,17 +104,6 @@ export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 
 export type WizardTransitionStyle = "earthquake" | "none";
 export const DEFAULT_WIZARD_TRANSITION: WizardTransitionStyle = "none";
 
-/** Map of RPE level "1".."10" → step multiplier used to scale the next-session
- * weight jump. Low RPE (workout felt easy) → larger multiplier; high RPE
- * (felt brutal) → smaller / zero multiplier. */
-export type RpeMultipliers = Record<string, number>;
-export const DEFAULT_RPE_MULTIPLIERS: RpeMultipliers = {
-  "1": 2.5, "2": 2.0, "3": 1.75, "4": 1.5, "5": 1.25,
-  "6": 1.0, "7": 0.75, "8": 0.5, "9": 0.25, "10": 0,
-};
-/** Per-exercise overrides keyed by exercise id. Missing levels fall back to
- * the global table. */
-export type RpePerExerciseMultipliers = Record<string, Partial<RpeMultipliers>>;
 export interface MetricDef { id: string; label: string; unit: string; color: string; step: number; min: number; max: number; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 
@@ -263,6 +293,11 @@ export interface Regime {
   focus_areas: string[];
   avoid_muscles: string[];
   equipment: string[];
+  /** Multi-week structure (canonical). Single-week regimes come back as a
+   * one-element list. */
+  weeks: WeekPlan[];
+  /** Mirror of weeks[0].days for backward-compat with any consumer that
+   * hasn't been ported to multi-week. */
   days: Record<string, DayPlan>;
   mode?: RegimeMode | null;
   general_rpe?: number | null;
@@ -279,6 +314,7 @@ export interface RegimeDraft {
   focus_areas: string[];
   avoid_muscles: string[];
   equipment: string[];
+  weeks: WeekPlan[];
   days: Record<string, DayPlan>;
   mode?: RegimeMode | null;
   general_rpe?: number | null;
