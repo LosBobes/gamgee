@@ -11,6 +11,12 @@ export interface SessionSummary {
    * Null when they skipped the prompt; carried through so the analyzer can
    * scale the next session's progression step. */
   sessionRpe?: number | null;
+  /** Per-exercise effective RPE: max of the per-set rpe values across this
+   * exercise's working (non-warmup) sets. Null when no working set carried
+   * an rpe. Takes precedence over `sessionRpe` for the multiplier lookup
+   * because it reflects the actual effort for THIS lift rather than an
+   * overall session vibe. */
+  exerciseRpe?: number | null;
 }
 export interface AnalysisResult {
   sessions: SessionSummary[];
@@ -99,8 +105,8 @@ export function analyzeEx(
     // Pick the top set as a single unit (heaviest weight, tie-break on most
     // reps) so topW and topR always come from the same actual set. Warmup
     // sets are excluded so a 2-plate warmup doesn't masquerade as the top set.
-    const pairs = f.sets
-      .filter(s => !s.is_warmup)
+    const workingSets = f.sets.filter(s => !s.is_warmup);
+    const pairs = workingSets
       .map(s => ({ w: parseFloat(s.weight), r: parseInt(s.reps) }))
       .filter(p => !isNaN(p.w) && p.w > 0)
       .map(p => ({ w: p.w, r: !isNaN(p.r) && p.r > 0 ? p.r : 0 }));
@@ -109,12 +115,21 @@ export function analyzeEx(
       if (b.w !== a.w) return b.w > a.w ? b : a;
       return b.r > a.r ? b : a;
     });
+    // Max per-set RPE across this exercise's working sets — represents the
+    // peak effort the user reached on this lift, which is what we want to
+    // feed the multiplier (a single hard set says more about progression
+    // headroom than an average).
+    const perSetRpes = workingSets
+      .map(s => (typeof s.rpe === "number" && Number.isFinite(s.rpe) ? s.rpe : null))
+      .filter((r): r is number => r !== null);
+    const exerciseRpe = perSetRpes.length ? Math.max(...perSetRpes) : null;
     sessions.push({
       date: w.date,
       topW: top.w,
       topR: top.r,
       totalSets: f.sets.length,
       sessionRpe: w.rpe ?? null,
+      exerciseRpe,
     });
   });
   if (!sessions.length) return null;
@@ -123,9 +138,12 @@ export function analyzeEx(
   const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
   const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
   const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  // Apply the post-session RPE multiplier on top of the speed-driven base step:
-  // an "easy" last session bumps the jump up, a "brutal" one eases off.
-  const rpeMult = lookupRpeMultiplier(exId, last.sessionRpe, opts);
+  // Apply the RPE multiplier on top of the speed-driven base step: an "easy"
+  // last session bumps the jump up, a "brutal" one eases off. Per-exercise
+  // RPE (max of working sets) takes precedence over the post-session overall
+  // RPE — actual effort on THIS lift is more informative than a session vibe.
+  const effectiveRpe = last.exerciseRpe ?? last.sessionRpe;
+  const rpeMult = lookupRpeMultiplier(exId, effectiveRpe, opts);
   const step = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed] * rpeMult;
   // Round to the nearest plate-pair we'd actually load on a barbell.
   const plate    = UPPER_IDS.has(exId) ? 2.5 : 5;

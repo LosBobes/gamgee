@@ -14,11 +14,13 @@ interface Props {
   history:        WorkoutSession[];
   doneSets:       number;
   progressionSpeed: ProgressionSpeed;
+  rpeMultipliers: Record<string, number> | null;
   restPrefs:      RestPrefs;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
   updateSet:      (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
+  setSetRpe:      (uid: string, idx: number, rpe: number | null) => void;
   toggleSet:      (uid: string, idx: number) => void;
   addSet:         (uid: string) => void;
   removeSet:      (uid: string, idx: number) => void;
@@ -34,8 +36,8 @@ interface RestState {
 }
 
 export default function ActiveWorkout({
-  exercises, prs, history, doneSets, progressionSpeed, restPrefs,
-  onFinish, addExercise, removeExercise, updateSet, toggleSet, addSet, removeSet, isNewPr,
+  exercises, prs, history, doneSets, progressionSpeed, rpeMultipliers, restPrefs,
+  onFinish, addExercise, removeExercise, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr,
   applyProgressionAll,
 }: Props) {
   const [showPick, setShowPick] = useState(false);
@@ -46,7 +48,7 @@ export default function ActiveWorkout({
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
 
-  const analyzeOpts = { speed: progressionSpeed };
+  const analyzeOpts = { speed: progressionSpeed, rpeMultipliers };
 
   // Show the "PROGRESS ALL" affordance only when at least one strength
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
@@ -152,6 +154,7 @@ export default function ActiveWorkout({
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
           updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
+          setSetRpe={(idx, rpe) => setSetRpe(ex.uid, idx, rpe)}
           toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
           addSet={() => handleAddSet(ex.uid)}
           removeSet={(idx) => removeSet(ex.uid, idx)}

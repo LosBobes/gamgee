@@ -20,8 +20,21 @@ export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds:
  * `is_warmup` distinguishes warmup ramps from working sets — populated by the
  * regime-driven prescription when a regime exposes `warmup_sets` for an
  * exercise. The active workout renders warmup sets visually distinct and the
- * post-session save persists the flag so PR detection can ignore them. */
-export interface WorkoutSet { weight: string; reps: string; done: boolean; prefilled?: boolean; is_warmup?: boolean; }
+ * post-session save persists the flag so PR detection can ignore them.
+ *
+ * `rpe` is the user's perceived effort for *this* set (1 easy … 10 max) —
+ * collected inline after the set is checked done. Optional; warmup sets and
+ * un-rated working sets stay null. The analyzer prefers per-set RPE (max
+ * across the working sets) over the post-session overall RPE when scaling the
+ * next session's weight jump. */
+export interface WorkoutSet {
+  weight: string;
+  reps: string;
+  done: boolean;
+  prefilled?: boolean;
+  is_warmup?: boolean;
+  rpe?: number | null;
+}
 export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
 /** `null` = the user hasn't picked yet (default when entering the cardio screen).
  *  `"none"` = the user explicitly chose to skip cardio. */

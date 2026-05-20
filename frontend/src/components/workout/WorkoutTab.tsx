@@ -28,6 +28,7 @@ interface Props {
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
   progressionSpeed: ProgressionSpeed;
   onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
+  rpeMultipliers:  Record<string, number> | null;
   restPrefs:       RestPrefs;
   wizardTransition: WizardTransitionStyle;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
@@ -41,6 +42,7 @@ interface Props {
   addExercise:     (ex: ExerciseDef) => void;
   removeExercise:  (uid: string) => void;
   updateSet:       (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
+  setSetRpe:       (uid: string, idx: number, rpe: number | null) => void;
   toggleSet:       (uid: string, idx: number) => void;
   addSet:          (uid: string) => void;
   removeSet:       (uid: string, idx: number) => void;
@@ -52,9 +54,9 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, rpeMultipliers, restPrefs, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
-  updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
+  updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack   = wStep < prevStepRef.current;
@@ -215,11 +217,13 @@ export default function WorkoutTab({
             history={history}
             doneSets={doneSets}
             progressionSpeed={progressionSpeed}
+            rpeMultipliers={rpeMultipliers}
             restPrefs={restPrefs}
             onFinish={finishWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}
             updateSet={updateSet}
+            setSetRpe={setSetRpe}
             toggleSet={toggleSet}
             addSet={addSet}
             removeSet={removeSet}

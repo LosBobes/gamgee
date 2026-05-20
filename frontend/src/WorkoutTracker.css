@@ -1253,7 +1253,38 @@ html, body { background: var(--bg); }
   border: 1px solid var(--border); border-radius: 999px;
   vertical-align: 1px;
 }
+.set-row-wrap { margin-bottom: 10px; }
+.set-row-wrap > .set-row { margin-bottom: 0; }
 .set-row { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; align-items: center; margin-bottom: 10px; }
+
+/* Per-set RPE picker: thin row that appears below a completed strength set.
+   Compact 1-10 pills so users can rate effort with one tap. Hidden for
+   warmup sets and for any set that isn't checked done yet. */
+.set-rpe-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 4px; padding: 4px 6px 4px 24px;
+  border-left: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+  border-radius: 0 5px 5px 0;
+  background: color-mix(in srgb, var(--primary) 4%, transparent);
+}
+.set-rpe-label {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted);
+  flex-shrink: 0;
+}
+.set-rpe-pills { display: flex; gap: 3px; flex: 1; }
+.set-rpe-pill {
+  flex: 1; min-width: 0; padding: 4px 0;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 4px; cursor: pointer; transition: all 0.12s;
+  -webkit-tap-highlight-color: transparent;
+}
+.set-rpe-pill:hover { color: var(--text); border-color: var(--ad2); }
+.set-rpe-pill-active {
+  background: var(--accent); color: #0a0804; border-color: var(--accent);
+}
 .set-num { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--muted); text-align: center; transition: color 0.2s; }
 .set-num.done { color: var(--green); }
 .set-inp {
@@ -3274,6 +3305,37 @@ html, body { background: var(--bg); }
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
 }
 .rest-pref-input span { font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
+/* RPE → step-multiplier editor (Settings → Workout). Ten rows of compact
+   inputs so the user can quickly tune how aggressive each effort level is. */
+.rpe-mult-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+.rpe-mult-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; background: var(--s2); border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.rpe-mult-key {
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.5px; color: var(--text);
+  min-width: 44px;
+}
+.rpe-mult-row input {
+  flex: 1; min-width: 0; max-width: 70px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+  padding: 5px 8px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+  outline: none; -moz-appearance: textfield; text-align: right;
+}
+.rpe-mult-row input::-webkit-outer-spin-button,
+.rpe-mult-row input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.rpe-mult-row input:focus { border-color: var(--accent); }
+.rpe-mult-default {
+  font-size: 9px; color: var(--muted); letter-spacing: 0.5px;
+  font-style: italic; white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .rpe-mult-grid { grid-template-columns: 1fr; }
+}
 
 /* ── SHARED CARD + BUTTON PRIMITIVES ── used by coaching, regimes, trainees, chat ── */
 .card {

@@ -150,3 +150,52 @@ def test_change_password_flow(client: TestClient):
 def test_invalid_token_returns_401(client: TestClient):
     res = client.get("/api/auth/me", headers={"Authorization": "Bearer not-a-real-token"})
     assert res.status_code == 401
+
+
+# ── RPE multipliers (PATCH /preferences) ──────────────────────────────────────
+
+
+def test_preferences_round_trip_rpe_multipliers(client: TestClient, auth_headers):
+    table = {"1": 1.5, "5": 1.1, "7": 1.0, "9": 0.4, "10": 0.0}
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": table}, headers=auth_headers)
+    assert res.status_code == 200
+    assert res.json()["rpe_multipliers"] == table
+
+    me = client.get("/api/auth/me", headers=auth_headers)
+    assert me.status_code == 200
+    assert me.json()["rpe_multipliers"] == table
+
+
+def test_preferences_clears_rpe_multipliers_with_empty_dict(client: TestClient, auth_headers):
+    client.patch("/api/auth/preferences", json={"rpe_multipliers": {"7": 1.0}}, headers=auth_headers)
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {}}, headers=auth_headers)
+    assert res.status_code == 200
+    assert res.json()["rpe_multipliers"] is None
+
+
+def test_preferences_rejects_invalid_rpe_keys(client: TestClient, auth_headers):
+    # key 0 is out of the 1..10 range
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {"0": 1.0}}, headers=auth_headers)
+    assert res.status_code == 422
+    # key 11 is also out of range
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {"11": 1.0}}, headers=auth_headers)
+    assert res.status_code == 422
+    # non-integer key
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {"seven": 1.0}}, headers=auth_headers)
+    assert res.status_code == 422
+
+
+def test_preferences_rejects_out_of_range_rpe_values(client: TestClient, auth_headers):
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {"7": -0.5}}, headers=auth_headers)
+    assert res.status_code == 422
+    res = client.patch("/api/auth/preferences", json={"rpe_multipliers": {"7": 99}}, headers=auth_headers)
+    assert res.status_code == 422
+
+
+def test_preferences_leaves_rpe_multipliers_untouched_when_omitted(client: TestClient, auth_headers):
+    client.patch("/api/auth/preferences", json={"rpe_multipliers": {"7": 1.0}}, headers=auth_headers)
+    # PATCH another field — rpe_multipliers should stay set.
+    res = client.patch("/api/auth/preferences", json={"primary_color": "#abcdef"}, headers=auth_headers)
+    assert res.status_code == 200
+    assert res.json()["rpe_multipliers"] == {"7": 1.0}
+    assert res.json()["primary_color"] == "#abcdef"

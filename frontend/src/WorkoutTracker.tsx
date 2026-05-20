@@ -139,6 +139,19 @@ export default function WorkoutTracker({
       return DEFAULT_REST_PREFS;
     }
   });
+  // RPE → step multiplier overrides. Null = use the baked-in default table
+  // from analysis.ts; a dict overrides individual RPE levels. Populated from
+  // /api/auth/me on mount, written back via PATCH /preferences when edited.
+  const [rpeMultipliers, setRpeMultipliers] = useState<Record<string, number> | null>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_rpe_multipliers");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  });
   const [toneMode, setToneMode] = useState<ToneMode>(
     () => (localStorage.getItem("gamgee_tone") ?? "pro") as ToneMode
   );
@@ -246,6 +259,23 @@ export default function WorkoutTracker({
     localStorage.setItem("gamgee_rest_prefs", JSON.stringify(restPrefs));
   }, [restPrefs]);
 
+  useEffect(() => {
+    if (rpeMultipliers) localStorage.setItem("gamgee_rpe_multipliers", JSON.stringify(rpeMultipliers));
+    else localStorage.removeItem("gamgee_rpe_multipliers");
+  }, [rpeMultipliers]);
+
+  /** Persist an RPE→step multiplier override table. Pass {} or null to clear
+   * the user's overrides and fall back to the client default table. */
+  const updateRpeMultipliers = useCallback((next: Record<string, number> | null) => {
+    const cleaned: Record<string, number> | null = next && Object.keys(next).length ? next : null;
+    setRpeMultipliers(cleaned);
+    authFetch("/api/auth/preferences", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rpe_multipliers: cleaned ?? {} }),
+    }).catch(() => { /* best-effort; localStorage already mirrors the state */ });
+  }, [authFetch]);
+
   const updateRestPrefs = useCallback((next: Partial<RestPrefs>) => {
     setRestPrefs(prev => {
       const merged: RestPrefs = {
@@ -331,7 +361,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, number> | null }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -352,6 +382,9 @@ export default function WorkoutTracker({
             medium: clamp(d.rest_medium_seconds, prev.medium),
             long:   clamp(d.rest_long_seconds,   prev.long),
           }));
+        }
+        if (d.rpe_multipliers && typeof d.rpe_multipliers === "object") {
+          setRpeMultipliers(d.rpe_multipliers);
         }
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -737,6 +770,14 @@ export default function WorkoutTracker({
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.map((s, i) => i === idx ? { ...s, done: !s.done } : s) }
     ));
 
+  /** Stamp a per-set perceived effort (1..10) on a working set, or null to
+   * clear. Separate from updateSet because rpe is numeric and shouldn't
+   * inherit-forward to later prefilled sets the way weight/reps do. */
+  const setSetRpe = (uid: string, idx: number, rpe: number | null) =>
+    setExercises(p => p.map(ex =>
+      ex.uid !== uid ? ex : { ...ex, sets: ex.sets.map((s, i) => i === idx ? { ...s, rpe } : s) }
+    ));
+
   const addSet = (uid: string) =>
     setExercises(p => p.map(ex => {
       if (ex.uid !== uid) return ex;
@@ -761,7 +802,7 @@ export default function WorkoutTracker({
   const applyProgressionAll = () => {
     setExercises(p => p.map(ex => {
       if (ex.type !== "strength") return ex;
-      const a = analyzeEx(ex.id, history, { speed: progressionSpeed });
+      const a = analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers });
       if (!a) return ex;
       return {
         ...ex,
@@ -824,6 +865,7 @@ export default function WorkoutTracker({
         sets: ex.sets.filter(s => s.done).map(s => ({
           weight: s.weight, reps: s.reps, done: s.done,
           ...(s.is_warmup ? { is_warmup: true } : {}),
+          ...(typeof s.rpe === "number" ? { rpe: s.rpe } : {}),
         })),
       }))
       .filter(ex => ex.sets.length > 0);
@@ -911,7 +953,7 @@ export default function WorkoutTracker({
 
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
-  const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history, progressionSpeed) !== null).length;
+  const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) !== null).length;
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); };
 
@@ -1026,6 +1068,7 @@ export default function WorkoutTracker({
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
+            rpeMultipliers={rpeMultipliers}
             restPrefs={restPrefs}
             wizardTransition={wizardTransition}
             authFetch={authFetch}
@@ -1033,7 +1076,7 @@ export default function WorkoutTracker({
             prescribeInitialConfigs={{ ...savedPrescribeConfigs, ...plannedConfigs }}
             startFromPrescribe={startFromPrescribe}
             addExercise={addExercise} removeExercise={removeExercise}
-            updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
+            updateSet={updateSet} setSetRpe={setSetRpe} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}
             applyProgressionAll={applyProgressionAll}
           />
@@ -1112,10 +1155,10 @@ export default function WorkoutTracker({
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} rpeMultipliers={rpeMultipliers} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (
