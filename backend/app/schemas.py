@@ -93,6 +93,11 @@ class UserOut(BaseModel):
     rest_short_seconds: int | None = None
     rest_medium_seconds: int | None = None
     rest_long_seconds: int | None = None
+    # Post-session RPE → next-session step multiplier overrides. Keys are
+    # string digits "1".."10"; values are non-negative floats that scale the
+    # base weight jump (1.0 = neutral, 0.0 = hold, >1 = bigger jump). Null
+    # means the client falls back to its baked-in default table.
+    rpe_multipliers: dict[str, float] | None = None
 
     model_config = {"from_attributes": True}
 
@@ -164,6 +169,9 @@ class UserPreferences(BaseModel):
     rest_short_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_medium_seconds: int | None = Field(default=None, ge=5, le=3600)
     rest_long_seconds: int | None = Field(default=None, ge=5, le=3600)
+    # RPE→step multiplier overrides. Use {} to clear back to the client default
+    # table; omit to leave the existing value untouched.
+    rpe_multipliers: dict[str, float] | None = None
 
     @field_validator("primary_color")
     @classmethod
@@ -171,6 +179,30 @@ class UserPreferences(BaseModel):
         if v is not None and not _HEX_COLOR_RE.match(v):
             raise ValueError("primary_color must be a valid #RRGGBB hex color")
         return v
+
+    @field_validator("rpe_multipliers")
+    @classmethod
+    def _valid_rpe_table(cls, v: dict[str, float] | None) -> dict[str, float] | None:
+        if v is None:
+            return None
+        # Keys must be the strings "1".."10"; values are non-negative floats
+        # bounded to a sane range (0 = hold the line; 5 = absurdly large jump).
+        cleaned: dict[str, float] = {}
+        for key, value in v.items():
+            try:
+                k = int(key)
+            except (TypeError, ValueError):
+                raise ValueError("rpe_multipliers keys must be integers 1..10")
+            if k < 1 or k > 10:
+                raise ValueError("rpe_multipliers keys must be integers 1..10")
+            try:
+                f = float(value)
+            except (TypeError, ValueError):
+                raise ValueError("rpe_multipliers values must be numbers")
+            if not (f == f) or f < 0 or f > 5:
+                raise ValueError("rpe_multipliers values must be between 0 and 5")
+            cleaned[str(k)] = f
+        return cleaned
 
 
 class NotificationPreferences(BaseModel):

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye, Gauge } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { STATUS } from "../../constants";
@@ -16,6 +16,7 @@ interface Props {
   rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
   onRemove:   () => void;
   updateSet:  (idx: number, field: keyof WorkoutSet, value: string) => void;
+  setSetRpe:  (idx: number, rpe: number | null) => void;
   toggleSet:  (idx: number) => void;
   addSet:     () => void;
   removeSet:  (idx: number) => void;
@@ -98,7 +99,7 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
@@ -246,6 +247,11 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
             // UI clearly indicates "warmup ramp ends here, working sets start".
             const prevIsWarmup = idx > 0 && ex.sets[idx - 1].is_warmup;
             const isFirstWorking = !set.is_warmup && (idx === 0 ? false : prevIsWarmup);
+            // Per-set RPE is offered only for strength working sets (warmup
+            // ramps don't drive progression, and cardio uses session RPE).
+            // Shown once the set is done so it doesn't crowd the in-progress
+            // input row.
+            const showRpePicker = ex.type === "strength" && !set.is_warmup && set.done;
             const rowCls   = [
               "set-row",
               set.done   ? "set-done"   : "",
@@ -255,7 +261,8 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
               isFirstWorking ? "set-first-working" : "",
             ].filter(Boolean).join(" ");
             return (
-              <div key={idx} className={rowCls} aria-hidden={isHidden || undefined}>
+              <div key={`set-wrap-${idx}`} className="set-row-wrap" aria-hidden={isHidden || undefined}>
+              <div className={rowCls}>
                 <div className={`set-num ${set.done ? "done" : ""}`}>
                   {set.is_warmup ? <span className="set-type-tag set-type-warmup">WU</span> : (idx + 1)}
                 </div>
@@ -329,6 +336,30 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                 >
                   <X size={14} />
                 </button>
+              </div>
+              {showRpePicker && (
+                <div className="set-rpe-row" aria-label={`Rate set ${idx + 1} effort 1 to 10`}>
+                  <span className="set-rpe-label"><Gauge size={11} /> RPE</span>
+                  <div className="set-rpe-pills" role="radiogroup">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
+                      const active = set.rpe === n;
+                      return (
+                        <button
+                          key={n}
+                          role="radio"
+                          aria-checked={active}
+                          className={`set-rpe-pill${active ? " set-rpe-pill-active" : ""}`}
+                          // Tap a second time to clear (toggle off) so the user
+                          // can un-rate a set if they meant to skip.
+                          onClick={() => setSetRpe(idx, active ? null : n)}
+                        >
+                          {n}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               </div>
             );
           })

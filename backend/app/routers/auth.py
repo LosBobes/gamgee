@@ -144,6 +144,10 @@ def update_preferences(
         current_user.rest_medium_seconds = body.rest_medium_seconds
     if body.rest_long_seconds is not None:
         current_user.rest_long_seconds = body.rest_long_seconds
+    # rpe_multipliers: omit → leave alone; explicit null or {} → clear back to
+    # client defaults; populated dict → store the new table.
+    if "rpe_multipliers" in body.model_dump(exclude_unset=True):
+        current_user.rpe_multipliers = body.rpe_multipliers or None
     db.commit()
     db.refresh(current_user)
     return current_user
