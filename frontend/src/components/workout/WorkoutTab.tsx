@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, WizardTransitionStyle } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, WizardTransitionStyle } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
 import WizardCardio from "./WizardCardio";
 import WizardBuild from "./WizardBuild";
+import WizardPrescribe from "./WizardPrescribe";
 import WizardWeeklySetup from "./WizardWeeklySetup";
 import ActiveWorkout from "./ActiveWorkout";
 
@@ -32,6 +33,11 @@ interface Props {
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
+  /** Pre-existing per-exercise prescribe configs (from a regime day or the
+   * user's last-used RPE setup); seeded into the prescribe step when the
+   * user picks RPE-driven mode. */
+  prescribeInitialConfigs: Record<string, ExerciseConfig>;
+  startFromPrescribe: (configs: Record<string, ExerciseConfig>) => void;
   addExercise:     (ex: ExerciseDef) => void;
   removeExercise:  (uid: string) => void;
   updateSet:       (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
@@ -47,7 +53,7 @@ export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, restPrefs, wizardTransition, authFetch, onLoadToday,
-  startFromWizard, addExercise, removeExercise,
+  startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
@@ -96,6 +102,10 @@ export default function WorkoutTab({
     triggerQuake();
     startFromWizard(autoFill);
   }, [startFromWizard, triggerQuake]);
+  const startFromPrescribeQuake = useCallback((configs: Record<string, ExerciseConfig>) => {
+    triggerQuake();
+    startFromPrescribe(configs);
+  }, [startFromPrescribe, triggerQuake]);
 
   const hostStyle: CSSProperties | undefined = quake
     ? ({ "--quake-x": `${quake.lx}px`, "--quake-y": `${quake.ly}px` } as CSSProperties)
@@ -162,7 +172,22 @@ export default function WorkoutTab({
             setPlanned={setPlanned}
             onBack={() => setWStepQuake(3)}
             onStart={startFromWizardQuake}
+            onConfigureRpe={() => setWStepQuake(5)}
             history={history}
+          />
+        </div>
+      )}
+
+      {/* Step 5 — RPE-driven prescription setup */}
+      {!active && wStep === 5 && (
+        <div key="wstep-5" className={stepAnim}>
+          <WizardPrescribe
+            planned={planned}
+            prs={prs}
+            history={history}
+            initialConfigs={prescribeInitialConfigs}
+            onBack={() => setWStepQuake(4)}
+            onStart={startFromPrescribeQuake}
           />
         </div>
       )}

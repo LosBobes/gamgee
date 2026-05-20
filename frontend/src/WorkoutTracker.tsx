@@ -35,6 +35,7 @@ import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx, prescribeExercise } from "./analysis";
+import { loadPrescribeConfigs, mergePrescribeConfigs } from "./data/prescribeConfigs";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
 import { useChatSocket } from "./hooks/useChatSocket";
@@ -77,7 +78,14 @@ export default function WorkoutTracker({
   // Per-exercise prescription from the day's regime (warmup/working sets, RPE,
   // reference max). Populated by loadTodayPlan; consumed by startFromWizard
   // to pre-populate the active workout with prescribed warmup + working sets.
+  // Also written by the RPE-driven prescribe step (WizardPrescribe) before it
+  // hands off to startFromWizard.
   const [plannedConfigs, setPlannedConfigs] = useState<Record<string, import("./types").ExerciseConfig>>({});
+  // Last-used RPE prescribe configs from localStorage so the prescribe step
+  // pre-seeds the same target effort/reference next time the user opts in.
+  // Merged with `plannedConfigs` (which wins) so a regime day's RPE always
+  // takes precedence over saved freeform configs.
+  const [savedPrescribeConfigs, setSavedPrescribeConfigs] = useState<Record<string, import("./types").ExerciseConfig>>(() => loadPrescribeConfigs());
   // logging
   const [active,    setActive]    = useState(false);
   const [startTs,   setStartTs]   = useState<number | null>(null);
@@ -619,7 +627,13 @@ export default function WorkoutTracker({
 
   // ── Workout handlers ──
 
-  const startFromWizard = (autoFill = false) => {
+  const startFromWizard = (
+    autoFill = false,
+    /** Override the configs read from state — used by the RPE-driven prescribe
+     * path where we have the freshly-tuned configs in hand and don't want to
+     * race React's state commit. */
+    configsOverride?: Record<string, import("./types").ExerciseConfig>,
+  ) => {
     setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
 
     const cardioEx = (slot: CardioPlan["before"]): WorkoutExercise | null => {
@@ -633,12 +647,13 @@ export default function WorkoutTracker({
       };
     };
 
+    const configs = configsOverride ?? plannedConfigs;
     const mainExercises: WorkoutExercise[] = planned.map(ex => {
       let initSets: WorkoutSet[] = [{ weight: "", reps: "", done: false }];
       // Regime-driven prescription takes precedence — if the day plan has a
       // config for this exercise (with a max or working weight), lay out
       // warmup ramp + working sets so the user just confirms each set.
-      const cfg = plannedConfigs[ex.id];
+      const cfg = configs[ex.id];
       const presc = ex.type === "strength" ? prescribeExercise(ex.id, cfg) : null;
       if (presc) {
         const warmupSets: WorkoutSet[] = presc.warmup.map(w => ({
@@ -683,6 +698,16 @@ export default function WorkoutTracker({
     setPlanned([]);
     setPlannedConfigs({});
     setCardio({ timing: "none", before: null, after: null });
+  };
+
+  /** Start the workout after the user finishes the RPE-driven prescribe step.
+   * Persists the tuned configs to localStorage so the prescribe screen seeds
+   * them next time, then hands off to startFromWizard with the configs as a
+   * direct override (sidesteps having to wait for React's state commit). */
+  const startFromPrescribe = (configs: Record<string, import("./types").ExerciseConfig>) => {
+    setPlannedConfigs(configs);
+    setSavedPrescribeConfigs(mergePrescribeConfigs(configs));
+    startFromWizard(false, configs);
   };
 
   const addExercise = (ex: ExerciseDef) =>
@@ -1005,6 +1030,8 @@ export default function WorkoutTracker({
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
+            prescribeInitialConfigs={{ ...savedPrescribeConfigs, ...plannedConfigs }}
+            startFromPrescribe={startFromPrescribe}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
             isNewPr={isNewPr} finishWorkout={finishWorkout}

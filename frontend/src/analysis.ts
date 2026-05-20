@@ -2,7 +2,16 @@ import type { WorkoutSession, StatusDef, ProgressionSpeed, ExerciseConfig } from
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1 } from "./utils";
 
-export interface SessionSummary { date: string; topW: number; topR: number; totalSets: number; }
+export interface SessionSummary {
+  date: string;
+  topW: number;
+  topR: number;
+  totalSets: number;
+  /** Post-session perceived effort 1..10 the user rated this session at.
+   * Null when they skipped the prompt; carried through so the analyzer can
+   * scale the next session's progression step. */
+  sessionRpe?: number | null;
+}
 export interface AnalysisResult {
   sessions: SessionSummary[];
   last: SessionSummary;
@@ -17,8 +26,62 @@ export interface AnalysisResult {
 // keeps the legacy 2.5kg upper / 5kg lower behaviour.
 const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fast: 2 };
 
+/** Default post-session RPE → next-session step multiplier table. Users
+ * (and per-exercise overrides) can replace it via `RpeMultiplierTable` on
+ * AnalyzeOptions; this is the fallback when nothing is supplied.
+ *
+ * Tuned around RPE 7 ("on point") being neutral — the user hit the planned
+ * effort so we proceed with the standard jump. Lower numbers indicate the
+ * session was easier than planned so we bump the jump up; higher numbers
+ * mean the session was already brutal so we ease off (or back the weight
+ * down outright at RPE 10). */
+export const DEFAULT_RPE_STEP_MULTIPLIERS: Record<number, number> = {
+  1: 1.6,
+  2: 1.5,
+  3: 1.35,
+  4: 1.2,
+  5: 1.1,
+  6: 1.05,
+  7: 1.0,
+  8: 0.7,
+  9: 0.4,
+  10: 0.0,
+};
+
+/** RPE → step multiplier lookup table. Keys are "1".."10" (strings to match
+ * the JSONB shape on User.rpe_multipliers) or numeric — both are accepted. */
+export type RpeMultiplierTable = Record<string | number, number>;
+
 export interface AnalyzeOptions {
   speed?: ProgressionSpeed;
+  /** User-level RPE multiplier table; falls back to {@link DEFAULT_RPE_STEP_MULTIPLIERS}. */
+  rpeMultipliers?: RpeMultiplierTable | null;
+  /** Per-exercise override; keyed by exercise id, each value is its own
+   * RPE→multiplier table. Takes precedence over `rpeMultipliers`. */
+  rpeMultipliersByExercise?: Record<string, RpeMultiplierTable> | null;
+}
+
+/** Look up the step multiplier for a given session RPE, honouring per-exercise
+ * overrides → user table → default table. Returns 1.0 (neutral) when the rpe
+ * is null/invalid or no table has an entry for it. */
+function lookupRpeMultiplier(
+  exId: string,
+  rpe: number | null | undefined,
+  opts: AnalyzeOptions,
+): number {
+  if (rpe == null || !Number.isFinite(rpe)) return 1;
+  const key = String(Math.round(rpe));
+  const perEx = opts.rpeMultipliersByExercise?.[exId];
+  if (perEx && Object.prototype.hasOwnProperty.call(perEx, key)) {
+    const v = Number(perEx[key]);
+    if (Number.isFinite(v) && v >= 0) return v;
+  }
+  const user = opts.rpeMultipliers;
+  if (user && Object.prototype.hasOwnProperty.call(user, key)) {
+    const v = Number(user[key]);
+    if (Number.isFinite(v) && v >= 0) return v;
+  }
+  return DEFAULT_RPE_STEP_MULTIPLIERS[Math.round(rpe)] ?? 1;
 }
 
 export function analyzeEx(
@@ -46,7 +109,13 @@ export function analyzeEx(
       if (b.w !== a.w) return b.w > a.w ? b : a;
       return b.r > a.r ? b : a;
     });
-    sessions.push({ date: w.date, topW: top.w, topR: top.r, totalSets: f.sets.length });
+    sessions.push({
+      date: w.date,
+      topW: top.w,
+      topR: top.r,
+      totalSets: f.sets.length,
+      sessionRpe: w.rpe ?? null,
+    });
   });
   if (!sessions.length) return null;
 
@@ -54,7 +123,10 @@ export function analyzeEx(
   const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
   const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
   const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  const step = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed];
+  // Apply the post-session RPE multiplier on top of the speed-driven base step:
+  // an "easy" last session bumps the jump up, a "brutal" one eases off.
+  const rpeMult = lookupRpeMultiplier(exId, last.sessionRpe, opts);
+  const step = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed] * rpeMult;
   // Round to the nearest plate-pair we'd actually load on a barbell.
   const plate    = UPPER_IDS.has(exId) ? 2.5 : 5;
   const roundUp  = (raw: number) => Math.max(plate, Math.round(raw / plate) * plate);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench } from "lucide-react";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench, Gauge } from "lucide-react";
 import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
@@ -17,10 +17,13 @@ interface Props {
   setPlanned: (fn: (p: ExerciseDef[]) => ExerciseDef[]) => void;
   onBack:     () => void;
   onStart:    (autoFill: boolean) => void;
+  /** Opt the user into the RPE-driven prescribe step: pick a target effort
+   * per exercise and let the app generate sets/reps from your reference max. */
+  onConfigureRpe: () => void;
   history:    WorkoutSession[];
 }
 
-export default function WizardBuild({ focus, planned, setPlanned, onBack, onStart, history }: Props) {
+export default function WizardBuild({ focus, planned, setPlanned, onBack, onStart, onConfigureRpe, history }: Props) {
   const t = useTxt();
   const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
   const [search,          setSearch]          = useState("");
@@ -229,6 +232,19 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
                 onClick={() => onStart(lastFocusSession != null)}
               >
                 {lastFocusSession ? <>START WITH LAST WEIGHTS <ChevronRight size={13} /></> : <>START WORKOUT <ChevronRight size={13} /></>}
+              </button>
+              <button
+                className="wz-back wz-rpe-cta"
+                style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                onClick={onConfigureRpe}
+                title="Set a target RPE per exercise and let Gamgee generate sets, reps and weight"
+              >
+                <Gauge size={12} style={{ verticalAlign: -2, marginRight: 5 }} />
+                {t(
+                  "Configure with RPE (auto sets & reps)",
+                  "Set the effort, auto sets & reps",
+                  "Pick effort, we'll do the math"
+                )}
               </button>
               {lastFocusSession && (
                 <button

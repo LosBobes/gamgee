@@ -717,6 +717,118 @@ html, body { background: var(--bg); }
 .wz-next:not(:disabled):active { transform: translateY(0); }
 .wz-next:disabled { opacity: 0.3; cursor: default; }
 .wz-focus-label { font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.wz-rpe-cta {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  background: var(--ad);
+}
+.wz-rpe-cta:hover { color: var(--accent); border-color: var(--accent); background: var(--ad2); }
+
+/* ── PRESCRIBE STEP (RPE-driven per-exercise setup before the workout) ── */
+.prescribe-intro {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 14px; border-radius: 8px;
+  background: var(--ad); border: 1px solid var(--ad2);
+  margin-bottom: 12px;
+}
+.prescribe-intro > svg { color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+.prescribe-intro-title {
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 0.5px; color: var(--text); margin-bottom: 3px;
+}
+.prescribe-intro-sub { font-size: 11px; color: var(--muted); line-height: 1.5; }
+
+.prescribe-warn {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 6px;
+  background: rgba(232, 152, 30, 0.08);
+  border: 1px solid rgba(232, 152, 30, 0.25);
+  color: #E8981E;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 600;
+  margin-bottom: 12px;
+}
+.prescribe-warn > svg { flex-shrink: 0; }
+
+.prescribe-list { display: flex; flex-direction: column; gap: 10px; }
+.prescribe-card {
+  padding: 12px; border-radius: 8px;
+  background: var(--s1); border: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.prescribe-card-needs-ref { border-color: rgba(232, 152, 30, 0.4); background: rgba(232, 152, 30, 0.04); }
+.prescribe-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.prescribe-card-title { min-width: 0; flex: 1; }
+.prescribe-ex-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.prescribe-ex-muscles { font-size: 10px; color: var(--muted); margin-top: 2px; }
+.prescribe-reset {
+  background: transparent; border: 1px solid var(--border); border-radius: 5px;
+  width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center;
+  color: var(--muted); cursor: pointer; flex-shrink: 0; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.prescribe-reset:hover { color: var(--accent); border-color: var(--accent); }
+
+.prescribe-rpe-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: 6px;
+  background: var(--ad); border: 1px solid var(--ad2);
+}
+.prescribe-rpe-label {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px; color: var(--muted);
+  text-transform: uppercase; flex-shrink: 0;
+}
+.prescribe-rpe-val { font-size: 14px; font-weight: 800; color: var(--accent); margin-left: 4px; letter-spacing: 0; }
+.prescribe-rpe-text {
+  font-size: 9px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px;
+  margin-left: 4px; text-transform: none;
+}
+.prescribe-rpe-slider { flex: 1; min-width: 80px; height: 18px; accent-color: var(--accent); cursor: pointer; }
+
+.prescribe-row {
+  display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap;
+}
+.prescribe-field {
+  display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 80px;
+}
+.prescribe-field-label {
+  font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.8px; text-transform: uppercase; color: var(--muted);
+}
+.prescribe-field input {
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 600;
+  padding: 6px 8px; border-radius: 5px;
+  background: var(--s2); border: 1px solid var(--border); color: var(--text);
+  width: 100%; box-sizing: border-box;
+  outline: none; transition: border-color 0.12s;
+}
+.prescribe-field input:focus { border-color: var(--accent); }
+.prescribe-ref-source {
+  font-size: 9px; font-weight: 600; color: var(--accent);
+  letter-spacing: 0.5px; padding-bottom: 8px;
+  font-style: italic;
+}
+
+.prescribe-preview {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 6px 8px; border-radius: 5px;
+  background: var(--s2); border-left: 2px solid var(--accent);
+  font-family: 'Nunito', sans-serif;
+}
+.prescribe-preview-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--muted);
+}
+.prescribe-preview-warmup, .prescribe-preview-working {
+  font-size: 11px; color: var(--text); font-weight: 600;
+}
+.prescribe-preview-warmup { color: var(--muted); }
+
+.prescribe-footer {
+  display: flex; gap: 8px; justify-content: space-between; align-items: center;
+  margin-top: 14px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
 
 /* ── BODY MAP ── */
 .body-map-wrap { display: flex; justify-content: center; gap: 12px; align-items: flex-start; margin-bottom: 14px; }

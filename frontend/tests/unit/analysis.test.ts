@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { analyzeEx, prescribeExercise, weightForRpe } from "../../src/analysis";
+import { analyzeEx, DEFAULT_RPE_STEP_MULTIPLIERS, prescribeExercise, weightForRpe } from "../../src/analysis";
 import type { WorkoutSession } from "../../src/types";
 
-const session = (date: string, weight: string, reps: string): WorkoutSession => ({
+const session = (date: string, weight: string, reps: string, rpe?: number | null): WorkoutSession => ({
   id: date,
   date,
   duration: 0,
+  rpe: rpe ?? null,
   exercises: [
     {
       id: "bench",
@@ -193,6 +194,77 @@ describe("analyzeEx", () => {
       ],
     };
     expect(analyzeEx("bench", [empty])).toBeNull();
+  });
+
+  it("scales the next-session step by the last session's RPE multiplier", () => {
+    // Two sessions where the user GAINED weight — analyzer flags PROGRESSING
+    // and recommends adding `step` kg. With session RPE 3 ("easy day") the
+    // multiplier 1.35× bumps the 2.5kg base step to ~3.375kg.
+    const easy = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 3), session("2026-05-01", "60", "8")),
+    )!;
+    // 2.5 * 1.35 = 3.375 added on top of 62.5 → 65.875
+    expect(easy.nextWeight).toBeCloseTo(62.5 + 2.5 * DEFAULT_RPE_STEP_MULTIPLIERS[3], 4);
+
+    // RPE 9 ("brutal") shrinks the step to ~0.4×, so the jump is barely 1kg.
+    const brutal = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 9), session("2026-05-01", "60", "8")),
+    )!;
+    expect(brutal.nextWeight).toBeCloseTo(62.5 + 2.5 * DEFAULT_RPE_STEP_MULTIPLIERS[9], 4);
+    expect(brutal.nextWeight).toBeLessThan(easy.nextWeight);
+  });
+
+  it("at RPE 10 holds the weight (step multiplier is 0)", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 10), session("2026-05-01", "60", "8")),
+    )!;
+    expect(res.nextWeight).toBe(62.5);
+  });
+
+  it("ignores RPE on older sessions — only the most recent one drives the step", () => {
+    // Latest session rated 9 (brutal), the one before was rated 3 — the
+    // analyzer should use the 9 because that's the post-session state we
+    // care about for next-session progression.
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 9), session("2026-05-01", "60", "8", 3)),
+    )!;
+    expect(res.nextWeight).toBeCloseTo(62.5 + 2.5 * DEFAULT_RPE_STEP_MULTIPLIERS[9], 4);
+  });
+
+  it("honours a per-exercise multiplier override over the default table", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 9), session("2026-05-01", "60", "8")),
+      {
+        speed: "moderate",
+        rpeMultipliersByExercise: { bench: { "9": 2.0 } },
+      },
+    )!;
+    // 2.5 * 2.0 = 5kg bump on top of 62.5
+    expect(res.nextWeight).toBe(67.5);
+  });
+
+  it("honours a user-level multiplier override (no per-exercise entry)", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8", 9), session("2026-05-01", "60", "8")),
+      {
+        speed: "moderate",
+        rpeMultipliers: { "9": 0.0 },
+      },
+    )!;
+    // User said RPE 9 = hold the line.
+    expect(res.nextWeight).toBe(62.5);
+  });
+
+  it("leaves NEW sessions unaffected when no RPE was set", () => {
+    // Sanity: existing behavior preserved when the session has rpe == null.
+    const res = analyzeEx("bench", [session("2026-05-01", "60", "8")])!;
+    expect(res.nextWeight).toBe(62.5);
   });
 });
 
