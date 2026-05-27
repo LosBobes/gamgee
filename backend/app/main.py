@@ -89,6 +89,7 @@ if engine.dialect.name == "postgresql":
         # Exercise description column — added so each exercise can carry a
         # short summary independent of the setup/execute/cue coaching script.
         _conn.execute(text("ALTER TABLE exercises ADD COLUMN IF NOT EXISTS description TEXT"))
+        _conn.execute(text("ALTER TABLE exercises ADD COLUMN IF NOT EXISTS is_assisted BOOLEAN NOT NULL DEFAULT FALSE"))
         # Regime mode + general RPE. The per-exercise overrides for each mode
         # live inside the JSONB `days` column under day.exerciseConfig.
         _conn.execute(text("ALTER TABLE regimes ADD COLUMN IF NOT EXISTS mode VARCHAR(30)"))

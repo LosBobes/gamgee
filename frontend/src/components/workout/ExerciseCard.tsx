@@ -29,6 +29,7 @@ interface Props {
 const colLabels = (ex: WorkoutExercise): [string, string] =>
   ex.type === "cardio" ? ["DURATION (min)", "DIST (km)"]
   : ex.type === "timed" ? ["RECORDED (s)", "NOTES"]
+  : ex.is_assisted ? ["ASSIST (kg)", "REPS"]
   : ["WEIGHT (kg)", "REPS"];
 
 interface TimedSetRowProps {
@@ -116,6 +117,24 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
 
   const isDeload  = analysis?.status === STATUS.DELOAD;
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
+  const isAssisted = !!ex.is_assisted && ex.type === "strength";
+
+  // For assisted machines the stored weight is negative (e.g. -20 = 20kg of
+  // counterweight). The user types and sees a positive "assist" magnitude;
+  // these helpers translate to/from the stored sign.
+  const displayWeight = (raw: string): string => {
+    if (!isAssisted) return raw;
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) return raw;
+    return String(Math.abs(n));
+  };
+  const handleWeightInput = (idx: number, raw: string) => {
+    if (!isAssisted) { updateSet(idx, "weight", raw); return; }
+    if (raw === "" || raw === "-") { updateSet(idx, "weight", ""); return; }
+    const n = parseFloat(raw);
+    if (!Number.isFinite(n)) { updateSet(idx, "weight", raw); return; }
+    updateSet(idx, "weight", String(-Math.abs(n)));
+  };
 
   // Index of the set the user is currently working on — first set that hasn't
   // been checked. -1 means everything is done. Locks every set after this one
@@ -152,6 +171,14 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
     const step = field === "weight" ? wStep : rStep;
     const cur  = parseFloat(ex.sets[idx][field]);
     const base = Number.isFinite(cur) ? cur : 0;
+    if (field === "weight" && isAssisted) {
+      // Steppers operate on the displayed (positive) assist magnitude — "+"
+      // means more help, "−" means less. Stored value stays negative.
+      const baseMag = Math.abs(base);
+      const nextMag = Math.max(0, Math.round((baseMag + delta * step) * 100) / 100);
+      updateSet(idx, "weight", nextMag === 0 ? "0" : String(-nextMag));
+      return;
+    }
     const next = Math.max(0, Math.round((base + delta * step) * 100) / 100);
     updateSet(idx, field, String(next));
   };
@@ -163,7 +190,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
             <div className="ex-name">{ex.name}</div>
-            {pr && <span className="pr-pill">PR {pr.weight}kg{pr.reps ? ` × ${pr.reps}` : ""}</span>}
+            {pr && <span className="pr-pill">PR {isAssisted ? `${Math.abs(pr.weight)}kg assist` : `${pr.weight}kg`}{pr.reps ? ` × ${pr.reps}` : ""}</span>}
           </div>
           <div className="ex-meta">
             <span style={{ color: TYPE_COLOR[ex.type] }}>●</span>
@@ -279,8 +306,8 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                     className={`set-inp step-inp ${set.done ? "done" : ""}`}
                     type="number" inputMode="decimal" min="0" step={wStep}
                     placeholder={ex.type === "cardio" ? "30" : "0"}
-                    value={set.weight}
-                    onChange={e => updateSet(idx, "weight", e.target.value)}
+                    value={displayWeight(set.weight)}
+                    onChange={e => handleWeightInput(idx, e.target.value)}
                     disabled={isLocked}
                     readOnly={isLocked}
                   />

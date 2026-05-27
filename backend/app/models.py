@@ -110,6 +110,10 @@ class Exercise(Base):
     # One- or two-sentence summary of the lift. Distinct from ExerciseInfo
     # (setup / execute / cue), which is the step-by-step coaching script.
     description = Column(Text, nullable=True)
+    # Assistance-machine variants (assisted dips/pull-ups) where the user is
+    # supported by a counterweight. Logged weights are stored negative — less
+    # negative = closer to bodyweight = better PR.
+    is_assisted = Column(Boolean, nullable=False, default=False)
 
 
 class BodyMetric(Base):

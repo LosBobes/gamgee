@@ -35,12 +35,13 @@ export default function PRsTab({ prs, onDelete }: Props) {
               </button>
               <div className="pr-ex-name">{pr.name}</div>
               <div className="pr-weight-val">
-                {pr.weight}<span className="pr-weight-unit">{pr.isCardio ? "min" : "kg"}</span>
+                {pr.weight < 0 ? Math.abs(pr.weight) : pr.weight}
+                <span className="pr-weight-unit">{pr.isCardio ? "min" : pr.weight < 0 ? "kg assist" : "kg"}</span>
               </div>
               {pr.reps > 0 && (
                 <div className="pr-reps">{pr.isCardio ? `${pr.reps} km` : `× ${pr.reps} reps`}</div>
               )}
-              {!pr.isCardio && pr.weight && pr.reps > 0 && (
+              {!pr.isCardio && pr.weight > 0 && pr.reps > 0 && (
                 <div className="pr-reps" style={{ color: "var(--pr-muted)" }}>est. 1RM ~{orm1(pr.weight, pr.reps)}kg</div>
               )}
               <div className="pr-date">{fmtDate(pr.date)}</div>

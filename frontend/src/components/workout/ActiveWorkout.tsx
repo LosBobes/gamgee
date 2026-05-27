@@ -54,7 +54,7 @@ export default function ActiveWorkout({
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
   // has been logged yet — once you start checking sets, the per-card APPLY
   // remains available for surgical adjustments.
-  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && analyzeEx(ex.id, history, analyzeOpts) !== null);
+  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && !ex.is_assisted && analyzeEx(ex.id, history, analyzeOpts) !== null);
 
   const tierSeconds = (tier: RestTier) =>
     tier === "custom" ? lastCustomSec : restPrefs[tier];
@@ -149,7 +149,7 @@ export default function ActiveWorkout({
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={analyzeEx(ex.id, history, analyzeOpts)}
+          analysis={ex.is_assisted ? null : analyzeEx(ex.id, history, analyzeOpts)}
           restPrefs={restPrefs}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
