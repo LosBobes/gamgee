@@ -18,6 +18,7 @@ const STATUS_ORDER: Record<string, number> = {
 export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: Props) {
   const t = useTxt();
   const coachData = ALL_EX
+    .filter(ex => !ex.is_assisted)
     .map(ex => ({ ex, a: analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));

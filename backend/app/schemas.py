@@ -393,6 +393,7 @@ class ExerciseOut(BaseModel):
     description: str | None = None
     primary_muscles: list[str] = []
     secondary_muscles: list[str] = []
+    is_assisted: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -405,6 +406,7 @@ class ExerciseCreate(BaseModel):
     description: str | None = None
     primary_muscles: list[str] = []
     secondary_muscles: list[str] = []
+    is_assisted: bool = False
 
 
 class ExerciseUpdate(BaseModel):
@@ -414,6 +416,7 @@ class ExerciseUpdate(BaseModel):
     description: str | None = None
     primary_muscles: list[str] | None = None
     secondary_muscles: list[str] | None = None
+    is_assisted: bool | None = None
 
 
 class WorkoutAdminOut(BaseModel):

@@ -108,7 +108,7 @@ export function analyzeEx(
     const workingSets = f.sets.filter(s => !s.is_warmup);
     const pairs = workingSets
       .map(s => ({ w: parseFloat(s.weight), r: parseInt(s.reps) }))
-      .filter(p => !isNaN(p.w) && p.w > 0)
+      .filter(p => !isNaN(p.w) && p.w !== 0)
       .map(p => ({ w: p.w, r: !isNaN(p.r) && p.r > 0 ? p.r : 0 }));
     if (!pairs.length) return;
     const top = pairs.reduce((a, b) => {

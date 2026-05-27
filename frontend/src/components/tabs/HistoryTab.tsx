@@ -70,7 +70,13 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
     const isOpen = expanded.has(w.id);
     const sets   = w.exercises.reduce((a, e) => a + e.sets.length, 0);
     const vol    = w.exercises.reduce((a, e) => e.type !== "strength" ? a :
-      a + e.sets.reduce((b, s) => b + (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0), 0), 0);
+      a + e.sets.reduce((b, s) => {
+        const w = parseFloat(s.weight) || 0;
+        // Assisted exercises log negative weight; skip them in tonnage so they
+        // don't subtract from total volume.
+        if (w <= 0) return b;
+        return b + w * (parseInt(s.reps) || 0);
+      }, 0), 0);
     return (
       <div key={w.id} className="hist-card">
         <div className="hist-hdr" onClick={() => expandable && toggleExpand(w.id)}>
@@ -101,12 +107,14 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
                 <div className="hist-ex-name">{ex.name}</div>
                 <div className="hist-chips">
                   {ex.sets.map((s, i) => {
-                    const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === parseFloat(s.weight);
+                    const w = parseFloat(s.weight);
+                    const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === w;
+                    const strengthLabel = w < 0 ? `${Math.abs(w)}kg assist × ${s.reps}` : `${s.weight}kg × ${s.reps}`;
                     return (
                       <span key={i} className={`chip ${isPr ? "pr-chip" : ""}`}>
                         {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`
                           : ex.type === "timed" ? `${s.weight}s`
-                          : `${s.weight}kg × ${s.reps}`}
+                          : strengthLabel}
                         {isPr && <Trophy size={10} style={{ verticalAlign: "middle", marginLeft: 3 }} />}
                       </span>
                     );

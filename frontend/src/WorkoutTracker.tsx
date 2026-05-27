@@ -801,7 +801,7 @@ export default function WorkoutTracker({
    * top-of-workout "PROGRESS ALL" affordance. */
   const applyProgressionAll = () => {
     setExercises(p => p.map(ex => {
-      if (ex.type !== "strength") return ex;
+      if (ex.type !== "strength" || ex.is_assisted) return ex;
       const a = analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers });
       if (!a) return ex;
       return {
@@ -816,7 +816,8 @@ export default function WorkoutTracker({
 
   const isNewPr = (exId: string, weight: string): boolean => {
     const w = parseFloat(weight);
-    return !isNaN(w) && w > 0 && (!prs[exId] || w > prs[exId].weight);
+    if (isNaN(w) || w === 0) return false;
+    return !prs[exId] || w > prs[exId].weight;
   };
 
   const loadTodayPlan = (dayPlan: DayPlan) => {
@@ -878,7 +879,7 @@ export default function WorkoutTracker({
       // shouldn't dethrone a real PR.
       if (s.is_warmup) return;
       const wt = parseFloat(s.weight), r = parseInt(s.reps) || 0;
-      if (!isNaN(wt) && wt > 0) {
+      if (!isNaN(wt) && wt !== 0) {
         const cur = newPrs[ex.id];
         if (!cur || wt > cur.weight || (wt === cur.weight && r > (cur.reps || 0)))
           newPrs[ex.id] = { weight: wt, reps: r, date: session.date, name: ex.name, isCardio: ex.type === "cardio" };
@@ -953,7 +954,7 @@ export default function WorkoutTracker({
 
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
-  const coachCount = ALL_EX.filter(ex => analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) !== null).length;
+  const coachCount = ALL_EX.filter(ex => !ex.is_assisted && analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) !== null).length;
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); };
 

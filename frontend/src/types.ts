@@ -5,7 +5,7 @@ export type ActiveMuscles = Record<string, MuscleLevel>;
 export type ExerciseType = "strength" | "timed" | "cardio";
 
 export interface MuscleInfo { n: string; g: string; }
-export interface ExerciseDef { id: string; name: string; type: ExerciseType; cat?: string; }
+export interface ExerciseDef { id: string; name: string; type: ExerciseType; cat?: string; is_assisted?: boolean; }
 export interface SuggExercise extends ExerciseDef { isFocus?: boolean; score?: number; newP?: string[]; ovP?: string[]; newS?: string[]; }
 export interface FocusDef { name: string; icon: LucideIcon; desc: string; exIds: string[]; }
 /** A single set in an active workout.
