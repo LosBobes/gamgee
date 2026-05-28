@@ -30,6 +30,7 @@ interface Props {
   onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
   rpeMultipliers:  Record<string, number> | null;
   restPrefs:       RestPrefs;
+  bodyweight:      number | null;
   wizardTransition: WizardTransitionStyle;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
@@ -54,7 +55,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, rpeMultipliers, restPrefs, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, rpeMultipliers, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -219,6 +220,7 @@ export default function WorkoutTab({
             progressionSpeed={progressionSpeed}
             rpeMultipliers={rpeMultipliers}
             restPrefs={restPrefs}
+            bodyweight={bodyweight}
             onFinish={finishWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}

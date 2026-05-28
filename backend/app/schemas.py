@@ -77,6 +77,8 @@ class UserOut(BaseModel):
     name: str | None = None
     email: str | None = None
     gender: str | None = None
+    bodyweight_kg: float | None = None
+    height_cm: float | None = None
     primary_color: str | None = None
     progression_speed: str | None = None
     is_admin: bool = False
@@ -216,6 +218,8 @@ class UserProfileUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     email: str | None = None
     gender: Gender | None = None
+    bodyweight_kg: float | None = Field(default=None, ge=20, le=400)
+    height_cm: float | None = Field(default=None, ge=50, le=260)
 
     @field_validator("name")
     @classmethod

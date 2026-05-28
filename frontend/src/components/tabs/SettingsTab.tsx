@@ -26,10 +26,12 @@ interface Props {
   name:            string | null;
   email:           string | null;
   gender:          string | null;
+  bodyweightKg:    number | null;
+  heightCm:        number | null;
   token:           string | null;
   primaryColor:    string;
   onColorChange:   (color: string) => void;
-  onProfileUpdate: (name: string | null, email: string | null, gender: string | null) => void;
+  onProfileUpdate: (name: string | null, email: string | null, gender: string | null, bodyweightKg: number | null, heightCm: number | null) => void;
   toneMode:        ToneMode;
   onToneChange:    (mode: ToneMode) => void;
   restPrefs:       RestPrefs;
@@ -315,17 +317,21 @@ function isGender(value: string | null): value is Gender {
       || value === "other"  || value === "prefer_not_to_say";
 }
 
-function EditProfileCard({ name, email, gender, token, onSave }: {
-  name:   string | null;
-  email:  string | null;
-  gender: string | null;
-  token:  string | null;
-  onSave: (name: string | null, email: string | null, gender: string | null) => void;
+function EditProfileCard({ name, email, gender, bodyweightKg, heightCm, token, onSave }: {
+  name:         string | null;
+  email:        string | null;
+  gender:       string | null;
+  bodyweightKg: number | null;
+  heightCm:     number | null;
+  token:        string | null;
+  onSave: (name: string | null, email: string | null, gender: string | null, bodyweightKg: number | null, heightCm: number | null) => void;
 }) {
   const initialGender: Gender = isGender(gender) ? gender : "prefer_not_to_say";
   const [nameVal,   setNameVal]   = useState(name ?? "");
   const [emailVal,  setEmailVal]  = useState(email ?? "");
   const [genderVal, setGenderVal] = useState<Gender>(initialGender);
+  const [bwVal,     setBwVal]     = useState(bodyweightKg != null ? String(bodyweightKg) : "");
+  const [htVal,     setHtVal]     = useState(heightCm != null ? String(heightCm) : "");
   const [err,       setErr]       = useState("");
   const [saving,    setSaving]    = useState(false);
   const [ok,        setOk]        = useState(false);
@@ -333,29 +339,48 @@ function EditProfileCard({ name, email, gender, token, onSave }: {
   useEffect(() => { setNameVal(name ?? ""); }, [name]);
   useEffect(() => { setEmailVal(email ?? ""); }, [email]);
   useEffect(() => { setGenderVal(isGender(gender) ? gender : "prefer_not_to_say"); }, [gender]);
+  useEffect(() => { setBwVal(bodyweightKg != null ? String(bodyweightKg) : ""); }, [bodyweightKg]);
+  useEffect(() => { setHtVal(heightCm != null ? String(heightCm) : ""); }, [heightCm]);
+
+  // parseFloat("") is NaN — treat empty as "no change desired" (matches the
+  // backend "null = leave alone" semantics).
+  const parsedBw = bwVal.trim() === "" ? null : parseFloat(bwVal);
+  const parsedHt = htVal.trim() === "" ? null : parseFloat(htVal);
+  const bwChanged = parsedBw !== bodyweightKg && !(parsedBw == null && bodyweightKg == null);
+  const htChanged = parsedHt !== heightCm     && !(parsedHt == null && heightCm == null);
 
   const changed =
     nameVal.trim() !== (name ?? "")
     || emailVal.trim() !== (email ?? "")
-    || genderVal !== initialGender;
+    || genderVal !== initialGender
+    || bwChanged
+    || htChanged;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(""); setOk(false);
+    if (parsedBw != null && (!Number.isFinite(parsedBw) || parsedBw < 20 || parsedBw > 400)) {
+      setErr("Bodyweight must be between 20 and 400 kg"); return;
+    }
+    if (parsedHt != null && (!Number.isFinite(parsedHt) || parsedHt < 50 || parsedHt > 260)) {
+      setErr("Height must be between 50 and 260 cm"); return;
+    }
     setSaving(true);
     try {
       const res = await fetch("/api/auth/profile", {
         method:  "PATCH",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
         body:    JSON.stringify({
-          name:   nameVal.trim(),
-          email:  emailVal.trim() || null,
-          gender: genderVal,
+          name:          nameVal.trim(),
+          email:         emailVal.trim() || null,
+          gender:        genderVal,
+          bodyweight_kg: parsedBw,
+          height_cm:     parsedHt,
         }),
       });
       if (!res.ok) { setErr((await res.json()).detail ?? "Failed"); return; }
       const data = await res.json();
-      onSave(data.name ?? null, data.email ?? null, data.gender ?? null);
+      onSave(data.name ?? null, data.email ?? null, data.gender ?? null, data.bodyweight_kg ?? null, data.height_cm ?? null);
       setOk(true);
       setTimeout(() => setOk(false), 2500);
     } catch {
@@ -395,6 +420,26 @@ function EditProfileCard({ name, email, gender, token, onSave }: {
             <option key={o.id} value={o.id}>{o.label}</option>
           ))}
         </select>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input
+            className="field-input"
+            type="number" inputMode="decimal" min="20" max="400" step="0.1"
+            placeholder="Bodyweight (kg)"
+            value={bwVal}
+            onChange={e => { setBwVal(e.target.value); setOk(false); }}
+            aria-label="Bodyweight in kilograms"
+            style={{ flex: 1 }}
+          />
+          <input
+            className="field-input"
+            type="number" inputMode="decimal" min="50" max="260" step="0.1"
+            placeholder="Height (cm)"
+            value={htVal}
+            onChange={e => { setHtVal(e.target.value); setOk(false); }}
+            aria-label="Height in centimetres"
+            style={{ flex: 1 }}
+          />
+        </div>
         {err && <p className="auth-err">{err}</p>}
         {ok  && <p style={{ color: "var(--green)", fontSize: 12, margin: 0 }}>Saved.</p>}
         <button
@@ -929,7 +974,7 @@ function OnboardingCard() {
 }
 
 export default function SettingsTab({
-  name, email, gender, token, primaryColor, onColorChange, onProfileUpdate,
+  name, email, gender, bodyweightKg, heightCm, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
   rpeMultipliers, onRpeMultipliersChange,
   wizardTransition, onWizardTransitionChange,
@@ -945,6 +990,8 @@ export default function SettingsTab({
         name={name}
         email={email}
         gender={gender}
+        bodyweightKg={bodyweightKg}
+        heightCm={heightCm}
         token={token}
         onSave={onProfileUpdate}
       />

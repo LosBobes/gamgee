@@ -16,6 +16,7 @@ interface Props {
   progressionSpeed: ProgressionSpeed;
   rpeMultipliers: Record<string, number> | null;
   restPrefs:      RestPrefs;
+  bodyweight:     number | null;
   onFinish:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
@@ -36,7 +37,7 @@ interface RestState {
 }
 
 export default function ActiveWorkout({
-  exercises, prs, history, doneSets, progressionSpeed, rpeMultipliers, restPrefs,
+  exercises, prs, history, doneSets, progressionSpeed, rpeMultipliers, restPrefs, bodyweight,
   onFinish, addExercise, removeExercise, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr,
   applyProgressionAll,
 }: Props) {
@@ -151,6 +152,7 @@ export default function ActiveWorkout({
           pr={prs[ex.id]}
           analysis={ex.is_assisted ? null : analyzeEx(ex.id, history, analyzeOpts)}
           restPrefs={restPrefs}
+          bodyweight={bodyweight}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
           updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}

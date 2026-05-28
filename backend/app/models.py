@@ -12,6 +12,12 @@ class User(Base):
     name = Column(String(100), nullable=True)
     email = Column(String(254), unique=True, nullable=True, index=True)
     gender = Column(String(20), nullable=True)
+    # Physical attributes captured on the profile screen. `bodyweight_kg` is the
+    # baseline for assisted-machine exercises (offset is logged relative to it);
+    # `height_cm` is informational (BMI etc.). Both nullable so existing users
+    # aren't forced to fill them in.
+    bodyweight_kg = Column(Float, nullable=True)
+    height_cm = Column(Float, nullable=True)
     primary_color = Column(String(7), nullable=True)
     # "slow" | "moderate" | "fast" — scales how aggressively the analyzer
     # recommends weight jumps. Null is treated as "moderate".
@@ -111,8 +117,10 @@ class Exercise(Base):
     # (setup / execute / cue), which is the step-by-step coaching script.
     description = Column(Text, nullable=True)
     # Assistance-machine variants (assisted dips/pull-ups) where the user is
-    # supported by a counterweight. Logged weights are stored negative — less
-    # negative = closer to bodyweight = better PR.
+    # supported by a counterweight. The logged weight on a set is an OFFSET from
+    # the user's bodyweight: 0 = at bodyweight, negative = below bodyweight by
+    # that many kg of assistance. Less negative = closer to bodyweight = better
+    # PR. Effective working weight = User.bodyweight_kg + offset.
     is_assisted = Column(Boolean, nullable=False, default=False)
 
 
