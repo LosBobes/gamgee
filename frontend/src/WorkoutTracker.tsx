@@ -109,6 +109,8 @@ export default function WorkoutTracker({
   const [name,         setName]         = useState<string | null>(null);
   const [email,        setEmail]        = useState<string | null>(null);
   const [gender,       setGender]       = useState<string | null>(null);
+  const [bodyweightKg, setBodyweightKg] = useState<number | null>(null);
+  const [heightCm,     setHeightCm]     = useState<number | null>(null);
   const [isAdmin,      setIsAdmin]      = useState(false);
   const [isVerified,   setIsVerified]   = useState(true);
   const [isTrainer,    setIsTrainer]    = useState(false);
@@ -361,11 +363,13 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, number> | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; bodyweight_kg?: number | null; height_cm?: number | null; primary_color?: string | null; progression_speed?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; rpe_multipliers?: Record<string, number> | null }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
         setGender(d.gender ?? null);
+        setBodyweightKg(d.bodyweight_kg ?? null);
+        setHeightCm(d.height_cm ?? null);
         setIsAdmin(d.is_admin ?? false);
         setIsVerified(d.is_verified ?? true);
         setIsTrainer(d.is_trainer ?? false);
@@ -687,7 +691,7 @@ export default function WorkoutTracker({
       // config for this exercise (with a max or working weight), lay out
       // warmup ramp + working sets so the user just confirms each set.
       const cfg = configs[ex.id];
-      const presc = ex.type === "strength" ? prescribeExercise(ex.id, cfg) : null;
+      const presc = ex.type === "strength" && !ex.is_assisted ? prescribeExercise(ex.id, cfg) : null;
       if (presc) {
         const warmupSets: WorkoutSet[] = presc.warmup.map(w => ({
           weight: String(w.weight),
@@ -816,7 +820,12 @@ export default function WorkoutTracker({
 
   const isNewPr = (exId: string, weight: string): boolean => {
     const w = parseFloat(weight);
-    if (isNaN(w) || w === 0) return false;
+    if (isNaN(w)) return false;
+    const def = ALL_EX.find(e => e.id === exId);
+    // Assisted-machine sets log an offset from bodyweight (≤ 0); regular sets
+    // log a positive load. A 0 entry on an assisted exercise is a real PR (the
+    // user did a clean rep at bodyweight), so don't filter it out there.
+    if (def?.is_assisted ? w > 0 : w <= 0) return false;
     return !prs[exId] || w > prs[exId].weight;
   };
 
@@ -879,11 +888,13 @@ export default function WorkoutTracker({
       // shouldn't dethrone a real PR.
       if (s.is_warmup) return;
       const wt = parseFloat(s.weight), r = parseInt(s.reps) || 0;
-      if (!isNaN(wt) && wt !== 0) {
-        const cur = newPrs[ex.id];
-        if (!cur || wt > cur.weight || (wt === cur.weight && r > (cur.reps || 0)))
-          newPrs[ex.id] = { weight: wt, reps: r, date: session.date, name: ex.name, isCardio: ex.type === "cardio" };
-      }
+      if (isNaN(wt)) return;
+      // Assisted: 0 = at bodyweight (valid PR), positive disallowed (covered by
+      // the separate weighted-variant exercises). Everything else needs > 0.
+      if (ex.is_assisted ? wt > 0 : wt <= 0) return;
+      const cur = newPrs[ex.id];
+      if (!cur || wt > cur.weight || (wt === cur.weight && r > (cur.reps || 0)))
+        newPrs[ex.id] = { weight: wt, reps: r, date: session.date, name: ex.name, isCardio: ex.type === "cardio" };
     }));
 
     authFetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(session) })
@@ -1071,6 +1082,7 @@ export default function WorkoutTracker({
             progressionSpeed={progressionSpeed} onProgressionSpeedChange={updateProgressionSpeed}
             rpeMultipliers={rpeMultipliers}
             restPrefs={restPrefs}
+            bodyweight={bodyweightKg}
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
@@ -1082,8 +1094,8 @@ export default function WorkoutTracker({
             applyProgressionAll={applyProgressionAll}
           />
         )}
-        {!completed && tab === "history" && <HistoryTab history={history} prs={prs} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
-        {!completed && tab === "prs"     && <PRsTab prs={prs} onDelete={deletePr} />}
+        {!completed && tab === "history" && <HistoryTab history={history} prs={prs} bodyweight={bodyweightKg} onDelete={deleteWorkout} onUpdate={updateWorkout} />}
+        {!completed && tab === "prs"     && <PRsTab prs={prs} bodyweight={bodyweightKg} onDelete={deletePr} />}
         {!completed && tab === "buddies" && (
           <BuddiesTab
             authFetch={authFetch}
@@ -1159,7 +1171,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} progressionSpeed={progressionSpeed} rpeMultipliers={rpeMultipliers} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g) => { setName(n); setEmail(e); setGender(g); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} rpeMultipliers={rpeMultipliers} onRpeMultipliersChange={updateRpeMultipliers} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

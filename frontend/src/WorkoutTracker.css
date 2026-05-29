@@ -1255,6 +1255,10 @@ html, body { background: var(--bg); }
 }
 .set-row-wrap { margin-bottom: 10px; }
 .set-row-wrap > .set-row { margin-bottom: 0; }
+.assist-hint {
+  margin: 2px 0 0 24px; font-family: 'Nunito', sans-serif;
+  font-size: 10px; color: var(--muted); letter-spacing: 0.02em;
+}
 .set-row { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; align-items: center; margin-bottom: 10px; }
 
 /* Per-set RPE picker: thin row that appears below a completed strength set.

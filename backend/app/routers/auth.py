@@ -186,10 +186,15 @@ def update_profile(
     current_user.email = body.email
     if email_changed:
         current_user.is_verified = False
-    # gender omitted in the payload means "no change" — only update when the
-    # client explicitly sends a value so name/email saves don't clobber it.
+    # gender / bodyweight / height omitted in the payload means "no change" —
+    # only update when the client explicitly sends a value so partial saves
+    # don't clobber unrelated fields.
     if body.gender is not None:
         current_user.gender = body.gender
+    if body.bodyweight_kg is not None:
+        current_user.bodyweight_kg = body.bodyweight_kg
+    if body.height_cm is not None:
+        current_user.height_cm = body.height_cm
     db.commit()
     db.refresh(current_user)
     if email_changed and current_user.email:

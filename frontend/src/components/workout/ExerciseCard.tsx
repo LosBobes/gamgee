@@ -14,6 +14,7 @@ interface Props {
   analysis:   AnalysisResult | null;
   restPrefs:  RestPrefs;
   rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
+  bodyweight: number | null;
   onRemove:   () => void;
   updateSet:  (idx: number, field: keyof WorkoutSet, value: string) => void;
   setSetRpe:  (idx: number, rpe: number | null) => void;
@@ -29,7 +30,7 @@ interface Props {
 const colLabels = (ex: WorkoutExercise): [string, string] =>
   ex.type === "cardio" ? ["DURATION (min)", "DIST (km)"]
   : ex.type === "timed" ? ["RECORDED (s)", "NOTES"]
-  : ex.is_assisted ? ["ASSIST (kg)", "REPS"]
+  : ex.is_assisted ? ["BW ± (kg)", "REPS"]
   : ["WEIGHT (kg)", "REPS"];
 
 interface TimedSetRowProps {
@@ -100,7 +101,7 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemove, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodyweight, onRemove, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
   const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
@@ -119,21 +120,25 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
   const showDeload = isDeload && !deloadDone && ex.type === "strength";
   const isAssisted = !!ex.is_assisted && ex.type === "strength";
 
-  // For assisted machines the stored weight is negative (e.g. -20 = 20kg of
-  // counterweight). The user types and sees a positive "assist" magnitude;
-  // these helpers translate to/from the stored sign.
-  const displayWeight = (raw: string): string => {
-    if (!isAssisted) return raw;
+  // Assisted-machine sets log an OFFSET from the user's bodyweight: 0 = at
+  // bodyweight, negative = below bodyweight by that many kg of assistance.
+  // The input shows the signed offset literally (e.g. "-20"); the minus sign
+  // IS the indicator. A hint below the input renders the effective working
+  // weight (bodyweight + offset) when bodyweight is known.
+  const effectiveWeight = (raw: string): number | null => {
+    if (!isAssisted || bodyweight == null) return null;
     const n = parseFloat(raw);
-    if (!Number.isFinite(n)) return raw;
-    return String(Math.abs(n));
+    const offset = Number.isFinite(n) ? n : 0;
+    return Math.round((bodyweight + offset) * 10) / 10;
   };
-  const handleWeightInput = (idx: number, raw: string) => {
-    if (!isAssisted) { updateSet(idx, "weight", raw); return; }
-    if (raw === "" || raw === "-") { updateSet(idx, "weight", ""); return; }
+  const assistHintFor = (raw: string): string | null => {
+    if (!isAssisted) return null;
+    if (bodyweight == null) return "Set bodyweight in Profile to see effective load";
+    const eff = effectiveWeight(raw)!;
     const n = parseFloat(raw);
-    if (!Number.isFinite(n)) { updateSet(idx, "weight", raw); return; }
-    updateSet(idx, "weight", String(-Math.abs(n)));
+    const offset = Number.isFinite(n) ? n : 0;
+    if (offset === 0) return `= ${eff}kg (at BW)`;
+    return `= ${eff}kg (BW ${offset > 0 ? "+" : "−"} ${Math.abs(offset)})`;
   };
 
   // Index of the set the user is currently working on — first set that hasn't
@@ -172,11 +177,11 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
     const cur  = parseFloat(ex.sets[idx][field]);
     const base = Number.isFinite(cur) ? cur : 0;
     if (field === "weight" && isAssisted) {
-      // Steppers operate on the displayed (positive) assist magnitude — "+"
-      // means more help, "−" means less. Stored value stays negative.
-      const baseMag = Math.abs(base);
-      const nextMag = Math.max(0, Math.round((baseMag + delta * step) * 100) / 100);
-      updateSet(idx, "weight", nextMag === 0 ? "0" : String(-nextMag));
+      // "+" raises the offset toward 0 (less assistance, harder); "−" lowers
+      // it (more assistance, easier). Cap at 0 — going positive would mean
+      // weighted-dips territory, which belongs to a different exercise entry.
+      const next = Math.min(0, Math.round((base + delta * step) * 100) / 100);
+      updateSet(idx, "weight", String(next));
       return;
     }
     const next = Math.max(0, Math.round((base + delta * step) * 100) / 100);
@@ -190,7 +195,13 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
             <div className="ex-name">{ex.name}</div>
-            {pr && <span className="pr-pill">PR {isAssisted ? `${Math.abs(pr.weight)}kg assist` : `${pr.weight}kg`}{pr.reps ? ` × ${pr.reps}` : ""}</span>}
+            {pr && <span className="pr-pill">PR {
+              isAssisted
+                ? (bodyweight != null
+                    ? `${Math.round((bodyweight + pr.weight) * 10) / 10}kg (BW${pr.weight === 0 ? "" : ` − ${Math.abs(pr.weight)}`})`
+                    : `BW ${pr.weight >= 0 ? "+" : "−"} ${Math.abs(pr.weight)}kg`)
+                : `${pr.weight}kg`
+            }{pr.reps ? ` × ${pr.reps}` : ""}</span>}
           </div>
           <div className="ex-meta">
             <span style={{ color: TYPE_COLOR[ex.type] }}>●</span>
@@ -304,10 +315,12 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                   </button>
                   <input
                     className={`set-inp step-inp ${set.done ? "done" : ""}`}
-                    type="number" inputMode="decimal" min="0" step={wStep}
+                    type="number" inputMode={isAssisted ? "numeric" : "decimal"}
+                    {...(isAssisted ? { max: 0 } : { min: 0 })}
+                    step={wStep}
                     placeholder={ex.type === "cardio" ? "30" : "0"}
-                    value={displayWeight(set.weight)}
-                    onChange={e => handleWeightInput(idx, e.target.value)}
+                    value={set.weight}
+                    onChange={e => updateSet(idx, "weight", e.target.value)}
                     disabled={isLocked}
                     readOnly={isLocked}
                   />
@@ -364,6 +377,10 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, onRemo
                   <X size={14} />
                 </button>
               </div>
+              {isAssisted && (() => {
+                const hint = assistHintFor(set.weight);
+                return hint ? <div className="assist-hint">{hint}</div> : null;
+              })()}
               {showRpePicker && (
                 <div className="set-rpe-row" aria-label={`Rate set ${idx + 1} effort 1 to 10`}>
                   <span className="set-rpe-label"><Gauge size={11} /> RPE</span>

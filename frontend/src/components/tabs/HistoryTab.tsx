@@ -2,19 +2,32 @@ import { useState } from "react";
 import { ClipboardList, Timer, Dumbbell, Layers, Activity, Trophy, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
 import type { WorkoutSession, PRDict } from "../../types";
 import { fmtDate, fmtDur } from "../../utils";
+import { ALL_EX } from "../../data/exercises";
 import EditWorkoutModal from "./EditWorkoutModal";
 import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
   prs:     PRDict;
+  bodyweight: number | null;
   onDelete: (id: string) => void;
   onUpdate: (session: WorkoutSession) => void;
 }
 
 const DAYS = ["S","M","T","W","T","F","S"];
 
-export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) {
+// Render a strength set's weight chip. Assisted exercises log an offset from
+// bodyweight; show the effective lifted weight when known, else just the offset.
+function fmtAssistedSet(w: number, reps: string, bodyweight: number | null): string {
+  if (bodyweight != null) {
+    const eff = Math.round((bodyweight + w) * 10) / 10;
+    return w === 0 ? `${eff}kg (BW) × ${reps}` : `${eff}kg (BW − ${Math.abs(w)}) × ${reps}`;
+  }
+  if (w === 0) return `BW × ${reps}`;
+  return `BW ${w < 0 ? "−" : "+"} ${Math.abs(w)}kg × ${reps}`;
+}
+
+export default function HistoryTab({ history, prs, bodyweight, onDelete, onUpdate }: Props) {
   const t = useTxt();
   const [view,           setView]           = useState<"list" | "calendar">("list");
   const [expanded,       setExpanded]       = useState<Set<string>>(new Set());
@@ -109,7 +122,10 @@ export default function HistoryTab({ history, prs, onDelete, onUpdate }: Props) 
                   {ex.sets.map((s, i) => {
                     const w = parseFloat(s.weight);
                     const isPr = ex.type === "strength" && prs[ex.id] && prs[ex.id].weight === w;
-                    const strengthLabel = w < 0 ? `${Math.abs(w)}kg assist × ${s.reps}` : `${s.weight}kg × ${s.reps}`;
+                    const isAssisted = !!ex.is_assisted || !!ALL_EX.find(e => e.id === ex.id)?.is_assisted;
+                    const strengthLabel = isAssisted
+                      ? fmtAssistedSet(w, s.reps, bodyweight)
+                      : `${s.weight}kg × ${s.reps}`;
                     return (
                       <span key={i} className={`chip ${isPr ? "pr-chip" : ""}`}>
                         {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`

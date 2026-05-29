@@ -76,6 +76,10 @@ if engine.dialect.name == "postgresql":
         # RPE→step-multiplier table and optional per-exercise overrides.
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers JSONB"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS rpe_multipliers_by_exercise JSONB"))
+        # Physical attributes — bodyweight is the baseline for assisted-machine
+        # exercises (offset logged relative to it), height is informational.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bodyweight_kg DOUBLE PRECISION"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm DOUBLE PRECISION"))
         # Post-session RPE on workout records (used to scale next session's jump).
         _conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS rpe INTEGER"))
         # Live session rich-broadcast columns
