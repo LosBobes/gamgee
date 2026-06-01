@@ -332,6 +332,28 @@ export interface RegimeDraft {
   general_rpe?: number | null;
 }
 
+/** A saved, reusable workout blueprint — a named focus plus an ordered
+ * exercise list with optional per-exercise targets. Lighter than a Regime: one
+ * session's worth of training that can be loaded into a fresh workout or
+ * dropped onto a weekday in the weekly plan. `exercise_config` mirrors a
+ * DayPlan's per-exercise prescription, keyed by exercise id. */
+export interface WorkoutTemplate {
+  id: number;
+  owner_id: number;
+  name: string;
+  focus: string | null;
+  exercise_ids: string[];
+  exercise_config: Record<string, ExerciseConfig>;
+  created_at: number;
+}
+/** Payload for creating/updating a template. */
+export interface WorkoutTemplateDraft {
+  name: string;
+  focus: string | null;
+  exercise_ids: string[];
+  exercise_config: Record<string, ExerciseConfig>;
+}
+
 export interface RegimeAssignment {
   id: number;
   trainer_id: number;

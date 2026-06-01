@@ -1055,6 +1055,29 @@ class RegimeCreate(BaseModel):
     general_rpe: int | None = Field(default=None, ge=1, le=10)
 
 
+class WorkoutTemplateCreate(BaseModel):
+    """Save a reusable workout blueprint. `exercise_config` is optional and
+    keyed by exercise id — same shape the regime editor uses, so a template can
+    carry per-exercise targets (rpe / max / set counts) or just a bare exercise
+    list."""
+    name: str = Field(min_length=1, max_length=120)
+    focus: str | None = Field(default=None, max_length=60)
+    exercise_ids: list[str] = Field(default_factory=list, max_length=100)
+    exercise_config: dict[str, ExerciseConfigIn] = Field(default_factory=dict)
+
+
+class WorkoutTemplateOut(BaseModel):
+    id: int
+    owner_id: int
+    name: str
+    focus: str | None = None
+    exercise_ids: list[str] = Field(default_factory=list)
+    exercise_config: dict[str, ExerciseConfigIn] = Field(default_factory=dict)
+    created_at: int = 0
+
+    model_config = {"from_attributes": True}
+
+
 class AssignmentCreate(BaseModel):
     trainee_id: int
     regime_id: int

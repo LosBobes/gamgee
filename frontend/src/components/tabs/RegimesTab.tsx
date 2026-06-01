@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { Plus, Calendar, Trash2, Wand2, Pencil } from "lucide-react";
-import type { Regime, WeeklyPlan, WeekPlanDay, WeekPlan } from "../../types";
+import { Plus, Calendar, Trash2, Wand2, Pencil, Bookmark } from "lucide-react";
+import type { Regime, WeeklyPlan, WeekPlanDay, WeekPlan, WorkoutTemplate } from "../../types";
 import { weeklyPlanFromWeeks } from "../../data/weeklyPlan";
+import { getFocusDef } from "../../data/focuses";
 import RegimeQuestionnairePanel from "../regime/RegimeQuestionnaire";
 import RegimeEditor from "../regime/RegimeEditor";
 
@@ -9,13 +10,15 @@ interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   weeklyPlan: WeeklyPlan | null;
   setWeeklyPlan: (plan: WeeklyPlan) => void;
+  templates: WorkoutTemplate[];
+  onDeleteTemplate: (id: number) => Promise<boolean>;
 }
 
 const WEEK_LABELS: Record<string, string> = {
   mon: "Mon", tue: "Tue", wed: "Wed", thu: "Thu", fri: "Fri", sat: "Sat", sun: "Sun",
 };
 
-export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeeklyPlan }: Props) {
+export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeeklyPlan, templates, onDeleteTemplate }: Props) {
   void _weeklyPlan;
   const [regimes, setRegimes] = useState<Regime[]>([]);
   const [building, setBuilding] = useState(false);
@@ -162,6 +165,37 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Saved templates — single-session blueprints. Loaded into a workout
+          from the Workout tab, or dropped onto a weekday in the plan editor;
+          here the user can just review and prune them. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <h2 style={{ margin: "4px 0 0", fontSize: 16, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
+          <Bookmark size={16} /> MY TEMPLATES
+        </h2>
+        {templates.length === 0 ? (
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            No templates yet. Build a workout and tap “Save as template” to reuse it any time.
+          </div>
+        ) : (
+          templates.map(tpl => {
+            const fd = tpl.focus ? getFocusDef(tpl.focus) : null;
+            return (
+              <div key={tpl.id} className="card" style={{ padding: 12, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <strong>{tpl.name}</strong>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {fd ? `${fd.name} · ` : ""}{tpl.exercise_ids.length} exercise{tpl.exercise_ids.length !== 1 ? "s" : ""}
+                  </div>
+                </div>
+                <button className="btn-sec" onClick={() => onDeleteTemplate(tpl.id)} aria-label="Delete template">
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

@@ -449,6 +449,27 @@ class Regime(Base):
     created_at = Column(BigInteger, nullable=False, default=0)
 
 
+class WorkoutTemplate(Base):
+    """A saved, reusable workout blueprint: a named focus plus an ordered
+    exercise list with optional per-exercise targets. Lighter than a Regime
+    (no weeks / goal / experience) — it's a single session's worth of training
+    the user can load into a fresh workout or drop onto a weekday in their
+    weekly plan. `exercise_config` mirrors a regime DayPlan's per-exercise
+    prescription (rpe / max / set counts) keyed by exercise id."""
+    __tablename__ = "workout_templates"
+    __table_args__ = (
+        Index("ix_workout_templates_owner", "owner_id"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    name = Column(String(120), nullable=False)
+    focus = Column(String(60), nullable=True)
+    exercise_ids = Column(JSONB, nullable=False, default=list)      # list[str]
+    exercise_config = Column(JSONB, nullable=False, default=dict)   # dict[str, ExerciseConfig]
+    created_at = Column(BigInteger, nullable=False, default=0)
+
+
 class RegimeAssignment(Base):
     """A trainer-assigned regime delivered to a trainee. The trainee can apply
     it to their weekly plan; the trainer can revoke or replace it."""

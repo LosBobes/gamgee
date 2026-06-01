@@ -4,12 +4,13 @@ import type {
   CardioPlan, DayPlan, ExerciseDef, WorkoutExercise, WorkoutSession,
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
-  TrainerLink, RegimeAssignment, Conversation, ChatMessage,
+  TrainerLink, RegimeAssignment, Conversation, ChatMessage, WorkoutTemplate,
   RestPrefs,
   WizardTransitionStyle,
 } from "./types";
 import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
+import { listTemplates, createTemplate, deleteTemplate } from "./data/templatesApi";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
@@ -168,6 +169,10 @@ export default function WorkoutTracker({
   // trainer/chat/regime state
   const [trainerLinks,   setTrainerLinks]   = useState<TrainerLink[]>([]);
   const [assignments,    setAssignments]    = useState<RegimeAssignment[]>([]);
+  // Saved workout templates — reusable blueprints the user can load into a
+  // session or drop onto a weekday. Owned here so the wizard (load/save) and
+  // the regimes tab (manage) share one source of truth.
+  const [templates,      setTemplates]      = useState<WorkoutTemplate[]>([]);
   const [conversations,  setConversations]  = useState<Conversation[]>([]);
   const [activeConvId,   setActiveConvId]   = useState<number | null>(null);
   // ChatTab registers a handler here so we can hand it real-time messages
@@ -216,6 +221,24 @@ export default function WorkoutTracker({
       if (res.status === 401) { localStorage.removeItem("iron_log_token"); setToken(null); }
       return res;
     }), []);
+
+  const refreshTemplates = useCallback(async () => {
+    try { setTemplates(await listTemplates(authFetch)); } catch { /* ignore */ }
+  }, [authFetch]);
+
+  /** Persist a new template and refresh the list. Returns the saved row (or
+   * null on failure) so callers can surface a confirmation. */
+  const saveTemplate = useCallback(async (draft: import("./types").WorkoutTemplateDraft) => {
+    const created = await createTemplate(authFetch, draft);
+    if (created) setTemplates(prev => [created, ...prev]);
+    return created;
+  }, [authFetch]);
+
+  const removeTemplate = useCallback(async (id: number) => {
+    const ok = await deleteTemplate(authFetch, id);
+    if (ok) setTemplates(prev => prev.filter(t => t.id !== id));
+    return ok;
+  }, [authFetch]);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--primary", primaryColor);
@@ -299,6 +322,7 @@ export default function WorkoutTracker({
     setTrainerLinks([]);
     setAssignments([]);
     setConversations([]);
+    setTemplates([]);
     setActiveConvId(null);
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
@@ -439,6 +463,7 @@ export default function WorkoutTracker({
     refreshLive();
     refreshTrainers();
     refreshConversations();
+    refreshTemplates();
     // The SSE stream pushes changes the moment they happen; this longer
     // interval is just a safety net in case the EventSource is disconnected
     // (proxy timeout, sleeping tab waking up, etc.).
@@ -450,7 +475,7 @@ export default function WorkoutTracker({
       refreshConversations();
     }, 90_000);
     return () => clearInterval(id);
-  }, [token, refreshBuddies, refreshNotifications, refreshLive, refreshTrainers, refreshConversations]);
+  }, [token, refreshBuddies, refreshNotifications, refreshLive, refreshTrainers, refreshConversations, refreshTemplates]);
 
   useEventStream(token, useCallback((ev) => {
     if (ev.type === "notification") {
@@ -812,6 +837,18 @@ export default function WorkoutTracker({
     setWStep(4);
   };
 
+  /** Load a saved template into the wizard build step. A template is just a
+   * named DayPlan, so we hand it straight to loadTodayPlan (focus +
+   * exerciseIds + per-exercise config, then jump to the build screen). */
+  const loadTemplate = (tpl: WorkoutTemplate) => {
+    loadTodayPlan({
+      focus: tpl.focus || focus || "full",
+      exerciseIds: tpl.exercise_ids,
+      enabled: true,
+      exerciseConfig: tpl.exercise_config,
+    });
+  };
+
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
@@ -1027,6 +1064,7 @@ export default function WorkoutTracker({
             exercises={exercises} prs={prs} history={history}
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
+            templates={templates} onSaveTemplate={saveTemplate} onLoadTemplate={loadTemplate}
             restPrefs={restPrefs}
             bodyweight={bodyweightKg}
             wizardTransition={wizardTransition}
@@ -1109,6 +1147,8 @@ export default function WorkoutTracker({
             authFetch={authFetch}
             weeklyPlan={weeklyPlan}
             setWeeklyPlan={setWeeklyPlan}
+            templates={templates}
+            onDeleteTemplate={removeTemplate}
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}

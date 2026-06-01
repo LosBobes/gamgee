@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart, Eye, Plus, Copy, Trash2, Gauge } from "lucide-react";
-import type { WeekPlanDay, WeeklyPlan, DayPlan, WeekPlan, Regime, ExerciseDef, ExerciseConfig } from "../../types";
+import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart, Eye, Plus, Copy, Trash2, Gauge, Bookmark } from "lucide-react";
+import type { WeekPlanDay, WeeklyPlan, DayPlan, WeekPlan, Regime, ExerciseDef, ExerciseConfig, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
@@ -12,6 +12,7 @@ interface Props {
   initial:   WeeklyPlan | null;
   onPersist: (plan: WeeklyPlan) => void;
   onDone:    () => void;
+  templates?: WorkoutTemplate[];
   authFetch?: (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
@@ -97,7 +98,7 @@ function weeksToPlan(weeks: WeekPlan[], currentWeekIdx: number): WeeklyPlan {
   };
 }
 
-export default function WizardWeeklySetup({ initial, onPersist, onDone, authFetch }: Props) {
+export default function WizardWeeklySetup({ initial, onPersist, onDone, templates = [], authFetch }: Props) {
   const t = useTxt();
   const [showGenerator, setShowGenerator] = useState(false);
 
@@ -485,6 +486,28 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, authFetc
                 </button>
               ))}
             </div>
+
+            {/* Drop a saved template onto this day — fills the focus + exercise
+                list (and any per-exercise targets) in one tap. */}
+            {templates.length > 0 && (
+              <div className="ww-template-row">
+                <span className="ww-template-lbl"><Bookmark size={11} /> {t("From template", "From template", "From template")}</span>
+                {templates.map(tpl => (
+                  <button
+                    key={tpl.id}
+                    className="ww-focus-chip"
+                    title={`${tpl.exercise_ids.length} exercise${tpl.exercise_ids.length !== 1 ? "s" : ""}`}
+                    onClick={() => setDay({
+                      focus: tpl.focus || day.focus,
+                      exerciseIds: [...tpl.exercise_ids],
+                      exerciseConfig: Object.keys(tpl.exercise_config || {}).length ? { ...tpl.exercise_config } : undefined,
+                    })}
+                  >
+                    {tpl.name}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Search — filters across every exercise so you can pull cardio
                 into a strength day, or any move you can't see in the focus pool. */}

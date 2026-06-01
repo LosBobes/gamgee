@@ -489,6 +489,45 @@ html, body { background: var(--bg); }
 .wm-rest-label { font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .wm-rest-sub { font-size: 11px; color: var(--muted); }
 
+/* ── Saved templates (WizardMode picker · WizardBuild save · weekly assign) ── */
+.wm-templates { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.wm-templates-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 2px;
+}
+.wm-template-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: var(--ad); border: 1px solid var(--ad2); border-radius: 12px;
+  padding: 12px 14px; color: var(--text); transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wm-template-card:hover { border-color: var(--accent); }
+.wm-template-card:active { transform: scale(0.99); }
+.wm-template-main { min-width: 0; }
+.wm-template-name { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--text); }
+.wm-template-meta { font-size: 11px; color: var(--accent); margin-top: 1px; }
+.wm-template-exs {
+  font-size: 11px; color: var(--muted); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wm-template-go { color: var(--accent); flex-shrink: 0; }
+
+/* Inline "Save as template" form in the build step. */
+.tpl-save-row { display: flex; gap: 6px; margin-top: 6px; align-items: stretch; }
+.tpl-save-input { flex: 1; min-width: 0; }
+.tpl-save-confirm, .tpl-save-cancel {
+  width: 42px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+
+/* "From template" chip row in the weekly day editor. */
+.ww-template-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 8px; }
+.ww-template-lbl {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+}
+
 /* ── WEEKLY SETUP (step 6) ── */
 .ww-day-tabs {
   display: flex; gap: 3px; margin-bottom: 16px;

@@ -1,5 +1,5 @@
-import { Calendar, Zap, ArrowLeft } from "lucide-react";
-import type { DayPlan, WeeklyPlan } from "../../types";
+import { Calendar, Zap, ArrowLeft, Bookmark } from "lucide-react";
+import type { DayPlan, WeeklyPlan, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
 import { ALL_EX } from "../../data/exercises";
@@ -7,14 +7,16 @@ import { useTxt } from "../../context/ToneContext";
 import OnboardingHint from "../OnboardingHint";
 
 interface Props {
-  weeklyPlan:  WeeklyPlan | null;
-  onSingle:    () => void;
-  onLoadToday: (plan: DayPlan) => void;
-  onSetupPlan: () => void;
-  onBack:      () => void;
+  weeklyPlan:     WeeklyPlan | null;
+  templates:      WorkoutTemplate[];
+  onSingle:       () => void;
+  onLoadToday:    (plan: DayPlan) => void;
+  onLoadTemplate: (tpl: WorkoutTemplate) => void;
+  onSetupPlan:    () => void;
+  onBack:         () => void;
 }
 
-export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupPlan, onBack }: Props) {
+export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
@@ -130,6 +132,35 @@ export default function WizardMode({ weeklyPlan, onSingle, onLoadToday, onSetupP
           </div>
         </div>
       </div>
+
+      {/* Saved templates — one tap loads a blueprint straight into the build step. */}
+      {templates.length > 0 && (
+        <div className="wm-templates">
+          <div className="wm-templates-head">
+            <Bookmark size={13} /> {t("Your Templates", "Your Templates", "Your Templates")}
+          </div>
+          {templates.map(tpl => {
+            const fd = tpl.focus ? getFocusDef(tpl.focus) : null;
+            const names = tpl.exercise_ids
+              .map(id => ALL_EX.find(e => e.id === id)?.name)
+              .filter((n): n is string => !!n);
+            return (
+              <button key={tpl.id} className="wm-template-card" onClick={() => onLoadTemplate(tpl)}>
+                <div className="wm-template-main">
+                  <div className="wm-template-name">{tpl.name}</div>
+                  <div className="wm-template-meta">
+                    {fd ? `${fd.name} · ` : ""}{tpl.exercise_ids.length} exercise{tpl.exercise_ids.length !== 1 ? "s" : ""}
+                  </div>
+                  {names.length > 0 && (
+                    <div className="wm-template-exs">{names.slice(0, 4).join(", ")}{names.length > 4 ? "…" : ""}</div>
+                  )}
+                </div>
+                <Zap size={15} className="wm-template-go" />
+              </button>
+            );
+          })}
+        </div>
+      )}
     </>
   );
 }

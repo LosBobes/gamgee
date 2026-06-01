@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle, WorkoutTemplate, WorkoutTemplateDraft } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -26,6 +26,9 @@ interface Props {
   doneSets:        number;
   weeklyPlan:      WeeklyPlan | null;
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
+  templates:       WorkoutTemplate[];
+  onSaveTemplate:  (draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
+  onLoadTemplate:  (tpl: WorkoutTemplate) => void;
   restPrefs:       RestPrefs;
   bodyweight:      number | null;
   wizardTransition: WizardTransitionStyle;
@@ -52,7 +55,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onLoadTemplate, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -131,8 +134,10 @@ export default function WorkoutTab({
         <div key="wstep-1" className={stepAnim}>
           <WizardMode
             weeklyPlan={weeklyPlan}
+            templates={templates}
             onSingle={() => setWStepQuake(2)}
             onLoadToday={onLoadTodayQuake}
+            onLoadTemplate={tpl => { triggerQuake(); onLoadTemplate(tpl); }}
             onSetupPlan={() => setWStepQuake(6)}
             onBack={() => setWStepQuake(0)}
           />
@@ -173,6 +178,7 @@ export default function WorkoutTab({
             onBack={() => setWStepQuake(3)}
             onStart={startFromWizardQuake}
             onConfigureRpe={() => setWStepQuake(5)}
+            onSaveTemplate={onSaveTemplate}
             history={history}
           />
         </div>
@@ -199,6 +205,7 @@ export default function WorkoutTab({
             initial={weeklyPlan}
             onPersist={setWeeklyPlan}
             onDone={() => setWStepQuake(1)}
+            templates={templates}
             authFetch={authFetch}
           />
         </div>
