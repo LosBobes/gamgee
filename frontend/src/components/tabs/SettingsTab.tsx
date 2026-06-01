@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, Timer, Gauge } from "lucide-react";
-import { DEFAULT_RPE_STEP_MULTIPLIERS } from "../../analysis";
+import { Bell, BellOff, Timer } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
@@ -36,8 +35,6 @@ interface Props {
   onToneChange:    (mode: ToneMode) => void;
   restPrefs:       RestPrefs;
   onRestPrefsChange: (next: Partial<RestPrefs>) => void;
-  rpeMultipliers:  Record<string, number> | null;
-  onRpeMultipliersChange: (next: Record<string, number> | null) => void;
   wizardTransition:         WizardTransitionStyle;
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
   reducedMotion:            boolean;
@@ -820,118 +817,6 @@ function RestTimerCard({ prefs, onChange }: { prefs: RestPrefs; onChange: (next:
   );
 }
 
-function RpeMultipliersCard({
-  table,
-  onChange,
-}: {
-  table: Record<string, number> | null;
-  onChange: (next: Record<string, number> | null) => void;
-}) {
-  const t = useTxt();
-  // Local editable copy. Indexed by RPE 1..10. Each entry is a string so the
-  // input doesn't blow up while the user is mid-edit (e.g. clearing to retype).
-  const effective = (n: number): number =>
-    (table && Number.isFinite(table[String(n)]) ? table[String(n)] : DEFAULT_RPE_STEP_MULTIPLIERS[n]);
-  const [drafts, setDrafts] = useState<Record<number, string>>(() => {
-    const out: Record<number, string> = {};
-    for (let n = 1; n <= 10; n++) out[n] = String(effective(n));
-    return out;
-  });
-  const [saved, setSaved] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Re-sync the draft display when the server-side table changes (e.g.
-    // after a Reset commits). Keep the user's in-progress typing if it
-    // still parses to the same number.
-    setDrafts(prev => {
-      const next: Record<number, string> = {};
-      for (let n = 1; n <= 10; n++) {
-        const eff = effective(n);
-        const cur = parseFloat(prev[n]);
-        next[n] = Number.isFinite(cur) && cur === eff ? prev[n] : String(eff);
-      }
-      return next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table]);
-
-  const commit = (n: number, raw: string) => {
-    const num = parseFloat(raw);
-    if (!Number.isFinite(num) || num < 0 || num > 5) {
-      setErr("Each multiplier must be between 0 and 5.");
-      return;
-    }
-    setErr(null);
-    // Build the new full table from the current displayed values, swapping
-    // in the just-edited value. Storing all 10 entries keeps the override
-    // intent unambiguous: the user has taken explicit control of the table.
-    const next: Record<string, number> = {};
-    for (let i = 1; i <= 10; i++) {
-      const v = i === n ? num : parseFloat(drafts[i]);
-      next[String(i)] = Number.isFinite(v) ? v : DEFAULT_RPE_STEP_MULTIPLIERS[i];
-    }
-    onChange(next);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  };
-
-  const resetDefaults = () => {
-    onChange(null);
-    setErr(null);
-    setDrafts(() => {
-      const out: Record<number, string> = {};
-      for (let n = 1; n <= 10; n++) out[n] = String(DEFAULT_RPE_STEP_MULTIPLIERS[n]);
-      return out;
-    });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 1500);
-  };
-
-  return (
-    <div className="profile-card">
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <Gauge size={14} style={{ color: "var(--primary)" }} />
-        <div style={{ fontSize: 11, color: "var(--muted)", letterSpacing: "0.04em", textTransform: "uppercase" }}>
-          {t("RPE → weight jump multiplier", "RPE → weight jump multiplier", "RPE → weight jump multiplier")}
-        </div>
-      </div>
-      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 12, lineHeight: 1.45 }}>
-        {t(
-          "After each set, the perceived effort you log scales the next session's weight jump. 1.0 = standard jump, 0.0 = hold the line, >1 = bigger jump. RPE 7 is the default neutral point.",
-          "After each set, the effort you log scales next session's weight jump. 1.0 = standard, 0.0 = hold, bigger = bigger jump. RPE 7 is the default neutral.",
-          "After each set, your effort scales the next session's jump, bestie. 1.0 = normal, 0.0 = hold, bigger = bigger leap. RPE 7 is neutral."
-        )}
-      </div>
-      <div className="rpe-mult-grid">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-          <div key={n} className="rpe-mult-row">
-            <span className="rpe-mult-key">RPE {n}</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              max={5}
-              step={0.05}
-              value={drafts[n]}
-              onChange={e => setDrafts(d => ({ ...d, [n]: e.target.value }))}
-              onBlur={() => commit(n, drafts[n])}
-              onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-              aria-label={`Step multiplier at RPE ${n}`}
-            />
-            <span className="rpe-mult-default">def {DEFAULT_RPE_STEP_MULTIPLIERS[n]}</span>
-          </div>
-        ))}
-      </div>
-      {err && <p className="auth-err" style={{ marginTop: 8, marginBottom: 0 }}>{err}</p>}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 }}>
-        <button type="button" className="auth-toggle" onClick={resetDefaults}>Reset to defaults</button>
-        {saved && <span style={{ color: "var(--green)", fontSize: 11 }}>Saved.</span>}
-      </div>
-    </div>
-  );
-}
-
 function OnboardingCard() {
   const t = useTxt();
   const { openWelcome, resetHints, dismissedHints } = useOnboarding();
@@ -976,7 +861,6 @@ function OnboardingCard() {
 export default function SettingsTab({
   name, email, gender, bodyweightKg, heightCm, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
-  rpeMultipliers, onRpeMultipliersChange,
   wizardTransition, onWizardTransitionChange,
   reducedMotion, onReducedMotionChange,
   authFetch,
@@ -1005,7 +889,6 @@ export default function SettingsTab({
       <div className="profile-section">{t("Workout", "Workout")}</div>
       <CountsBarCard />
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
-      <RpeMultipliersCard table={rpeMultipliers} onChange={onRpeMultipliersChange} />
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />

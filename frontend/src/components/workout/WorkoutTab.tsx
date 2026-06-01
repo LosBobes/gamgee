@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, ProgressionSpeed, RestPrefs, WizardTransitionStyle } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -26,9 +26,6 @@ interface Props {
   doneSets:        number;
   weeklyPlan:      WeeklyPlan | null;
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
-  progressionSpeed: ProgressionSpeed;
-  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
-  rpeMultipliers:  Record<string, number> | null;
   restPrefs:       RestPrefs;
   bodyweight:      number | null;
   wizardTransition: WizardTransitionStyle;
@@ -55,7 +52,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, progressionSpeed, onProgressionSpeedChange, rpeMultipliers, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -202,8 +199,6 @@ export default function WorkoutTab({
             initial={weeklyPlan}
             onPersist={setWeeklyPlan}
             onDone={() => setWStepQuake(1)}
-            progressionSpeed={progressionSpeed}
-            onProgressionSpeedChange={onProgressionSpeedChange}
             authFetch={authFetch}
           />
         </div>
@@ -217,8 +212,6 @@ export default function WorkoutTab({
             prs={prs}
             history={history}
             doneSets={doneSets}
-            progressionSpeed={progressionSpeed}
-            rpeMultipliers={rpeMultipliers}
             restPrefs={restPrefs}
             bodyweight={bodyweight}
             onFinish={finishWorkout}

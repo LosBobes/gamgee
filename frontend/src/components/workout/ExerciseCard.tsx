@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, AlertTriangle, Plus, Minus, Eye, Gauge } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, Plus, Minus, Eye, Gauge } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../../types";
 import type { AnalysisResult } from "../../analysis";
-import { STATUS } from "../../constants";
+import { rpeToRir, rirToRpe } from "../../utils";
 import { TYPE_COLOR } from "../../data/exercises";
 import { BAR_WEIGHT_KG, isBarbellExercise, readCountsBar } from "../../data/barbell";
 import ExerciseInspectModal from "../exercise/ExerciseInspectModal";
@@ -103,7 +103,6 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
 
 export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodyweight, onRemove, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
-  const [deloadDone, setDeloadDone] = useState(false);
   const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
 
@@ -116,8 +115,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
     ? `+${BAR_WEIGHT_KG} kg bar`
     : `bar incl.`;
 
-  const isDeload  = analysis?.status === STATUS.DELOAD;
-  const showDeload = isDeload && !deloadDone && ex.type === "strength";
   const isAssisted = !!ex.is_assisted && ex.type === "strength";
 
   // Assisted-machine sets log an OFFSET from the user's bodyweight: 0 = at
@@ -158,16 +155,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
       updateSet(idx, "weight", String(analysis.nextWeight));
       updateSet(idx, "reps",   String(analysis.nextReps));
     });
-  };
-
-  const acceptDeload = () => {
-    if (!analysis) return;
-    ex.sets.forEach((set, idx) => {
-      if (set.done) return;
-      updateSet(idx, "weight", String(analysis.nextWeight));
-      updateSet(idx, "reps",   String(analysis.nextReps));
-    });
-    setDeloadDone(true);
   };
 
   const wStep = ex.type === "cardio" ? 5    : 2.5;
@@ -228,25 +215,6 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
         </div>
       </div>
 
-      {showDeload && (
-        <div className="deload-banner">
-          <AlertTriangle size={14} className="deload-icon" />
-          <div className="deload-body">
-            <div className="deload-msg">
-              Stuck at {analysis!.last.topW}kg for 3 sessions. Accept deload to {analysis!.nextWeight}kg?
-            </div>
-            <div className="deload-actions">
-              <button className="btn-deload-confirm" onClick={acceptDeload}>
-                <Check size={11} /> Accept Deload
-              </button>
-              <button className="btn-deload-skip" onClick={() => setDeloadDone(true)}>
-                Keep Current
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="set-table">
         <div className="set-col-hdr">
           <div className="col-lbl">#</div>
@@ -285,11 +253,12 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
             // UI clearly indicates "warmup ramp ends here, working sets start".
             const prevIsWarmup = idx > 0 && ex.sets[idx - 1].is_warmup;
             const isFirstWorking = !set.is_warmup && (idx === 0 ? false : prevIsWarmup);
-            // Per-set RPE is offered only for strength working sets (warmup
-            // ramps don't drive progression, and cardio uses session RPE).
-            // Shown once the set is done so it doesn't crowd the in-progress
-            // input row.
-            const showRpePicker = ex.type === "strength" && !set.is_warmup && set.done;
+            // Per-set RIR ("reps left in the tank") is offered only for strength
+            // working sets — warmup ramps don't drive progression. Shown once the
+            // set is done so it doesn't crowd the in-progress input row. Stored
+            // as RPE under the hood (RIR = 10 - RPE) so existing data and the
+            // analyzer keep working.
+            const showRirPicker = ex.type === "strength" && !set.is_warmup && set.done;
             const rowCls   = [
               "set-row",
               set.done   ? "set-done"   : "",
@@ -381,29 +350,34 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
                 const hint = assistHintFor(set.weight);
                 return hint ? <div className="assist-hint">{hint}</div> : null;
               })()}
-              {showRpePicker && (
-                <div className="set-rpe-row" aria-label={`Rate set ${idx + 1} effort 1 to 10`}>
-                  <span className="set-rpe-label"><Gauge size={11} /> RPE</span>
-                  <div className="set-rpe-pills" role="radiogroup">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => {
-                      const active = set.rpe === n;
-                      return (
-                        <button
-                          key={n}
-                          role="radio"
-                          aria-checked={active}
-                          className={`set-rpe-pill${active ? " set-rpe-pill-active" : ""}`}
-                          // Tap a second time to clear (toggle off) so the user
-                          // can un-rate a set if they meant to skip.
-                          onClick={() => setSetRpe(idx, active ? null : n)}
-                        >
-                          {n}
-                        </button>
-                      );
-                    })}
+              {showRirPicker && (() => {
+                const curRir = rpeToRir(set.rpe);
+                return (
+                  <div className="set-rpe-row" aria-label={`How many reps left in the tank on set ${idx + 1}?`}>
+                    <span className="set-rpe-label"><Gauge size={11} /> REPS LEFT</span>
+                    <div className="set-rpe-pills" role="radiogroup">
+                      {[0, 1, 2, 3, 4].map(rir => {
+                        const active = curRir === rir;
+                        const label = rir === 4 ? "4+" : String(rir);
+                        return (
+                          <button
+                            key={rir}
+                            role="radio"
+                            aria-checked={active}
+                            aria-label={rir === 0 ? "0 — to failure" : `${label} reps left`}
+                            className={`set-rpe-pill${active ? " set-rpe-pill-active" : ""}`}
+                            // Tap a second time to clear (toggle off) so the user
+                            // can un-rate a set if they meant to skip.
+                            onClick={() => setSetRpe(idx, active ? null : rirToRpe(rir))}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
               </div>
             );
           })

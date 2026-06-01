@@ -1,22 +1,20 @@
-import type { WorkoutSession, StatusDef, ProgressionSpeed, ExerciseConfig } from "./types";
+import type { WorkoutSession, StatusDef, ExerciseConfig } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
-import { orm1 } from "./utils";
+import { orm1, e1rmWithRir, rpeToRir } from "./utils";
 
 export interface SessionSummary {
   date: string;
   topW: number;
   topR: number;
   totalSets: number;
-  /** Post-session perceived effort 1..10 the user rated this session at.
-   * Null when they skipped the prompt; carried through so the analyzer can
-   * scale the next session's progression step. */
-  sessionRpe?: number | null;
-  /** Per-exercise effective RPE: max of the per-set rpe values across this
-   * exercise's working (non-warmup) sets. Null when no working set carried
-   * an rpe. Takes precedence over `sessionRpe` for the multiplier lookup
-   * because it reflects the actual effort for THIS lift rather than an
-   * overall session vibe. */
-  exerciseRpe?: number | null;
+  /** Reps left in reserve on the top set (0 = taken to failure). Derived from
+   * the per-set effort the user logged, which is stored as RPE (RIR = 10 -
+   * RPE). Null when the set carried no effort rating. */
+  topRir: number | null;
+  /** RIR-adjusted estimated 1RM for this session's top set. This is the single
+   * number the trend is fit on — it folds the weight, the reps, and how much
+   * the user had left in the tank into one measure of demonstrated strength. */
+  e1rm: number;
 }
 export interface AnalysisResult {
   sessions: SessionSummary[];
@@ -25,174 +23,142 @@ export interface AnalysisResult {
   status: StatusDef;
   nextWeight: number;
   nextReps: number;
+  /** Modelled change in estimated 1RM per session, in kg. Positive = gaining,
+   * negative = slipping. Drives both the status read and the next target. */
+  trendPerSession: number;
   reason: string;
 }
 
-// Scales the default jump size when recommending the next weight. "moderate"
-// keeps the legacy 2.5kg upper / 5kg lower behaviour.
-const STEP_MULT: Record<ProgressionSpeed, number> = { slow: 0.5, moderate: 1, fast: 2 };
+/** How many of the most recent sessions feed the trend. Enough to smooth out
+ * a single off day, short enough that the recommendation tracks recent form
+ * rather than ancient history. */
+const TREND_WINDOW = 8;
 
-/** Default post-session RPE → next-session step multiplier table. Users
- * (and per-exercise overrides) can replace it via `RpeMultiplierTable` on
- * AnalyzeOptions; this is the fallback when nothing is supplied.
+/** Least-squares slope of y over x for a set of points. Returns 0 when there
+ * aren't enough points (or they're all at the same x) to define a line. */
+function linregSlope(points: ReadonlyArray<readonly [number, number]>): number {
+  const n = points.length;
+  if (n < 2) return 0;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (const [x, y] of points) { sx += x; sy += y; sxy += x * y; sxx += x * x; }
+  const denom = n * sxx - sx * sx;
+  return denom === 0 ? 0 : (n * sxy - sx * sy) / denom;
+}
+
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Read an exercise's progression from the user's whole history and extrapolate
+ * the next target.
  *
- * Tuned around RPE 7 ("on point") being neutral — the user hit the planned
- * effort so we proceed with the standard jump. Lower numbers indicate the
- * session was easier than planned so we bump the jump up; higher numbers
- * mean the session was already brutal so we ease off (or back the weight
- * down outright at RPE 10). */
-export const DEFAULT_RPE_STEP_MULTIPLIERS: Record<number, number> = {
-  1: 1.6,
-  2: 1.5,
-  3: 1.35,
-  4: 1.2,
-  5: 1.1,
-  6: 1.05,
-  7: 1.0,
-  8: 0.7,
-  9: 0.4,
-  10: 0.0,
-};
-
-/** RPE → step multiplier lookup table. Keys are "1".."10" (strings to match
- * the JSONB shape on User.rpe_multipliers) or numeric — both are accepted. */
-export type RpeMultiplierTable = Record<string | number, number>;
-
-export interface AnalyzeOptions {
-  speed?: ProgressionSpeed;
-  /** User-level RPE multiplier table; falls back to {@link DEFAULT_RPE_STEP_MULTIPLIERS}. */
-  rpeMultipliers?: RpeMultiplierTable | null;
-  /** Per-exercise override; keyed by exercise id, each value is its own
-   * RPE→multiplier table. Takes precedence over `rpeMultipliers`. */
-  rpeMultipliersByExercise?: Record<string, RpeMultiplierTable> | null;
-}
-
-/** Look up the step multiplier for a given session RPE, honouring per-exercise
- * overrides → user table → default table. Returns 1.0 (neutral) when the rpe
- * is null/invalid or no table has an entry for it. */
-function lookupRpeMultiplier(
-  exId: string,
-  rpe: number | null | undefined,
-  opts: AnalyzeOptions,
-): number {
-  if (rpe == null || !Number.isFinite(rpe)) return 1;
-  const key = String(Math.round(rpe));
-  const perEx = opts.rpeMultipliersByExercise?.[exId];
-  if (perEx && Object.prototype.hasOwnProperty.call(perEx, key)) {
-    const v = Number(perEx[key]);
-    if (Number.isFinite(v) && v >= 0) return v;
-  }
-  const user = opts.rpeMultipliers;
-  if (user && Object.prototype.hasOwnProperty.call(user, key)) {
-    const v = Number(user[key]);
-    if (Number.isFinite(v) && v >= 0) return v;
-  }
-  return DEFAULT_RPE_STEP_MULTIPLIERS[Math.round(rpe)] ?? 1;
-}
-
-export function analyzeEx(
-  exId: string,
-  history: WorkoutSession[],
-  speedOrOpts: ProgressionSpeed | AnalyzeOptions = "moderate",
-): AnalysisResult | null {
-  const opts: AnalyzeOptions = typeof speedOrOpts === "string" ? { speed: speedOrOpts } : speedOrOpts;
-  const speed = opts.speed ?? "moderate";
-
+ * Rather than the old state machine that only compared the last two or three
+ * sessions, this fits a straight line through the RIR-adjusted estimated 1RM
+ * of every recent session and projects it one session forward. The slope tells
+ * us, in plain terms, whether the lifter is gaining, holding, or slipping; the
+ * projection sets the next weight. Per-set RIR ("reps left in the tank") makes
+ * the per-session strength estimate honest — a hard set and an easy set at the
+ * same weight×reps are not the same data point.
+ *
+ * `history` is expected newest-first (the order the API returns it).
+ */
+export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResult | null {
+  // Build chronological (oldest → newest) per-session summaries.
   const sessions: SessionSummary[] = [];
   [...history].reverse().forEach(w => {
     const f = w.exercises.find(e => e.id === exId);
     if (!f || !f.sets.length) return;
-    // Pick the top set as a single unit (heaviest weight, tie-break on most
-    // reps) so topW and topR always come from the same actual set. Warmup
-    // sets are excluded so a 2-plate warmup doesn't masquerade as the top set.
+    // Top set as a single unit (heaviest weight, tie-break on reps) so topW and
+    // topR come from the same real set. Warmups are excluded so a heavy primer
+    // can't masquerade as the working top set.
     const workingSets = f.sets.filter(s => !s.is_warmup);
-    const pairs = workingSets
-      .map(s => ({ w: parseFloat(s.weight), r: parseInt(s.reps) }))
-      .filter(p => !isNaN(p.w) && p.w !== 0)
-      .map(p => ({ w: p.w, r: !isNaN(p.r) && p.r > 0 ? p.r : 0 }));
-    if (!pairs.length) return;
-    const top = pairs.reduce((a, b) => {
-      if (b.w !== a.w) return b.w > a.w ? b : a;
-      return b.r > a.r ? b : a;
-    });
-    // Max per-set RPE across this exercise's working sets — represents the
-    // peak effort the user reached on this lift, which is what we want to
-    // feed the multiplier (a single hard set says more about progression
-    // headroom than an average).
-    const perSetRpes = workingSets
-      .map(s => (typeof s.rpe === "number" && Number.isFinite(s.rpe) ? s.rpe : null))
-      .filter((r): r is number => r !== null);
-    const exerciseRpe = perSetRpes.length ? Math.max(...perSetRpes) : null;
+    const parsed = workingSets
+      .map(s => ({ w: parseFloat(s.weight), r: parseInt(s.reps), rir: rpeToRir(s.rpe) }))
+      .filter(p => Number.isFinite(p.w) && p.w !== 0)
+      .map(p => ({ w: p.w, r: Number.isFinite(p.r) && p.r > 0 ? p.r : 0, rir: p.rir }));
+    if (!parsed.length) return;
+    const top = parsed.reduce((a, b) => (b.w !== a.w ? (b.w > a.w ? b : a) : (b.r > a.r ? b : a)));
+    // When the top set carried no RIR we treat it as taken to failure (rir 0),
+    // which makes e1rm collapse to plain Epley — i.e. no worse than before.
+    const e1rm = top.r > 0 ? e1rmWithRir(top.w, top.r, top.rir ?? 0) : top.w;
     sessions.push({
       date: w.date,
       topW: top.w,
       topR: top.r,
       totalSets: f.sets.length,
-      sessionRpe: w.rpe ?? null,
-      exerciseRpe,
+      topRir: top.rir,
+      e1rm,
     });
   });
   if (!sessions.length) return null;
 
-  const last  = sessions[sessions.length - 1];
-  const prev  = sessions.length >= 2 ? sessions[sessions.length - 2] : null;
-  const back2 = sessions.length >= 3 ? sessions[sessions.length - 3] : null;
-  const est1RM = last.topR > 0 ? orm1(last.topW, last.topR) : null;
-  // Apply the RPE multiplier on top of the speed-driven base step: an "easy"
-  // last session bumps the jump up, a "brutal" one eases off. Per-exercise
-  // RPE (max of working sets) takes precedence over the post-session overall
-  // RPE — actual effort on THIS lift is more informative than a session vibe.
-  const effectiveRpe = last.exerciseRpe ?? last.sessionRpe;
-  const rpeMult = lookupRpeMultiplier(exId, effectiveRpe, opts);
-  const step = (UPPER_IDS.has(exId) ? 2.5 : 5) * STEP_MULT[speed] * rpeMult;
-  // Round to the nearest plate-pair we'd actually load on a barbell.
-  const plate    = UPPER_IDS.has(exId) ? 2.5 : 5;
-  const roundUp  = (raw: number) => Math.max(plate, Math.round(raw / plate) * plate);
+  const last = sessions[sessions.length - 1];
+  const plate = UPPER_IDS.has(exId) ? 2.5 : 5;
+  const roundPlate = (raw: number) => Math.max(plate, Math.round(raw / plate) * plate);
+  const targetReps = last.topR > 0 ? last.topR : 8;
+  const est1RM = last.topR > 0 ? last.e1rm : null;
+
+  // ── First session: no trend yet. Seed a sensible target off how much the
+  // user had left in the tank. ──────────────────────────────────────────────
+  if (sessions.length === 1) {
+    const rir = last.topRir;
+    let nextWeight = last.topW;
+    let nextReps = targetReps;
+    let reason: string;
+    if (rir != null && rir >= 3) {
+      nextWeight = roundPlate(last.topW + plate);
+      reason = `First time logging this — you left ~${rir} in the tank, so add ${plate}kg next time.`;
+    } else if (rir != null && rir <= 1) {
+      nextReps = targetReps + 1;
+      reason = `First time logging this, and you pushed near failure. Hold ${last.topW}kg and chase one more rep.`;
+    } else {
+      nextReps = targetReps + 1;
+      reason = `Baseline logged at ${last.topW}kg. Repeat it and add a rep before you add weight.`;
+    }
+    return { sessions, last, est1RM, status: STATUS.NEW, nextWeight, nextReps, trendPerSession: 0, reason };
+  }
+
+  // ── Fit the trend of RIR-adjusted 1RM over the recent window. ─────────────
+  const window = sessions.slice(-TREND_WINDOW);
+  const slope = linregSlope(window.map((s, i) => [i, s.e1rm] as const)); // kg per session
+  const lastE1 = last.e1rm || last.topW;
+  // Project one session forward, then clamp the growth to a sane band so a
+  // single freak session can't recommend a wild jump (or a steep drop).
+  const predicted = clamp(lastE1 + slope, lastE1 * 0.95, lastE1 * 1.08);
+  const growth = lastE1 > 0 ? predicted / lastE1 : 1;
+  // "Holding" gets a small dead-band tied to the lift's plate so the read
+  // isn't knife-edge around zero.
+  const gainThresh = plate * 0.1;
 
   let status: StatusDef;
   let nextWeight: number;
-  let nextReps: number;
+  let nextReps = targetReps;
   let reason: string;
 
-  if (sessions.length === 1) {
-    status = STATUS.NEW;
-    nextWeight = step > 0 ? last.topW + step : last.topW;
-    nextReps = last.topR || 8;
-    reason = `First session at ${last.topW}kg. Felt manageable? Add ${step}kg next time and match that rep count.`;
-  } else {
-    const wD = last.topW - prev!.topW;
-    const rD = last.topR - prev!.topR;
-    const stalled3 = back2 && back2.topW === last.topW && prev!.topW === last.topW;
-    if (stalled3) {
-      status = STATUS.DELOAD;
-      const refStep = step > 0 ? step : plate;
-      nextWeight = Math.round(last.topW * 0.85 / refStep) * refStep;
-      nextReps = last.topR + 2;
-      reason = `Three sessions at the same weight. Drop to ${nextWeight}kg (~85%), nail the reps with perfect form, then attack it fresh next block.`;
-    } else if (wD > 0) {
-      status = STATUS.GAINING;
-      nextWeight = last.topW + step;
-      nextReps = last.topR;
-      reason = `Up ${wD}kg from last session. Keep adding ${step}kg while it's moving.`;
-    } else if (wD === 0 && rD > 0) {
-      if (last.topR >= 12) {
-        status = STATUS.READY;
-        nextWeight = roundUp(last.topW + step);
-        nextReps = Math.max(6, last.topR - 4);
-        reason = `${last.topR} reps at ${last.topW}kg. Time to bump. Move to ${nextWeight}kg, expect ~${nextReps} reps. That's the deal.`;
-      } else {
-        status = STATUS.BUILDING; nextWeight = last.topW; nextReps = last.topR + 1;
-        reason = `Reps up to ${last.topR}. Keep milking this weight. Push for ${last.topR + 1} before touching the plates.`;
-      }
-    } else if (wD === 0 && rD === 0) {
-      status = STATUS.PLATEAUED; nextWeight = last.topW; nextReps = last.topR + 1;
-      reason = `Same numbers twice in a row. Longer rest (3 min), tighter setup, one more rep.`;
+  if (slope > gainThresh) {
+    status = STATUS.GAINING;
+    nextWeight = roundPlate(last.topW * growth);
+    if (nextWeight > last.topW) {
+      reason = `Trending up ~${slope.toFixed(1)}kg/session. Step up to ${nextWeight}kg for ${nextReps}.`;
     } else {
-      status = STATUS.STALLED; nextWeight = prev!.topW; nextReps = last.topR + 2;
-      reason = `Weight dropped from ${prev!.topW}kg to ${last.topW}kg. Step back, nail it, re-earn it.`;
+      // Positive trend, but not enough yet to round up a plate — bank a rep.
+      nextWeight = last.topW;
+      nextReps = targetReps + 1;
+      reason = `Climbing steadily. Hold ${last.topW}kg and bank rep #${nextReps} — the next plate is close.`;
     }
+  } else if (slope < -gainThresh) {
+    status = STATUS.SLIPPING;
+    nextWeight = roundPlate(last.topW * growth); // growth < 1 here → a small back-off
+    reason = nextWeight < last.topW
+      ? `Drifting down lately. Reset to ${nextWeight}kg, own every rep, then build back up.`
+      : `Drifting down lately. Stay at ${last.topW}kg and rebuild your reps before pushing on.`;
+  } else {
+    status = STATUS.HOLDING;
+    nextWeight = last.topW;
+    nextReps = targetReps + 1;
+    reason = `Flat across your last ${window.length} sessions. Same ${last.topW}kg — chase rep #${nextReps} to crack it open.`;
   }
-  return { sessions, last, est1RM, status, nextWeight, nextReps, reason };
+
+  return { sessions, last, est1RM, status, nextWeight, nextReps, trendPerSession: slope, reason };
 }
 
 

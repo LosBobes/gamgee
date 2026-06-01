@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Check, Moon, Wrench, Sparkles, Search, X, Heart, Eye, Plus, Copy, Trash2, Gauge } from "lucide-react";
-import type { WeekPlanDay, WeeklyPlan, DayPlan, WeekPlan, ProgressionSpeed, Regime, ExerciseDef, ExerciseConfig } from "../../types";
+import type { WeekPlanDay, WeeklyPlan, DayPlan, WeekPlan, Regime, ExerciseDef, ExerciseConfig } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
 import { FOCUS, getFocusDef } from "../../data/focuses";
 import { ALL_EX, isCustomExerciseId } from "../../data/exercises";
@@ -12,16 +12,8 @@ interface Props {
   initial:   WeeklyPlan | null;
   onPersist: (plan: WeeklyPlan) => void;
   onDone:    () => void;
-  progressionSpeed: ProgressionSpeed;
-  onProgressionSpeedChange: (speed: ProgressionSpeed) => void;
   authFetch?: (url: string, opts?: RequestInit) => Promise<Response>;
 }
-
-const PROGRESSION_OPTIONS: Array<{ id: ProgressionSpeed; label: string; desc: string }> = [
-  { id: "slow",     label: "Slow & Steady", desc: "Smaller weight jumps (1.25/2.5 kg)." },
-  { id: "moderate", label: "Moderate",      desc: "Standard 2.5/5 kg jumps." },
-  { id: "fast",     label: "Aggressive",    desc: "Bigger jumps (5/10 kg)." },
-];
 
 const DEFAULT_FOCUS = Object.keys(FOCUS)[0];
 const WEEK_KEYS: WeekPlanDay[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
@@ -105,7 +97,7 @@ function weeksToPlan(weeks: WeekPlan[], currentWeekIdx: number): WeeklyPlan {
   };
 }
 
-export default function WizardWeeklySetup({ initial, onPersist, onDone, progressionSpeed, onProgressionSpeedChange, authFetch }: Props) {
+export default function WizardWeeklySetup({ initial, onPersist, onDone, authFetch }: Props) {
   const t = useTxt();
   const [showGenerator, setShowGenerator] = useState(false);
 
@@ -339,8 +331,6 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
       <RegimeQuestionnairePanel
         authFetch={authFetch}
         onSaved={applyGeneratedRegime}
-        progressionSpeed={progressionSpeed}
-        onProgressionSpeedChange={onProgressionSpeedChange}
         onCancel={() => setShowGenerator(false)}
         backLabel={t("BACK TO PLAN", "BACK TO PROGRAM", "BACK TO ERA")}
         closeOnSave
@@ -382,33 +372,6 @@ export default function WizardWeeklySetup({ initial, onPersist, onDone, progress
           </button>
         </div>
       )}
-
-      {/* Progression speed — written through to user prefs immediately. */}
-      <div style={{ margin: "4px 0 12px" }}>
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-          {t("Progression speed", "Progression speed", "Progression speed")}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {PROGRESSION_OPTIONS.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => onProgressionSpeedChange(p.id)}
-              className={`chip ${progressionSpeed === p.id ? "active" : ""}`}
-              style={{
-                padding: "6px 10px",
-                border: `1px solid ${progressionSpeed === p.id ? "var(--accent)" : "var(--ad)"}`,
-                borderRadius: 999,
-                background: progressionSpeed === p.id ? "var(--ad2)" : "transparent",
-                color: "inherit", cursor: "pointer",
-              }}
-              title={p.desc}
-            >
-              <span style={{ fontWeight: 600 }}>{p.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
 
       {/* Week tabs — adding a week clones the active week so day structures
           and RPEs carry over and the user tweaks from there. Each week is

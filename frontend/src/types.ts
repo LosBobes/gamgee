@@ -107,7 +107,6 @@ export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>> & {
   weeks?: WeekPlan[] | null;
   current_week_index?: number | null;
 };
-export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 

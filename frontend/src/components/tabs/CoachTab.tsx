@@ -1,25 +1,24 @@
 import { Brain, ChevronRight } from "lucide-react";
-import type { ExerciseDef, WorkoutSession, ProgressionSpeed } from "../../types";
+import type { ExerciseDef, WorkoutSession } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
 import { useTxt } from "../../context/ToneContext";
 
 interface Props {
   history: WorkoutSession[];
-  progressionSpeed: ProgressionSpeed;
-  rpeMultipliers: Record<string, number> | null;
 }
 
+// Sort so the lifts that need attention float to the top: slipping first,
+// then holding, then the ones already moving, then brand-new baselines.
 const STATUS_ORDER: Record<string, number> = {
-  "DELOAD": 0, "STALLED": 1, "PLATEAU": 2,
-  "READY TO JUMP": 3, "PROGRESSING": 4, "BUILDING REPS": 5, "NEW": 6,
+  "BACKING OFF": 0, "HOLDING": 1, "PROGRESSING": 2, "BASELINE": 3,
 };
 
-export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: Props) {
+export default function CoachTab({ history }: Props) {
   const t = useTxt();
   const coachData = ALL_EX
     .filter(ex => !ex.is_assisted)
-    .map(ex => ({ ex, a: analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) }))
+    .map(ex => ({ ex, a: analyzeEx(ex.id, history) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
 
@@ -34,8 +33,12 @@ export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: 
             )}
           </div>
           {coachData.map(({ ex, a }) => {
-            const { sessions, last, est1RM, status, nextWeight, nextReps, reason } = a;
-            const maxW = Math.max(...sessions.map(s => s.topW));
+            const { sessions, last, est1RM, status, nextWeight, nextReps, reason, trendPerSession } = a;
+            // Plot the RIR-adjusted estimated 1RM — that's the series the trend
+            // is actually fit on, so the bars match the read.
+            const maxE = Math.max(...sessions.map(s => s.e1rm));
+            const arrow = trendPerSession > 0.05 ? "▲" : trendPerSession < -0.05 ? "▼" : "→";
+            const trendTxt = `${arrow} ${trendPerSession >= 0 ? "+" : ""}${trendPerSession.toFixed(1)}kg/session`;
             return (
               <div key={ex.id} className="coach-card">
                 <div className="coach-hdr">
@@ -51,17 +54,17 @@ export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: 
                   {sessions.length > 1 && (
                     <div className="trend-wrap">
                       {sessions.map((s, i) => {
-                        const h      = maxW > 0 ? Math.max(4, Math.round((s.topW / maxW) * 28)) : 4;
+                        const h      = maxE > 0 ? Math.max(4, Math.round((s.e1rm / maxE) * 28)) : 4;
                         const isLast = i === sessions.length - 1;
                         return (
-                          <div key={i} title={`${s.topW}kg`} style={{
+                          <div key={i} title={`~${s.e1rm}kg est. 1RM`} style={{
                             width: 7, height: h, borderRadius: "2px 2px 0 0", flexShrink: 0,
                             background: isLast ? status.color : "var(--s3)",
                             opacity: isLast ? 1 : 0.4 + 0.6 * (i / sessions.length),
                           }} />
                         );
                       })}
-                      <span style={{ fontSize: 8, color: "var(--muted)", marginLeft: 5, alignSelf: "center", letterSpacing: 1 }}>TREND</span>
+                      <span style={{ fontSize: 8, color: status.color, marginLeft: 5, alignSelf: "center", letterSpacing: 0.5 }}>{trendTxt}</span>
                     </div>
                   )}
                   <div className="coach-row">
