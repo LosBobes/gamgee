@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { lerpFrameEquip, lerpPose } from "../../src/components/exercise/StickFigure";
-import type { FrameEquipState, Pose } from "../../src/components/exercise/StickFigure";
+import {
+  lerpFrameEquip, lerpPose, catmullPt, splineOptPt, splinePose, splineFrameEquip,
+} from "../../src/components/exercise/StickFigure";
+import type { FrameEquipState, Point, Pose } from "../../src/components/exercise/StickFigure";
 
 const BASE_POSE: Pose = {
   head:     [50, 20],
@@ -12,6 +14,11 @@ const BASE_POSE: Pose = {
   knee:     [50, 115],
   ankle:    [50, 140],
   toe:      [60, 140],
+};
+
+const closeTo = (pt: Point | undefined, [x, y]: [number, number]) => {
+  expect(pt![0]).toBeCloseTo(x, 5);
+  expect(pt![1]).toBeCloseTo(y, 5);
 };
 
 describe("lerpPose", () => {
@@ -65,5 +72,49 @@ describe("lerpFrameEquip", () => {
     expect(Object.keys(mid ?? {}).sort()).toEqual(["bar1", "wire1"]);
     expect(mid?.bar1.pos).toEqual([10, 10]);
     expect(mid?.wire1.to).toEqual([100, 100]);
+  });
+});
+
+describe("catmullPt", () => {
+  it("passes through the inner control points at the segment ends", () => {
+    const p0: Point = [0, 0], p1: Point = [10, 10], p2: Point = [30, 5], p3: Point = [40, 40];
+    expect(catmullPt(p0, p1, p2, p3, 0)).toEqual([10, 10]);
+    expect(catmullPt(p0, p1, p2, p3, 1)).toEqual([30, 5]);
+  });
+
+  it("stays on the line for collinear, evenly-spaced control points", () => {
+    const p0: Point = [0, 0], p1: Point = [10, 0], p2: Point = [20, 0], p3: Point = [30, 0];
+    closeTo(catmullPt(p0, p1, p2, p3, 0.5), [15, 0]);
+  });
+});
+
+describe("splineOptPt", () => {
+  it("passes a single-sided point through unchanged", () => {
+    expect(splineOptPt(undefined, [5, 5], undefined, undefined, 0.5)).toEqual([5, 5]);
+    expect(splineOptPt(undefined, undefined, [7, 7], undefined, 0.5)).toEqual([7, 7]);
+  });
+});
+
+describe("splinePose", () => {
+  it("reproduces the two inner control poses exactly at t=0 and t=1", () => {
+    const p1: Pose = { ...BASE_POSE, hand: [40, 70] };
+    const p2: Pose = { ...BASE_POSE, hand: [60, 50] };
+    const p0: Pose = { ...BASE_POSE, hand: [30, 85] };
+    const p3: Pose = { ...BASE_POSE, hand: [70, 40] };
+    expect(splinePose(p0, p1, p2, p3, 0).hand).toEqual([40, 70]);
+    expect(splinePose(p0, p1, p2, p3, 1).hand).toEqual([60, 50]);
+  });
+});
+
+describe("splineFrameEquip", () => {
+  it("passes through the inner pos at the ends and lerps angle", () => {
+    const e1: Record<string, FrameEquipState> = { bar1: { pos: [40, 60], angle: 0 } };
+    const e2: Record<string, FrameEquipState> = { bar1: { pos: [60, 80], angle: 90 } };
+    const start = splineFrameEquip(undefined, e1, e2, undefined, 0);
+    const end = splineFrameEquip(undefined, e1, e2, undefined, 1);
+    expect(start?.bar1.pos).toEqual([40, 60]);
+    expect(end?.bar1.pos).toEqual([60, 80]);
+    const mid = splineFrameEquip(undefined, e1, e2, undefined, 0.5);
+    expect(mid?.bar1.angle).toBe(45);
   });
 });

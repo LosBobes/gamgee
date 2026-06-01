@@ -555,6 +555,68 @@ export function lerpPose(a: Pose, b: Pose, t: number): Pose {
   return out;
 }
 
+// ── Smooth (Catmull-Rom) interpolation ──────────────────────────────────────
+//
+// The linear helpers above (paired with the old per-segment cosine ease) brake
+// to a dead stop at *every* keyframe — robotic — and chord straight across the
+// curved arcs a limb traces, which shortens ("telescopes") the bones mid-rep.
+// The path below instead threads a Catmull-Rom curve through the keyframe poses
+// so velocity stays continuous (the figure only slows where a rep naturally
+// reverses), then a bone-length lock reprojects each segment to its true length
+// so nothing telescopes. Keyframes are still hit exactly.
+
+/** Uniform Catmull-Rom on a scalar. p1→p2 is the live segment; p0/p3 are the
+ * neighbouring control points (clamp them to p1/p2 at the sequence ends). */
+const catmull = (p0: number, p1: number, p2: number, p3: number, t: number): number => {
+  const t2 = t * t, t3 = t2 * t;
+  return 0.5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+};
+export const catmullPt = (p0: Point, p1: Point, p2: Point, p3: Point, t: number): Point =>
+  [catmull(p0[0], p1[0], p2[0], p3[0], t), catmull(p0[1], p1[1], p2[1], p3[1], t)];
+
+/** Catmull-Rom for an optional point. Needs the two inner control points; with
+ * only one present it passes that through (matching the linear helper), so a
+ * bar that appears mid-motion doesn't snap from undefined. */
+export function splineOptPt(
+  p0: Point | undefined, p1: Point | undefined, p2: Point | undefined, p3: Point | undefined, t: number,
+): Point | undefined {
+  if (p1 && p2) return catmullPt(p0 ?? p1, p1, p2, p3 ?? p2, t);
+  return p1 ?? p2;
+}
+
+/** Catmull-Rom pose interpolation across four control poses for the p1→p2
+ * segment at local t in [0,1]. Secondary limbs (arm2/leg2) are linearly blended
+ * between the two inner poses — they're rare and don't need the curve. */
+export function splinePose(p0: Pose, p1: Pose, p2: Pose, p3: Pose, t: number): Pose {
+  const out: Pose = {
+    head:     catmullPt(p0.head,     p1.head,     p2.head,     p3.head,     t),
+    neck:     catmullPt(p0.neck,     p1.neck,     p2.neck,     p3.neck,     t),
+    shoulder: catmullPt(p0.shoulder, p1.shoulder, p2.shoulder, p3.shoulder, t),
+    elbow:    catmullPt(p0.elbow,    p1.elbow,    p2.elbow,    p3.elbow,    t),
+    hand:     catmullPt(p0.hand,     p1.hand,     p2.hand,     p3.hand,     t),
+    hip:      catmullPt(p0.hip,      p1.hip,      p2.hip,      p3.hip,      t),
+    knee:     catmullPt(p0.knee,     p1.knee,     p2.knee,     p3.knee,     t),
+    ankle:    catmullPt(p0.ankle,    p1.ankle,    p2.ankle,    p3.ankle,    t),
+    toe:      catmullPt(p0.toe,      p1.toe,      p2.toe,      p3.toe,      t),
+  };
+  if (p1.arm2 || p2.arm2) {
+    out.arm2 = {
+      shoulder: lerpOpt(p1.arm2?.shoulder, p2.arm2?.shoulder, t),
+      elbow:    lerpOpt(p1.arm2?.elbow,    p2.arm2?.elbow,    t),
+      hand:     lerpOpt(p1.arm2?.hand,     p2.arm2?.hand,     t),
+    };
+  }
+  if (p1.leg2 || p2.leg2) {
+    out.leg2 = {
+      hip:   lerpOpt(p1.leg2?.hip,   p2.leg2?.hip,   t),
+      knee:  lerpOpt(p1.leg2?.knee,  p2.leg2?.knee,  t),
+      ankle: lerpOpt(p1.leg2?.ankle, p2.leg2?.ankle, t),
+      toe:   lerpOpt(p1.leg2?.toe,   p2.leg2?.toe,   t),
+    };
+  }
+  return out;
+}
+
 // Interpolate two per-frame equipment maps. Properties that only exist in one
 // frame are passed through unchanged so a barbell that "appears" mid-motion
 // doesn't silently snap from undefined.
@@ -579,6 +641,31 @@ export function lerpFrameEquip(
       merged.angle = sa?.angle ?? sb?.angle;
     }
     out[id] = merged;
+  }
+  return out;
+}
+
+/** Catmull-Rom counterpart of {@link lerpFrameEquip}: splines pos/from/to so a
+ * bar tracks the (splined) hands instead of drifting off them mid-rep; angle
+ * stays linear. `e1`→`e2` is the live pair; `e0`/`e3` are the neighbours. */
+export function splineFrameEquip(
+  e0: Record<string, FrameEquipState> | undefined,
+  e1: Record<string, FrameEquipState> | undefined,
+  e2: Record<string, FrameEquipState> | undefined,
+  e3: Record<string, FrameEquipState> | undefined,
+  t: number,
+): Record<string, FrameEquipState> | undefined {
+  if (!e1 && !e2) return undefined;
+  const ids = new Set([...Object.keys(e1 ?? {}), ...Object.keys(e2 ?? {})]);
+  const out: Record<string, FrameEquipState> = {};
+  for (const id of ids) {
+    const a = e1?.[id], b = e2?.[id], pre = e0?.[id], post = e3?.[id];
+    out[id] = {
+      pos:   splineOptPt(pre?.pos,  a?.pos,  b?.pos,  post?.pos,  t),
+      from:  splineOptPt(pre?.from, a?.from, b?.from, post?.from, t),
+      to:    splineOptPt(pre?.to,   a?.to,   b?.to,   post?.to,   t),
+      angle: a?.angle !== undefined && b?.angle !== undefined ? lerp(a.angle, b.angle, t) : a?.angle ?? b?.angle,
+    };
   }
   return out;
 }

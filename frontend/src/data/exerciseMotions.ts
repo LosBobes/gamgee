@@ -1,8 +1,11 @@
 // Motion keyframes for the exercise stick-figure animations.
 //
 // Coordinate system: 100 (wide) x 160 (tall) viewBox, +y points down.
-// Each exercise is a list of poses interpolated by ExerciseAnimation with
-// cosine ease-in-out between adjacent frames.
+// Each exercise is a list of poses. ExerciseAnimation threads a Catmull-Rom
+// spline through them, so motion stays smooth through the interior keyframes
+// and only slows where the rep naturally reverses (no per-keyframe stutter),
+// and following the limb's arc keeps the bones from telescoping. The first and
+// last frame should share a pose so the loop is seamless.
 //
 // Reference segment lengths (kept ~constant across poses to avoid telescoping):
 //   torso   shoulder → hip  ≈ 50
@@ -1410,15 +1413,15 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   side_plank:   { name: "Side plank",       frames: SIDE_PLANK_FRAMES,   duration: 2400, floor: true, category: "Core", rig: RIG_SINGLE },
 
   // ── Cardio ──────────────────────────────────────────────────────────────
-  run:         { name: "Running",      frames: RUN_FRAMES,     duration: 600,  floor: true, category: "Cardio", rig: RIG_ASYM },
-  cycle:       { name: "Cycling",      frames: CYCLE_FRAMES,   duration: 700,               category: "Cardio", rig: RIG_ASYM },
+  run:         { name: "Running",      frames: RUN_FRAMES,     duration: 900,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  cycle:       { name: "Cycling",      frames: CYCLE_FRAMES,   duration: 1000,               category: "Cardio", rig: RIG_ASYM },
   row_erg:     { name: "Rowing erg",   frames: ROW_ERG_FRAMES, duration: 2000,              category: "Cardio", rig: RIG_SYMMETRIC },
-  jump_rope:   { name: "Jump rope",    frames: JUMP_FRAMES,    duration: 600,  floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
-  stair:       { name: "Stair climber", frames: STAIR_FRAMES,  duration: 700,  floor: true, category: "Cardio", rig: RIG_ASYM },
-  assault:     { name: "Assault bike", frames: ASSAULT_FRAMES, duration: 700,               category: "Cardio", rig: RIG_ASYM },
+  jump_rope:   { name: "Jump rope",    frames: JUMP_FRAMES,    duration: 850,  floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
+  stair:       { name: "Stair climber", frames: STAIR_FRAMES,  duration: 1100,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  assault:     { name: "Assault bike", frames: ASSAULT_FRAMES, duration: 1000,               category: "Cardio", rig: RIG_ASYM },
   swim:        { name: "Swimming",     frames: SWIM_FRAMES,    duration: 1400, floor: true, category: "Cardio", rig: RIG_ASYM },
   sled_push:   { name: "Sled push",    frames: SLED_FRAMES,    duration: 1200, floor: true, category: "Cardio", rig: RIG_ASYM },
-  battle_rope: { name: "Battle ropes", frames: BATTLE_FRAMES,  duration: 700,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  battle_rope: { name: "Battle ropes", frames: BATTLE_FRAMES,  duration: 900,  floor: true, category: "Cardio", rig: RIG_ASYM },
   hiit:        { name: "HIIT",         frames: HIIT_FRAMES,    duration: 2000, floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
 };
 
