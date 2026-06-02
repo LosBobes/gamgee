@@ -46,6 +46,10 @@ export interface PersonalRecord { name: string; weight: number; reps: number; da
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
 export type PRDict = Record<string, PersonalRecord>;
 export interface StatusDef { label: string; color: string; bg: string; }
+/** A manual steer for one exercise: the next-session target the user dialled in
+ * on the diagnostics chart. While set, it overrides the auto-trend everywhere
+ * the analyzer's recommendation surfaces (coach, in-workout APPLY) until reset. */
+export interface ProgressionOverride { weight: number; reps: number; }
 export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; rotate?: number; }
 export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;

@@ -45,4 +45,7 @@ export const STATUS: Record<string, StatusDef> = {
   GAINING:  { label: "PROGRESSING", color: "#52B788", bg: "rgba(82,183,136,0.12)"  },
   HOLDING:  { label: "HOLDING",     color: "#6C9FD4", bg: "rgba(108,159,212,0.12)" },
   SLIPPING: { label: "BACKING OFF", color: "#E8981E", bg: "rgba(232,152,30,0.12)"  },
+  // Set when the user has manually steered this lift's next target on the
+  // diagnostics chart — the auto-trend is paused in its favour.
+  STEERED:  { label: "STEERING",    color: "#A07CF0", bg: "rgba(160,124,240,0.12)" },
 };

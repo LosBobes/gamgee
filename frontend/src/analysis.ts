@@ -1,4 +1,4 @@
-import type { WorkoutSession, StatusDef, ExerciseConfig } from "./types";
+import type { WorkoutSession, StatusDef, ExerciseConfig, ProgressionOverride } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1, e1rmWithRir, rpeToRir } from "./utils";
 
@@ -60,8 +60,29 @@ const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.m
  * same weight×reps are not the same data point.
  *
  * `history` is expected newest-first (the order the API returns it).
+ *
+ * When `override` is supplied (the user steered this lift on the diagnostics
+ * chart), the trend still drives the read but the recommended next target is
+ * replaced by the override and the status flips to STEERED.
  */
-export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResult | null {
+export function analyzeEx(
+  exId: string,
+  history: WorkoutSession[],
+  override?: ProgressionOverride | null,
+): AnalysisResult | null {
+  // Fold a manual steer over a computed result: keep the trend/sessions/est1RM
+  // but hand back the user's target and flag it as steered.
+  const steer = (r: AnalysisResult): AnalysisResult =>
+    override && Number.isFinite(override.weight) && override.weight > 0
+      ? {
+          ...r,
+          status: STATUS.STEERED,
+          nextWeight: override.weight,
+          nextReps: Math.max(1, Math.round(override.reps)),
+          reason: `You're steering this lift — aiming for ${override.weight}kg × ${Math.max(1, Math.round(override.reps))}. Reset to hand it back to the auto-trend.`,
+        }
+      : r;
+
   // Build chronological (oldest → newest) per-session summaries.
   const sessions: SessionSummary[] = [];
   [...history].reverse().forEach(w => {
@@ -114,7 +135,7 @@ export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResu
       nextReps = targetReps + 1;
       reason = `Baseline logged at ${last.topW}kg. Repeat it and add a rep before you add weight.`;
     }
-    return { sessions, last, est1RM, status: STATUS.NEW, nextWeight, nextReps, trendPerSession: 0, reason };
+    return steer({ sessions, last, est1RM, status: STATUS.NEW, nextWeight, nextReps, trendPerSession: 0, reason });
   }
 
   // ── Fit the trend of RIR-adjusted 1RM over the recent window. ─────────────
@@ -158,7 +179,7 @@ export function analyzeEx(exId: string, history: WorkoutSession[]): AnalysisResu
     reason = `Flat across your last ${window.length} sessions. Same ${last.topW}kg — chase rep #${nextReps} to crack it open.`;
   }
 
-  return { sessions, last, est1RM, status, nextWeight, nextReps, trendPerSession: slope, reason };
+  return steer({ sessions, last, est1RM, status, nextWeight, nextReps, trendPerSession: slope, reason });
 }
 
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle, WorkoutTemplate, WorkoutTemplateDraft } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle, WorkoutTemplate, WorkoutTemplateDraft, ProgressionOverride } from "../../types";
 import WizardStart from "./WizardStart";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
@@ -29,6 +29,7 @@ interface Props {
   templates:       WorkoutTemplate[];
   onSaveTemplate:  (draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
   onLoadTemplate:  (tpl: WorkoutTemplate) => void;
+  progressionOverrides: Record<string, ProgressionOverride>;
   restPrefs:       RestPrefs;
   bodyweight:      number | null;
   wizardTransition: WizardTransitionStyle;
@@ -55,7 +56,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onLoadTemplate, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -219,6 +220,7 @@ export default function WorkoutTab({
             prs={prs}
             history={history}
             doneSets={doneSets}
+            progressionOverrides={progressionOverrides}
             restPrefs={restPrefs}
             bodyweight={bodyweight}
             onFinish={finishWorkout}

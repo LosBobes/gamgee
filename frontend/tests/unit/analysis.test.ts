@@ -174,6 +174,26 @@ describe("analyzeEx", () => {
     expect(res.nextWeight).toBe(100);
     expect(res.nextReps).toBe(6);
   });
+
+  it("honours a manual steer override (status flips, trend still computed)", () => {
+    const res = analyzeEx(
+      "bench",
+      history(session("2026-05-03", "62.5", "8"), session("2026-05-01", "60", "8")),
+      { weight: 80, reps: 5 },
+    )!;
+    expect(res.status.label).toBe("STEERING");
+    expect(res.nextWeight).toBe(80);
+    expect(res.nextReps).toBe(5);
+    // The underlying trend/sessions are preserved so the chart still reads true.
+    expect(res.sessions.length).toBe(2);
+    expect(res.trendPerSession).toBeGreaterThan(0);
+  });
+
+  it("ignores an invalid (zero/blank) steer override", () => {
+    const res = analyzeEx("bench", [session("2026-05-01", "60", "8", 3)], { weight: 0, reps: 5 })!;
+    expect(res.status.label).toBe("BASELINE");
+    expect(res.nextWeight).toBe(62.5);
+  });
 });
 
 describe("weightForRpe", () => {

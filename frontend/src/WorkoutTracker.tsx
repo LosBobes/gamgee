@@ -5,7 +5,7 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, WorkoutTemplate,
-  RestPrefs,
+  ProgressionOverride, RestPrefs,
   WizardTransitionStyle,
 } from "./types";
 import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION } from "./types";
@@ -173,6 +173,18 @@ export default function WorkoutTracker({
   // session or drop onto a weekday. Owned here so the wizard (load/save) and
   // the regimes tab (manage) share one source of truth.
   const [templates,      setTemplates]      = useState<WorkoutTemplate[]>([]);
+  // Manual progression steers, keyed by exercise id. When set (from the
+  // diagnostics chart) the analyzer's auto-trend is overridden by the user's
+  // target everywhere it's consumed (coach + in-workout APPLY).
+  const [progressionOverrides, setProgressionOverrides] = useState<Record<string, ProgressionOverride>>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_progression_overrides");
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  });
   const [conversations,  setConversations]  = useState<Conversation[]>([]);
   const [activeConvId,   setActiveConvId]   = useState<number | null>(null);
   // ChatTab registers a handler here so we can hand it real-time messages
@@ -239,6 +251,20 @@ export default function WorkoutTracker({
     if (ok) setTemplates(prev => prev.filter(t => t.id !== id));
     return ok;
   }, [authFetch]);
+
+  useEffect(() => {
+    localStorage.setItem("gamgee_progression_overrides", JSON.stringify(progressionOverrides));
+  }, [progressionOverrides]);
+
+  /** Set (or clear, with null) the manual steer for one exercise. */
+  const setProgressionOverride = useCallback((exId: string, override: ProgressionOverride | null) => {
+    setProgressionOverrides(prev => {
+      const next = { ...prev };
+      if (override && Number.isFinite(override.weight) && override.weight > 0) next[exId] = override;
+      else delete next[exId];
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--primary", primaryColor);
@@ -323,6 +349,7 @@ export default function WorkoutTracker({
     setAssignments([]);
     setConversations([]);
     setTemplates([]);
+    setProgressionOverrides({});
     setActiveConvId(null);
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
@@ -779,7 +806,7 @@ export default function WorkoutTracker({
   const applyProgressionAll = () => {
     setExercises(p => p.map(ex => {
       if (ex.type !== "strength" || ex.is_assisted) return ex;
-      const a = analyzeEx(ex.id, history);
+      const a = analyzeEx(ex.id, history, progressionOverrides[ex.id]);
       if (!a) return ex;
       return {
         ...ex,
@@ -950,7 +977,7 @@ export default function WorkoutTracker({
 
   // ── Derived ──
   const doneSets   = exercises.reduce((a, ex) => a + ex.sets.filter(s => s.done).length, 0);
-  const coachCount = ALL_EX.filter(ex => !ex.is_assisted && analyzeEx(ex.id, history) !== null).length;
+  const coachCount = ALL_EX.filter(ex => !ex.is_assisted && analyzeEx(ex.id, history, progressionOverrides[ex.id]) !== null).length;
 
   const logout = () => { localStorage.removeItem("iron_log_token"); setToken(null); };
 
@@ -1065,6 +1092,7 @@ export default function WorkoutTracker({
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             templates={templates} onSaveTemplate={saveTemplate} onLoadTemplate={loadTemplate}
+            progressionOverrides={progressionOverrides}
             restPrefs={restPrefs}
             bodyweight={bodyweightKg}
             wizardTransition={wizardTransition}
@@ -1152,7 +1180,7 @@ export default function WorkoutTracker({
           />
         )}
         {!completed && tab === "health"  && <HealthTab healthMetrics={healthMetrics} fetchHealthMetrics={fetchHealthMetrics} authFetch={authFetch} />}
-        {!completed && tab === "coach"     && <CoachTab history={history} />}
+        {!completed && tab === "coach"     && <CoachTab history={history} overrides={progressionOverrides} onSetOverride={setProgressionOverride} onUpdateSession={updateWorkout} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
         {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
