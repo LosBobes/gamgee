@@ -1,25 +1,48 @@
+import { useState } from "react";
 import { Brain, ChevronRight } from "lucide-react";
-import type { ExerciseDef, WorkoutSession, ProgressionSpeed } from "../../types";
+import type { ExerciseDef, WorkoutSession, ProgressionOverride } from "../../types";
 import { ALL_EX } from "../../data/exercises";
 import { analyzeEx, type AnalysisResult } from "../../analysis";
 import { useTxt } from "../../context/ToneContext";
+import ExerciseDiagnostics from "../exercise/ExerciseDiagnostics";
 
 interface Props {
   history: WorkoutSession[];
-  progressionSpeed: ProgressionSpeed;
-  rpeMultipliers: Record<string, number> | null;
+  overrides: Record<string, ProgressionOverride>;
+  onSetOverride: (exId: string, override: ProgressionOverride | null) => void;
+  onUpdateSession: (session: WorkoutSession) => void;
 }
 
+// Sort so the lifts that need attention float to the top: steered first (you
+// asked to drive them), then slipping, holding, progressing, then baselines.
 const STATUS_ORDER: Record<string, number> = {
-  "DELOAD": 0, "STALLED": 1, "PLATEAU": 2,
-  "READY TO JUMP": 3, "PROGRESSING": 4, "BUILDING REPS": 5, "NEW": 6,
+  "STEERING": 0, "BACKING OFF": 1, "HOLDING": 2, "PROGRESSING": 3, "BASELINE": 4,
 };
 
-export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: Props) {
+export default function CoachTab({ history, overrides, onSetOverride, onUpdateSession }: Props) {
   const t = useTxt();
+  const [detailId, setDetailId] = useState<string | null>(null);
+
+  if (detailId) {
+    const ex = ALL_EX.find(e => e.id === detailId);
+    if (ex) {
+      return (
+        <ExerciseDiagnostics
+          exId={ex.id}
+          exName={ex.name}
+          history={history}
+          override={overrides[ex.id] ?? null}
+          onSetOverride={onSetOverride}
+          onUpdateSession={onUpdateSession}
+          onBack={() => setDetailId(null)}
+        />
+      );
+    }
+  }
+
   const coachData = ALL_EX
     .filter(ex => !ex.is_assisted)
-    .map(ex => ({ ex, a: analyzeEx(ex.id, history, { speed: progressionSpeed, rpeMultipliers }) }))
+    .map(ex => ({ ex, a: analyzeEx(ex.id, history, overrides[ex.id]) }))
     .filter((item): item is { ex: ExerciseDef; a: AnalysisResult } => item.a !== null)
     .sort((x, y) => (STATUS_ORDER[x.a.status.label] ?? 9) - (STATUS_ORDER[y.a.status.label] ?? 9));
 
@@ -29,39 +52,52 @@ export default function CoachTab({ history, progressionSpeed, rpeMultipliers }: 
         <>
           <div className="coach-intro">
             {t(
-              "What to work on next, sorted by what needs the most attention. Red = intervene, amber = ready for a weight jump, green = moving forward.",
-              "What to hit next, sorted by what needs you most. Red = intervene now, amber = jump that weight, green = you're crushing it."
+              "What to work on next, sorted by what needs the most attention. Tap any lift for its chart — fix a past set or steer where it's heading.",
+              "What to hit next, sorted by what needs you most. Tap a lift to see the chart, fix a logged set, or grab the wheel.",
+              "What to hit next, sorted by what needs you most, bestie. Tap a lift for the chart — fix a set or steer the vibe."
             )}
           </div>
           {coachData.map(({ ex, a }) => {
-            const { sessions, last, est1RM, status, nextWeight, nextReps, reason } = a;
-            const maxW = Math.max(...sessions.map(s => s.topW));
+            const { sessions, last, est1RM, status, nextWeight, nextReps, reason, trendPerSession } = a;
+            // Plot the RIR-adjusted estimated 1RM — that's the series the trend
+            // is actually fit on, so the bars match the read.
+            const maxE = Math.max(...sessions.map(s => s.e1rm));
+            const arrow = trendPerSession > 0.05 ? "▲" : trendPerSession < -0.05 ? "▼" : "→";
+            const trendTxt = `${arrow} ${trendPerSession >= 0 ? "+" : ""}${trendPerSession.toFixed(1)}kg/session`;
             return (
-              <div key={ex.id} className="coach-card">
+              <div
+                key={ex.id}
+                className="coach-card coach-card-tappable"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailId(ex.id)}
+                onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setDetailId(ex.id); } }}
+                title="Open chart — edit past sets or steer the target"
+              >
                 <div className="coach-hdr">
                   <div>
                     <div className="coach-ex-name">{ex.name}</div>
                     <span className="session-count">{sessions.length} session{sessions.length !== 1 ? "s" : ""}</span>
                   </div>
                   <span className="status-badge" style={{ color: status.color, background: status.bg, borderColor: status.color }}>
-                    {status.label}
+                    {status.label} <ChevronRight size={11} style={{ verticalAlign: -1 }} />
                   </span>
                 </div>
                 <div className="coach-body">
                   {sessions.length > 1 && (
                     <div className="trend-wrap">
                       {sessions.map((s, i) => {
-                        const h      = maxW > 0 ? Math.max(4, Math.round((s.topW / maxW) * 28)) : 4;
+                        const h      = maxE > 0 ? Math.max(4, Math.round((s.e1rm / maxE) * 28)) : 4;
                         const isLast = i === sessions.length - 1;
                         return (
-                          <div key={i} title={`${s.topW}kg`} style={{
+                          <div key={i} title={`~${s.e1rm}kg est. 1RM`} style={{
                             width: 7, height: h, borderRadius: "2px 2px 0 0", flexShrink: 0,
                             background: isLast ? status.color : "var(--s3)",
                             opacity: isLast ? 1 : 0.4 + 0.6 * (i / sessions.length),
                           }} />
                         );
                       })}
-                      <span style={{ fontSize: 8, color: "var(--muted)", marginLeft: 5, alignSelf: "center", letterSpacing: 1 }}>TREND</span>
+                      <span style={{ fontSize: 8, color: status.color, marginLeft: 5, alignSelf: "center", letterSpacing: 0.5 }}>{trendTxt}</span>
                     </div>
                   )}
                   <div className="coach-row">

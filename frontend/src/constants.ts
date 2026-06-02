@@ -35,12 +35,17 @@ export const muscleGroups = (active: ActiveMuscles): Set<string> => {
   return groups;
 };
 
+/** Progression read, simplified to a plain trend direction. The analyzer fits
+ * the trend of your estimated 1RM over recent sessions and lands on one of
+ * these four. (The old seven-state machine — READY/BUILDING/PLATEAU/STALLED/
+ * DELOAD — collapsed into GAINING/HOLDING/SLIPPING plus the first-session
+ * BASELINE.) */
 export const STATUS: Record<string, StatusDef> = {
-  NEW:       { label: "NEW",           color: "#6A6558", bg: "rgba(106,101,88,0.15)"  },
-  GAINING:   { label: "PROGRESSING",   color: "#52B788", bg: "rgba(82,183,136,0.12)"  },
-  READY:     { label: "READY TO JUMP", color: "#E8981E", bg: "rgba(232,152,30,0.12)"  },
-  BUILDING:  { label: "BUILDING REPS", color: "#6C9FD4", bg: "rgba(108,159,212,0.12)" },
-  STALLED:   { label: "STALLED",       color: "#E04040", bg: "rgba(224,64,64,0.12)"   },
-  PLATEAUED: { label: "PLATEAU",       color: "#FF8C42", bg: "rgba(255,140,66,0.12)"  },
-  DELOAD:    { label: "DELOAD",        color: "#A07CF0", bg: "rgba(160,124,240,0.12)" },
+  NEW:      { label: "BASELINE",    color: "#6A6558", bg: "rgba(106,101,88,0.15)"  },
+  GAINING:  { label: "PROGRESSING", color: "#52B788", bg: "rgba(82,183,136,0.12)"  },
+  HOLDING:  { label: "HOLDING",     color: "#6C9FD4", bg: "rgba(108,159,212,0.12)" },
+  SLIPPING: { label: "BACKING OFF", color: "#E8981E", bg: "rgba(232,152,30,0.12)"  },
+  // Set when the user has manually steered this lift's next target on the
+  // diagnostics chart — the auto-trend is paused in its favour.
+  STEERED:  { label: "STEERING",    color: "#A07CF0", bg: "rgba(160,124,240,0.12)" },
 };

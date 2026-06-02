@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import StickFigure, { lerpPose, lerpPt, lerpFrameEquip } from "./StickFigure";
+import StickFigure, { splinePose, splineOptPt, splineFrameEquip } from "./StickFigure";
 import type { Pose, Point, RigConfig, Equipment, FrameEquipState } from "./StickFigure";
 
 export interface Frame {
@@ -25,8 +25,14 @@ export interface ExerciseAnimationProps {
   color?: string;
 }
 
-// Cosine ease-in-out — slows in/out of each keyframe for a natural rep tempo.
-const ease = (t: number) => 0.5 - 0.5 * Math.cos(t * Math.PI);
+// Index of the segment containing `t`: the largest i in [0, len-2] whose frame
+// starts at or before t. (Linear scan from the end; keyframe lists are short.)
+function segmentIndex(frames: Frame[], t: number): number {
+  for (let i = frames.length - 2; i >= 0; i--) {
+    if (t >= frames[i].t) return i;
+  }
+  return 0;
+}
 
 function sample(frames: Frame[], t: number): {
   pose: Pose; bar?: Point; equipment?: Record<string, FrameEquipState>;
@@ -36,22 +42,25 @@ function sample(frames: Frame[], t: number): {
     return { pose: frames[0].pose, bar: frames[0].bar, equipment: frames[0].equipment };
   }
 
-  for (let i = 0; i < frames.length - 1; i++) {
-    const a = frames[i], b = frames[i + 1];
-    if (t >= a.t && t <= b.t) {
-      const span = b.t - a.t || 1;
-      const local = ease((t - a.t) / span);
-      return {
-        pose: lerpPose(a.pose, b.pose, local),
-        bar:
-          a.bar && b.bar ? lerpPt(a.bar, b.bar, local) :
-          a.bar ?? b.bar,
-        equipment: lerpFrameEquip(a.equipment, b.equipment, local),
-      };
-    }
-  }
-  const last = frames[frames.length - 1];
-  return { pose: last.pose, bar: last.bar, equipment: last.equipment };
+  // Catmull-Rom through the keyframe poses. `a`→`b` is the live segment;
+  // `p0`/`p3` are the neighbouring control frames (clamped at the ends). No
+  // per-segment easing — the spline carries velocity smoothly through the
+  // interior keyframes and only reverses where the rep itself turns around,
+  // and because it follows the limb's arc instead of chording across it the
+  // bones no longer telescope the way straight-line interpolation made them.
+  const N = frames.length;
+  const i = segmentIndex(frames, t);
+  const a = frames[i], b = frames[i + 1];
+  const span = b.t - a.t || 1;
+  const local = Math.min(1, Math.max(0, (t - a.t) / span));
+  const p0 = frames[Math.max(0, i - 1)];
+  const p3 = frames[Math.min(N - 1, i + 2)];
+
+  return {
+    pose: splinePose(p0.pose, a.pose, b.pose, p3.pose, local),
+    bar: splineOptPt(p0.bar, a.bar, b.bar, p3.bar, local),
+    equipment: splineFrameEquip(p0.equipment, a.equipment, b.equipment, p3.equipment, local),
+  };
 }
 
 export default function ExerciseAnimation({

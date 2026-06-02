@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Dumbbell, TrendingUp } from "lucide-react";
-import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, ProgressionSpeed, RestPrefs } from "../../types";
+import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, RestPrefs, ProgressionOverride } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
 import ExercisePicker from "../ExercisePicker";
@@ -13,8 +13,7 @@ interface Props {
   prs:            PRDict;
   history:        WorkoutSession[];
   doneSets:       number;
-  progressionSpeed: ProgressionSpeed;
-  rpeMultipliers: Record<string, number> | null;
+  progressionOverrides: Record<string, ProgressionOverride>;
   restPrefs:      RestPrefs;
   bodyweight:     number | null;
   onFinish:       () => void;
@@ -37,7 +36,7 @@ interface RestState {
 }
 
 export default function ActiveWorkout({
-  exercises, prs, history, doneSets, progressionSpeed, rpeMultipliers, restPrefs, bodyweight,
+  exercises, prs, history, doneSets, progressionOverrides, restPrefs, bodyweight,
   onFinish, addExercise, removeExercise, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr,
   applyProgressionAll,
 }: Props) {
@@ -49,13 +48,11 @@ export default function ActiveWorkout({
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
 
-  const analyzeOpts = { speed: progressionSpeed, rpeMultipliers };
-
   // Show the "PROGRESS ALL" affordance only when at least one strength
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
   // has been logged yet — once you start checking sets, the per-card APPLY
   // remains available for surgical adjustments.
-  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && !ex.is_assisted && analyzeEx(ex.id, history, analyzeOpts) !== null);
+  const hasAnyAnalysis = exercises.some(ex => ex.type === "strength" && !ex.is_assisted && analyzeEx(ex.id, history, progressionOverrides[ex.id]) !== null);
 
   const tierSeconds = (tier: RestTier) =>
     tier === "custom" ? lastCustomSec : restPrefs[tier];
@@ -150,7 +147,7 @@ export default function ActiveWorkout({
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={ex.is_assisted ? null : analyzeEx(ex.id, history, analyzeOpts)}
+          analysis={ex.is_assisted ? null : analyzeEx(ex.id, history, progressionOverrides[ex.id])}
           restPrefs={restPrefs}
           bodyweight={bodyweight}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}

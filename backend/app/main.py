@@ -7,7 +7,7 @@ from sqlalchemy import text
 from .database import Base, engine
 from .routers import (
     items, workouts, prs, auth, health, admin, buddies, notifications, live,
-    feedback, events, content, trainers, regimes, assignments, chat,
+    feedback, events, content, trainers, regimes, assignments, chat, templates,
 )
 from .version import __version__
 
@@ -138,6 +138,7 @@ app.include_router(trainers.router, prefix="/api")
 app.include_router(regimes.router, prefix="/api")
 app.include_router(assignments.router, prefix="/api")
 app.include_router(chat.router, prefix="/api")
+app.include_router(templates.router, prefix="/api")
 
 
 # Seed any empty content tables on startup so a fresh dev DB or upgrade is

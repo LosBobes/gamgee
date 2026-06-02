@@ -489,6 +489,45 @@ html, body { background: var(--bg); }
 .wm-rest-label { font-family: 'Nunito', sans-serif; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
 .wm-rest-sub { font-size: 11px; color: var(--muted); }
 
+/* ── Saved templates (WizardMode picker · WizardBuild save · weekly assign) ── */
+.wm-templates { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+.wm-templates-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 2px;
+}
+.wm-template-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  background: var(--ad); border: 1px solid var(--ad2); border-radius: 12px;
+  padding: 12px 14px; color: var(--text); transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wm-template-card:hover { border-color: var(--accent); }
+.wm-template-card:active { transform: scale(0.99); }
+.wm-template-main { min-width: 0; }
+.wm-template-name { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--text); }
+.wm-template-meta { font-size: 11px; color: var(--accent); margin-top: 1px; }
+.wm-template-exs {
+  font-size: 11px; color: var(--muted); margin-top: 3px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wm-template-go { color: var(--accent); flex-shrink: 0; }
+
+/* Inline "Save as template" form in the build step. */
+.tpl-save-row { display: flex; gap: 6px; margin-top: 6px; align-items: stretch; }
+.tpl-save-input { flex: 1; min-width: 0; }
+.tpl-save-confirm, .tpl-save-cancel {
+  width: 42px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 0;
+}
+
+/* "From template" chip row in the weekly day editor. */
+.ww-template-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 8px; }
+.ww-template-lbl {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
+}
+
 /* ── WEEKLY SETUP (step 6) ── */
 .ww-day-tabs {
   display: flex; gap: 3px; margin-bottom: 16px;
@@ -1578,6 +1617,53 @@ html, body { background: var(--bg); }
   animation: fadeUp 0.22s ease both;
   transition: border-color 0.18s;
 }
+.coach-card-tappable { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.coach-card-tappable:hover { border-color: var(--accent); }
+.coach-card-tappable:active { transform: scale(0.995); }
+
+/* ── Exercise diagnostics (chart + edit + steer) ── */
+.diag { display: flex; flex-direction: column; }
+.diag-readout {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin: 10px 0 6px;
+}
+.diag-trend { font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; }
+.diag-chart {
+  width: 100%; height: auto; display: block;
+  background: var(--s1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 4px; margin-bottom: 12px;
+}
+.diag-axis { font-size: 8px; fill: var(--muted); font-family: 'Nunito', sans-serif; }
+.diag-legend {
+  display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  margin: -4px 0 12px; font-size: 10px; color: var(--muted);
+}
+.diag-legend-lbl { letter-spacing: 1px; font-weight: 700; }
+.diag-legend-item { display: inline-flex; align-items: center; gap: 4px; }
+.diag-legend-item i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.diag-legend-hint { font-style: italic; }
+.diag-steer, .diag-pointedit {
+  background: var(--s1); border: 1px solid var(--border); border-radius: 12px;
+  padding: 13px 14px; margin-bottom: 12px;
+}
+.diag-steer-head, .diag-pointedit-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+}
+.diag-steer-head span, .diag-pointedit-head span { display: inline-flex; align-items: center; gap: 6px; }
+.diag-steer-sub { font-size: 11px; color: var(--muted); line-height: 1.5; margin: 6px 0 10px; }
+.diag-steer-controls { display: flex; gap: 10px; }
+.diag-stepper { flex: 1; min-width: 0; }
+.diag-stepper .col-lbl { font-size: 9px; color: var(--muted); letter-spacing: 1px; margin-bottom: 4px; }
+.diag-steer-apply { width: 100%; margin-top: 10px; justify-content: center; }
+.diag-reset {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid var(--border); border-radius: 999px;
+  color: var(--muted); font-size: 11px; padding: 3px 9px; cursor: pointer;
+}
+.diag-reset:hover { border-color: var(--accent); color: var(--accent); }
+.diag-pointedit { border-color: var(--accent); }
+.diag-pointedit .set-rpe-row { margin-top: 10px; }
 .coach-hdr { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; border-bottom: 1px solid var(--border); }
 .coach-ex-name { font-family: 'Nunito', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
 .status-badge { font-family: 'Nunito', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; }

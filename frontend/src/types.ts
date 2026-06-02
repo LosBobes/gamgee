@@ -46,6 +46,10 @@ export interface PersonalRecord { name: string; weight: number; reps: number; da
 export interface PersonalRecordAPI extends PersonalRecord { exercise_id: string; }
 export type PRDict = Record<string, PersonalRecord>;
 export interface StatusDef { label: string; color: string; bg: string; }
+/** A manual steer for one exercise: the next-session target the user dialled in
+ * on the diagnostics chart. While set, it overrides the auto-trend everywhere
+ * the analyzer's recommendation surfaces (coach, in-workout APPLY) until reset. */
+export interface ProgressionOverride { weight: number; reps: number; }
 export interface MuscleDef { mid: string; cx: number; cy: number; rx: number; ry: number; rotate?: number; }
 export interface MusclePathDef { mid: string; d: string; }
 export type MuscleShape = MuscleDef | MusclePathDef;
@@ -107,7 +111,6 @@ export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>> & {
   weeks?: WeekPlan[] | null;
   current_week_index?: number | null;
 };
-export type ProgressionSpeed = "slow" | "moderate" | "fast";
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 
@@ -331,6 +334,28 @@ export interface RegimeDraft {
   days: Record<string, DayPlan>;
   mode?: RegimeMode | null;
   general_rpe?: number | null;
+}
+
+/** A saved, reusable workout blueprint — a named focus plus an ordered
+ * exercise list with optional per-exercise targets. Lighter than a Regime: one
+ * session's worth of training that can be loaded into a fresh workout or
+ * dropped onto a weekday in the weekly plan. `exercise_config` mirrors a
+ * DayPlan's per-exercise prescription, keyed by exercise id. */
+export interface WorkoutTemplate {
+  id: number;
+  owner_id: number;
+  name: string;
+  focus: string | null;
+  exercise_ids: string[];
+  exercise_config: Record<string, ExerciseConfig>;
+  created_at: number;
+}
+/** Payload for creating/updating a template. */
+export interface WorkoutTemplateDraft {
+  name: string;
+  focus: string | null;
+  exercise_ids: string[];
+  exercise_config: Record<string, ExerciseConfig>;
 }
 
 export interface RegimeAssignment {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench, Gauge } from "lucide-react";
-import type { ExerciseDef, SuggExercise, WorkoutSession } from "../../types";
+import { ArrowLeft, ChevronRight, Check, X, Search, Star, Plus, Clock, Zap, Shuffle, Wrench, Gauge, Bookmark } from "lucide-react";
+import type { ExerciseDef, SuggExercise, WorkoutSession, WorkoutTemplate, WorkoutTemplateDraft } from "../../types";
 import { GROUPS, getActive, muscleGroups } from "../../constants";
 import { MI } from "../../data/muscles";
 import { EM, ALL_EX } from "../../data/exercises";
@@ -20,14 +20,37 @@ interface Props {
   /** Opt the user into the RPE-driven prescribe step: pick a target effort
    * per exercise and let the app generate sets/reps from your reference max. */
   onConfigureRpe: () => void;
+  /** Persist the current build (focus + exercise list) as a reusable template. */
+  onSaveTemplate: (draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
   history:    WorkoutSession[];
 }
 
-export default function WizardBuild({ focus, planned, setPlanned, onBack, onStart, onConfigureRpe, history }: Props) {
+export default function WizardBuild({ focus, planned, setPlanned, onBack, onStart, onConfigureRpe, onSaveTemplate, history }: Props) {
   const t = useTxt();
   const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
   const [search,          setSearch]          = useState("");
   const [showCustomModal, setShowCustomModal] = useState(false);
+  // Inline "save as template" form: opens a name field, then confirms.
+  const [savingTemplate,  setSavingTemplate]  = useState(false);
+  const [templateName,    setTemplateName]    = useState("");
+  const [templateSaved,   setTemplateSaved]   = useState(false);
+
+  const handleSaveTemplate = async () => {
+    const name = templateName.trim();
+    if (!name) return;
+    const saved = await onSaveTemplate({
+      name,
+      focus,
+      exercise_ids: planned.map(p => p.id),
+      exercise_config: {},
+    });
+    if (saved) {
+      setSavingTemplate(false);
+      setTemplateName("");
+      setTemplateSaved(true);
+      setTimeout(() => setTemplateSaved(false), 2000);
+    }
+  };
 
   // Most recent prior session matching this focus (used for the auto-populate prompt)
   const lastFocusSession = history.find(s => s.focus === focus && s.exercises.length > 0) ?? null;
@@ -253,6 +276,38 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
                   onClick={() => onStart(false)}
                 >
                   Start fresh (no auto-fill)
+                </button>
+              )}
+
+              {/* Save the current build as a reusable template. */}
+              {savingTemplate ? (
+                <div className="tpl-save-row">
+                  <input
+                    className="search-input tpl-save-input"
+                    placeholder="Template name (e.g. Push Day)"
+                    value={templateName}
+                    onChange={e => setTemplateName(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") handleSaveTemplate(); }}
+                    autoFocus
+                    maxLength={120}
+                  />
+                  <button className="wz-next tpl-save-confirm" onClick={handleSaveTemplate} disabled={!templateName.trim()}>
+                    <Check size={13} />
+                  </button>
+                  <button className="wz-back tpl-save-cancel" onClick={() => { setSavingTemplate(false); setTemplateName(""); }}>
+                    <X size={13} />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="wz-back"
+                  style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                  onClick={() => { setSavingTemplate(true); setTemplateName(getFocusDef(focus)?.name ?? ""); }}
+                >
+                  <Bookmark size={12} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  {templateSaved
+                    ? t("Saved as template ✓", "Saved as template ✓", "Saved as template ✓")
+                    : t("Save as template", "Save as template", "Save as template")}
                 </button>
               )}
             </div>
