@@ -43,7 +43,7 @@ function beep() {
 export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdjust, onStartCustom }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customOpen, setCustomOpen] = useState(false);
-  const [customVal, setCustomVal] = useState<number>(prefs.medium);
+  const [customVal, setCustomVal] = useState<string>(String(prefs.medium));
   const firedRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -131,13 +131,18 @@ export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdj
           <input
             type="number" min={5} max={3600} step={5}
             value={customVal}
-            onChange={e => setCustomVal(Math.max(5, Math.min(3600, Number(e.target.value) || 0)))}
+            onChange={e => setCustomVal(e.target.value)}
             aria-label="Custom rest seconds"
           />
           <span>sec</span>
           <button
             type="button"
-            onClick={() => { onStartCustom(customVal); setCustomOpen(false); }}
+            onClick={() => {
+              const sec = Math.max(5, Math.min(3600, Math.round(Number(customVal) || 0)));
+              setCustomVal(String(sec));
+              onStartCustom(sec);
+              setCustomOpen(false);
+            }}
           >
             Start
           </button>
