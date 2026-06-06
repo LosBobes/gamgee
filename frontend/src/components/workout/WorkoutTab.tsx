@@ -36,9 +36,6 @@ interface Props {
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
-  /** Jump straight into the logging screen with no exercises — the user adds
-   * them ad-hoc as they train. */
-  startEmpty:      () => void;
   /** Pre-existing per-exercise prescribe configs (from a regime day or the
    * user's last-used RPE setup); seeded into the prescribe step when the
    * user picks RPE-driven mode. */
@@ -60,7 +57,7 @@ export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
-  startFromWizard, startEmpty, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
+  startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
@@ -113,11 +110,6 @@ export default function WorkoutTab({
     triggerQuake();
     startFromPrescribe(configs);
   }, [startFromPrescribe, triggerQuake]);
-  const startEmptyQuake = useCallback(() => {
-    triggerQuake();
-    startEmpty();
-  }, [startEmpty, triggerQuake]);
-
   const hostStyle: CSSProperties | undefined = quake
     ? ({ "--quake-x": `${quake.lx}px`, "--quake-y": `${quake.ly}px` } as CSSProperties)
     : undefined;
@@ -144,7 +136,6 @@ export default function WorkoutTab({
             weeklyPlan={weeklyPlan}
             templates={templates}
             onSingle={() => setWStepQuake(2)}
-            onFreestyle={startEmptyQuake}
             onLoadToday={onLoadTodayQuake}
             onLoadTemplate={tpl => { triggerQuake(); onLoadTemplate(tpl); }}
             onSetupPlan={() => setWStepQuake(6)}
