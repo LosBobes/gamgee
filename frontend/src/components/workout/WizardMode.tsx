@@ -42,17 +42,17 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
       <div className="wizard-title">{t("How do you want to train?", "What's the plan, bro?", "What's the move, bestie?")}</div>
       <div className="wizard-sub">
         {t(
-          "Follow your weekly routine or build a one-off workout.",
-          "Stick to the program or go rogue. Either way, we lift.",
-          "Stick to the program or go off-script. Either way, we serve."
+          "Build a one-off workout, freestyle as you go, or follow your weekly regime.",
+          "Build a one-off, freestyle on the fly, or run your weekly regime. Either way, we lift.",
+          "Build a one-off, freestyle on the fly, or serve your weekly regime. Either way, we serve."
         )}
       </div>
 
-      <OnboardingHint hintKey="mode" title={t("One-off or weekly plan?", "Pick the vibe", "Pick the vibe")}>
+      <OnboardingHint hintKey="mode" title={t("Three ways to train", "Three ways to roll", "Three ways to serve")}>
         {t(
-          "One-off builds a single workout for today. A weekly plan repeats the same routine on the same days — set it up once and we'll auto-load it.",
-          "One-off is a workout for today only. Weekly plan locks in the same routine on the same days — set once, auto-load forever.",
-          "One-off = workout for today only. Weekly plan = same routine on the same days, on repeat. Set once, auto-load forever."
+          "One-off: plan today's exercises up front and save them as a reusable template. Freestyle: start logging now and add exercises ad-hoc as you train. Weekly regime: set the same routine on the same days once and we'll auto-load it.",
+          "One-off: plan your lifts up front, save 'em as a template to run back. Freestyle: start logging and add lifts ad-hoc as you go. Weekly regime: lock the same routine on the same days, auto-load forever.",
+          "One-off: plan your moves up front, save 'em as a template to rerun. Freestyle: start logging and add moves ad-hoc as you go. Weekly regime: lock the same routine on the same days, auto-load forever."
         )}
       </OnboardingHint>
 
@@ -119,7 +119,11 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
           <div className="focus-icon"><Zap size={24} /></div>
           <div className="focus-name">{t("One-Off", "Go Rogue", "Off-Script")}</div>
           <div className="focus-desc">
-            {t("Build a custom workout for today.", "Ignore the plan. Pick your own exercises.", "Ignore the plan. Manifest your own.")}
+            {t(
+              "Pick today's exercises up front — and save them as a reusable template.",
+              "Pick your lifts up front. Save 'em as a template to run it back.",
+              "Pick your moves up front. Save 'em as a template to rerun the era."
+            )}
           </div>
         </div>
 
@@ -128,9 +132,9 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
           <div className="focus-name">{t("Freestyle", "As You Go", "As You Go")}</div>
           <div className="focus-desc">
             {t(
-              "Skip the planning — start logging and add exercises on the fly.",
-              "No plan, no problem. Start logging and add lifts as you go.",
-              "No plan, all vibes. Start logging and add moves as you go."
+              "No plan up front — start logging and add exercises ad-hoc as you train.",
+              "No plan, no problem. Start logging and add lifts ad-hoc as you go.",
+              "No plan, all vibes. Start logging and add moves ad-hoc as you go."
             )}
           </div>
         </div>
@@ -138,12 +142,12 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
         <div className="focus-card" onClick={onSetupPlan} style={{ gridColumn: "1 / -1" }}>
           <div className="focus-icon"><Calendar size={24} /></div>
           <div className="focus-name">
-            {hasAnyPlan ? t("Edit Plan", "Edit The Program", "Edit The Era") : t("Weekly Plan", "Build The Program", "Map The Era")}
+            {hasAnyPlan ? t("Edit Regime", "Edit The Regime", "Edit The Era") : t("Weekly Regime", "Build The Regime", "Map The Era")}
           </div>
           <div className="focus-desc">
             {hasAnyPlan
-              ? t("Edit your weekly routine.", "Tweak your weekly program.", "Tweak your weekly era.")
-              : t("Set up a repeating weekly routine.", "Build your weekly program. Show up. Grow.", "Map your week, bestie. Show up. Glow up.")}
+              ? t("Edit your recurring weekly regime.", "Tweak your weekly regime.", "Tweak your weekly era.")
+              : t("Set up a recurring weekly regime — same routine, same days.", "Build a weekly regime. Same routine, same days. Show up. Grow.", "Map a weekly regime, bestie. Same routine, same days. Show up. Glow up.")}
           </div>
         </div>
       </div>
