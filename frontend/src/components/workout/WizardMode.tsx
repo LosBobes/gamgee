@@ -1,4 +1,4 @@
-import { Calendar, Zap, ArrowLeft, Bookmark, Flame } from "lucide-react";
+import { Calendar, Zap, ArrowLeft, Bookmark } from "lucide-react";
 import type { DayPlan, WeeklyPlan, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
@@ -10,16 +10,13 @@ interface Props {
   weeklyPlan:     WeeklyPlan | null;
   templates:      WorkoutTemplate[];
   onSingle:       () => void;
-  /** Skip planning entirely — drop straight into the logging screen and add
-   * exercises on the fly. */
-  onFreestyle:    () => void;
   onLoadToday:    (plan: DayPlan) => void;
   onLoadTemplate: (tpl: WorkoutTemplate) => void;
   onSetupPlan:    () => void;
   onBack:         () => void;
 }
 
-export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
+export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
@@ -42,17 +39,17 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
       <div className="wizard-title">{t("How do you want to train?", "What's the plan, bro?", "What's the move, bestie?")}</div>
       <div className="wizard-sub">
         {t(
-          "Build a one-off workout, freestyle as you go, or follow your weekly regime.",
-          "Build a one-off, freestyle on the fly, or run your weekly regime. Either way, we lift.",
-          "Build a one-off, freestyle on the fly, or serve your weekly regime. Either way, we serve."
+          "Build a one-off workout or follow your weekly regime.",
+          "Build a one-off or run your weekly regime. Either way, we lift.",
+          "Build a one-off or serve your weekly regime. Either way, we serve."
         )}
       </div>
 
-      <OnboardingHint hintKey="mode" title={t("Three ways to train", "Three ways to roll", "Three ways to serve")}>
+      <OnboardingHint hintKey="mode" title={t("Two ways to train", "Two ways to roll", "Two ways to serve")}>
         {t(
-          "One-off: plan today's exercises up front and save them as a reusable template. Freestyle: start logging now and add exercises ad-hoc as you train. Weekly regime: set the same routine on the same days once and we'll auto-load it.",
-          "One-off: plan your lifts up front, save 'em as a template to run back. Freestyle: start logging and add lifts ad-hoc as you go. Weekly regime: lock the same routine on the same days, auto-load forever.",
-          "One-off: plan your moves up front, save 'em as a template to rerun. Freestyle: start logging and add moves ad-hoc as you go. Weekly regime: lock the same routine on the same days, auto-load forever."
+          "One-off: plan today's exercises up front, save them as a reusable template, and add more ad-hoc once you're logging. Weekly regime: set the same routine on the same days once and we'll auto-load it.",
+          "One-off: plan your lifts up front, save 'em as a template, and toss in more ad-hoc mid-workout. Weekly regime: lock the same routine on the same days, auto-load forever.",
+          "One-off: plan your moves up front, save 'em as a template, and add more ad-hoc mid-workout. Weekly regime: lock the same routine on the same days, auto-load forever."
         )}
       </OnboardingHint>
 
@@ -115,26 +112,14 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyl
 
       {/* Mode cards */}
       <div className="wm-options">
-        <div className="focus-card" onClick={onSingle}>
+        <div className="focus-card" onClick={onSingle} style={{ gridColumn: "1 / -1" }}>
           <div className="focus-icon"><Zap size={24} /></div>
           <div className="focus-name">{t("One-Off", "Go Rogue", "Off-Script")}</div>
           <div className="focus-desc">
             {t(
-              "Pick today's exercises up front — and save them as a reusable template.",
-              "Pick your lifts up front. Save 'em as a template to run it back.",
-              "Pick your moves up front. Save 'em as a template to rerun the era."
-            )}
-          </div>
-        </div>
-
-        <div className="focus-card" onClick={onFreestyle}>
-          <div className="focus-icon"><Flame size={24} /></div>
-          <div className="focus-name">{t("Freestyle", "As You Go", "As You Go")}</div>
-          <div className="focus-desc">
-            {t(
-              "No plan up front — start logging and add exercises ad-hoc as you train.",
-              "No plan, no problem. Start logging and add lifts ad-hoc as you go.",
-              "No plan, all vibes. Start logging and add moves ad-hoc as you go."
+              "Pick today's exercises up front — save them as a template, and add more ad-hoc mid-workout.",
+              "Pick your lifts up front. Save 'em as a template, toss in more ad-hoc as you go.",
+              "Pick your moves up front. Save 'em as a template, add more ad-hoc as you go."
             )}
           </div>
         </div>

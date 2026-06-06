@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Plus, Minus } from "lucide-react";
 import type { RestPrefs } from "../../types";
+import { playTimerAlarm, vibrateAlarm } from "../../sound";
 
 export type RestTier = "short" | "medium" | "long" | "custom";
 
@@ -19,27 +20,6 @@ const fmt = (sec: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-function beep() {
-  try {
-    const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const ctx = new Ctor();
-    const tone = (when: number, freq: number) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime + when);
-      gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + when + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + when + 0.28);
-      osc.start(ctx.currentTime + when);
-      osc.stop(ctx.currentTime + when + 0.32);
-    };
-    tone(0,    880);
-    tone(0.35, 1175);
-  } catch { /* silent */ }
-}
-
 export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdjust, onStartCustom }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customOpen, setCustomOpen] = useState(false);
@@ -52,14 +32,14 @@ export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdj
     return () => clearInterval(id);
   }, [rest]);
 
-  // Beep + vibrate the moment the bar fills up. firedRef keys on endAt so a
+  // Ring + vibrate the moment the bar fills up. firedRef keys on endAt so a
   // fresh timer (new endAt) is allowed to fire again.
   useEffect(() => {
     if (!rest) return;
     if (rest.endAt <= now && firedRef.current !== rest.endAt) {
       firedRef.current = rest.endAt;
-      beep();
-      if (navigator.vibrate) navigator.vibrate([180, 80, 180]);
+      playTimerAlarm();
+      vibrateAlarm();
     }
   }, [now, rest]);
 

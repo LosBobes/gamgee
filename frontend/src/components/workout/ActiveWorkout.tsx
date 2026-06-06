@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Dumbbell, TrendingUp } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, RestPrefs, ProgressionOverride } from "../../types";
 import { analyzeEx } from "../../analysis";
@@ -7,6 +7,7 @@ import ExercisePicker from "../ExercisePicker";
 import type { RestTier } from "./RestTimer";
 import { useTxt } from "../../context/ToneContext";
 import OnboardingHint from "../OnboardingHint";
+import { bindAudioUnlock } from "../../sound";
 
 interface Props {
   exercises:      WorkoutExercise[];
@@ -47,6 +48,10 @@ export default function ActiveWorkout({
   const [lastCustomSec, setLastCustomSec] = useState<number>(restPrefs.medium);
   const [rest, setRest] = useState<RestState | null>(null);
   const t = useTxt();
+
+  // Unlock the shared AudioContext on the user's taps so the rest-timer alarm
+  // can actually ring on mobile (contexts created outside a gesture stay muted).
+  useEffect(() => bindAudioUnlock(), []);
 
   // Show the "PROGRESS ALL" affordance only when at least one strength
   // exercise has prior history (analyzeEx returns null otherwise) and nothing
