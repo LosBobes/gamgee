@@ -1,4 +1,4 @@
-import { Calendar, Zap, ArrowLeft, Bookmark } from "lucide-react";
+import { Calendar, Zap, ArrowLeft, Bookmark, Flame } from "lucide-react";
 import type { DayPlan, WeeklyPlan, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
@@ -10,13 +10,16 @@ interface Props {
   weeklyPlan:     WeeklyPlan | null;
   templates:      WorkoutTemplate[];
   onSingle:       () => void;
+  /** Skip planning entirely — drop straight into the logging screen and add
+   * exercises on the fly. */
+  onFreestyle:    () => void;
   onLoadToday:    (plan: DayPlan) => void;
   onLoadTemplate: (tpl: WorkoutTemplate) => void;
   onSetupPlan:    () => void;
   onBack:         () => void;
 }
 
-export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
+export default function WizardMode({ weeklyPlan, templates, onSingle, onFreestyle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
@@ -120,7 +123,19 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToda
           </div>
         </div>
 
-        <div className="focus-card" onClick={onSetupPlan}>
+        <div className="focus-card" onClick={onFreestyle}>
+          <div className="focus-icon"><Flame size={24} /></div>
+          <div className="focus-name">{t("Freestyle", "As You Go", "As You Go")}</div>
+          <div className="focus-desc">
+            {t(
+              "Skip the planning — start logging and add exercises on the fly.",
+              "No plan, no problem. Start logging and add lifts as you go.",
+              "No plan, all vibes. Start logging and add moves as you go."
+            )}
+          </div>
+        </div>
+
+        <div className="focus-card" onClick={onSetupPlan} style={{ gridColumn: "1 / -1" }}>
           <div className="focus-icon"><Calendar size={24} /></div>
           <div className="focus-name">
             {hasAnyPlan ? t("Edit Plan", "Edit The Program", "Edit The Era") : t("Weekly Plan", "Build The Program", "Map The Era")}
