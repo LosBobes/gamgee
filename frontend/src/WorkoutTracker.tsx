@@ -737,6 +737,18 @@ export default function WorkoutTracker({
     setCardio({ timing: "none", before: null, after: null });
   };
 
+  /** Start a freestyle workout: jump straight into the logging screen with no
+   * exercises pre-loaded, so the user builds the session ad-hoc via the
+   * "+ ADD EXERCISE" button as they train. */
+  const startEmpty = () => {
+    setWStep(0); setActive(true); setStartTs(Date.now()); setElapsed(0);
+    setExercises([]);
+    setPlanned([]);
+    setPlannedConfigs({});
+    setCardio({ timing: "none", before: null, after: null });
+    setFocus(null);
+  };
+
   /** Start the workout after the user finishes the RPE-driven prescribe step.
    * Persists the tuned configs to localStorage so the prescribe screen seeds
    * them next time, then hands off to startFromWizard with the configs as a
@@ -1098,6 +1110,7 @@ export default function WorkoutTracker({
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
+            startEmpty={startEmpty}
             prescribeInitialConfigs={{ ...savedPrescribeConfigs, ...plannedConfigs }}
             startFromPrescribe={startFromPrescribe}
             addExercise={addExercise} removeExercise={removeExercise}
