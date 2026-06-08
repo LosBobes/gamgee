@@ -169,16 +169,16 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
   return (
     <>
       <div className="wz-hdr">
-        <button className="wz-back" onClick={onBack}><ArrowLeft size={13} /> BACK</button>
+        <button className="wz-back" onClick={onBack}><ArrowLeft size={16} /> BACK</button>
         <span className="wz-focus-label">
-          <FocusIcon size={13} /> {focusDef.name.toUpperCase()}
+          <FocusIcon size={16} /> {focusDef.name.toUpperCase()}
         </span>
         <button
           className="wz-next"
           onClick={() => onStart(lastFocusSession != null)}
           disabled={planned.length === 0}
         >
-          START <ChevronRight size={13} />
+          START <ChevronRight size={16} />
         </button>
       </div>
 
@@ -201,7 +201,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               <span className="coverage-title">Coverage</span>
               <span className="coverage-count">
                 {coveredGroups.size}
-                <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400 }}>
+                <span style={{ fontSize: 13, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400 }}>
                   &nbsp;/ {GROUPS.length}
                 </span>
               </span>
@@ -231,38 +231,38 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
 
           {planned.length > 0 && (
             <div className="build-planned">
-              <div className="section-title" style={{ marginBottom: 6 }}>
-                <Check size={12} /> ADDED ({planned.length})
+              <div className="section-title" style={{ marginBottom: 8 }}>
+                <Check size={14} /> ADDED ({planned.length})
               </div>
               {planned.map((ex, i) => {
                 const m = EM[ex.id] || { p: [], s: [] };
                 return (
                   <div key={ex.id} className="planned-card">
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ fontFamily: "'Nunito',sans-serif", fontSize: 11, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>{i + 1}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ fontFamily: "'Nunito',sans-serif", fontSize: 13, fontWeight: 700, color: "var(--muted)", flexShrink: 0 }}>{i + 1}</span>
                         <div className="planned-name">{ex.name}</div>
                       </div>
                       <div className="planned-muscles">{m.p.map(mid => MI[mid]?.n).join(" · ")}</div>
                     </div>
-                    <button className="btn-rm" onClick={() => removePlanned(ex.id)}><X size={14} /></button>
+                    <button className="btn-rm" onClick={() => removePlanned(ex.id)}><X size={18} /></button>
                   </div>
                 );
               })}
               <button
                 className="wz-next"
-                style={{ width: "100%", marginTop: 8, padding: 10, fontSize: 13 }}
+                style={{ width: "100%", marginTop: 10, padding: 16, fontSize: 15 }}
                 onClick={() => onStart(lastFocusSession != null)}
               >
-                {lastFocusSession ? <>START WITH LAST WEIGHTS <ChevronRight size={13} /></> : <>START WORKOUT <ChevronRight size={13} /></>}
+                {lastFocusSession ? <>START WITH LAST WEIGHTS <ChevronRight size={16} /></> : <>START WORKOUT <ChevronRight size={16} /></>}
               </button>
               <button
                 className="wz-back wz-rpe-cta"
-                style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                style={{ width: "100%", marginTop: 8, padding: 13, fontSize: 13 }}
                 onClick={onConfigureRpe}
                 title="Set a target RPE per exercise and let Gamgee generate sets, reps and weight"
               >
-                <Gauge size={12} style={{ verticalAlign: -2, marginRight: 5 }} />
+                <Gauge size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
                 {t(
                   "Configure with RPE (auto sets & reps)",
                   "Set the effort, auto sets & reps",
@@ -272,7 +272,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               {lastFocusSession && (
                 <button
                   className="wz-back"
-                  style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                  style={{ width: "100%", marginTop: 8, padding: 13, fontSize: 13 }}
                   onClick={() => onStart(false)}
                 >
                   Start fresh (no auto-fill)
@@ -301,10 +301,10 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               ) : (
                 <button
                   className="wz-back"
-                  style={{ width: "100%", marginTop: 6, padding: 8, fontSize: 12 }}
+                  style={{ width: "100%", marginTop: 8, padding: 13, fontSize: 13 }}
                   onClick={() => { setSavingTemplate(true); setTemplateName(getFocusDef(focus)?.name ?? ""); }}
                 >
-                  <Bookmark size={12} style={{ verticalAlign: -2, marginRight: 5 }} />
+                  <Bookmark size={14} style={{ verticalAlign: -2, marginRight: 6 }} />
                   {templateSaved
                     ? t("Saved as template ✓", "Saved as template ✓", "Saved as template ✓")
                     : t("Save as template", "Save as template", "Save as template")}
@@ -326,13 +326,13 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               spellCheck={false}
             />
             {search
-              ? <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={11} /></button>
-              : <Search size={13} className="search-icon-hint" />
+              ? <button className="search-clear" onClick={() => setSearch("")} aria-label="Clear search"><X size={15} /></button>
+              : <Search size={16} className="search-icon-hint" />
             }
           </div>
 
           <button className="cx-add-card" onClick={() => setShowCustomModal(true)}>
-            <Wrench size={13} /> {t("Add Custom Exercise", "Build Your Own Lift", "Cook Your Own Move")}
+            <Wrench size={15} /> {t("Add Custom Exercise", "Build Your Own Lift", "Cook Your Own Move")}
           </button>
 
           {searchResults ? (
@@ -351,8 +351,8 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               {focusSuggs.length > 0 && (
                 <>
                   <div className="section-title">
-                    <Star size={12} /> {focusDef.name.toUpperCase()}
-                    <span style={{ fontSize: 10, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400, letterSpacing: 0 }}>
+                    <Star size={14} /> {focusDef.name.toUpperCase()}
+                    <span style={{ fontSize: 11, color: "var(--muted)", fontFamily: "'Nunito',sans-serif", fontWeight: 400, letterSpacing: 0 }}>
                       hover to preview
                     </span>
                   </div>
@@ -362,8 +362,8 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
 
               {otherSuggs.length > 0 && (
                 <>
-                  <div className="section-title" style={{ marginTop: 14 }}>
-                    <Plus size={12} /> ALL EXERCISES
+                  <div className="section-title" style={{ marginTop: 16 }}>
+                    <Plus size={14} /> ALL EXERCISES
                   </div>
                   {otherSuggs.map(renderCard)}
                 </>

@@ -96,10 +96,10 @@ export default function HistoryTab({ history, prs, bodyweight, onDelete, onUpdat
           <div>
             <div className="hist-date">{fmtDate(w.date)}</div>
             <div className="hist-meta">
-              <span><Timer size={11} /> {fmtDur(w.duration)}</span>
-              <span><Dumbbell size={11} /> {w.exercises.length} ex</span>
-              <span><Layers size={11} /> {sets} sets</span>
-              {vol > 0 && <span><Activity size={11} /> {Math.round(vol)}kg</span>}
+              <span><Timer size={13} /> {fmtDur(w.duration)}</span>
+              <span><Dumbbell size={13} /> {w.exercises.length} ex</span>
+              <span><Layers size={13} /> {sets} sets</span>
+              {vol > 0 && <span><Activity size={13} /> {Math.round(vol)}kg</span>}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -108,9 +108,9 @@ export default function HistoryTab({ history, prs, bodyweight, onDelete, onUpdat
               onClick={e => { e.stopPropagation(); setEditingSession(w); }}
               title="Edit session"
             >
-              <Pencil size={13} />
+              <Pencil size={15} />
             </button>
-            <span style={{ color: "var(--muted)" }}>{isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+            <span style={{ color: "var(--muted)" }}>{isOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</span>
           </div>
         </div>
         {isOpen && (
@@ -131,7 +131,7 @@ export default function HistoryTab({ history, prs, bodyweight, onDelete, onUpdat
                         {ex.type === "cardio" ? `${s.weight}min${s.reps ? ` · ${s.reps}km` : ""}`
                           : ex.type === "timed" ? `${s.weight}s`
                           : strengthLabel}
-                        {isPr && <Trophy size={10} style={{ verticalAlign: "middle", marginLeft: 3 }} />}
+                        {isPr && <Trophy size={12} style={{ verticalAlign: "middle", marginLeft: 4 }} />}
                       </span>
                     );
                   })}
