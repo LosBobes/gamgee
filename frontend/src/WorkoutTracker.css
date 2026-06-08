@@ -1221,8 +1221,8 @@ html, body { background: var(--bg); }
 .btn-secondary > svg { width: auto; height: 2.2em; flex-shrink: 0; }
 .btn-add-ex {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 700;
-  letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 14px;
-  flex: 1 1 140px; min-width: 0;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 13px 14px;
+  flex: 1 1 140px; min-width: 0; min-height: 50px;
   background: var(--ad); color: var(--accent); border: 1px solid color-mix(in srgb, var(--primary) 40%, transparent);
   border-radius: 6px; cursor: pointer; transition: all 0.15s;
   white-space: nowrap;
@@ -1230,8 +1230,8 @@ html, body { background: var(--bg); }
 .btn-add-ex:hover { background: var(--ad2); transform: translateY(-1px); }
 .btn-finish {
   font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 900;
-  letter-spacing: 1.5px; text-transform: uppercase; padding: 11px 16px;
-  flex: 1 1 120px; min-width: 0;
+  letter-spacing: 1.5px; text-transform: uppercase; padding: 13px 16px;
+  flex: 1 1 120px; min-width: 0; min-height: 50px;
   background: var(--green); color: #060e0a; border: none; border-radius: 6px;
   cursor: pointer; transition: opacity 0.15s, transform 0.15s;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.2;
@@ -1283,7 +1283,7 @@ html, body { background: var(--bg); }
 
 /* ── SET TABLE ── */
 .set-table { padding: 10px 12px; }
-.set-col-hdr { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+.set-col-hdr { display: grid; grid-template-columns: 18px 1fr 1fr 54px 28px; gap: 6px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
 .col-lbl { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); text-align: center; }
 .bar-hint {
   display: inline-block; margin-left: 6px; padding: 1px 5px;
@@ -1292,13 +1292,13 @@ html, body { background: var(--bg); }
   border: 1px solid var(--border); border-radius: 999px;
   vertical-align: 1px;
 }
-.set-row-wrap { margin-bottom: 10px; }
+.set-row-wrap { margin-bottom: 16px; }
 .set-row-wrap > .set-row { margin-bottom: 0; }
 .assist-hint {
   margin: 2px 0 0 24px; font-family: 'Nunito', sans-serif;
   font-size: 10px; color: var(--muted); letter-spacing: 0.02em;
 }
-.set-row { display: grid; grid-template-columns: 18px 1fr 1fr 52px 28px; gap: 6px; align-items: center; margin-bottom: 10px; }
+.set-row { display: grid; grid-template-columns: 18px 1fr 1fr 54px 28px; gap: 6px; align-items: center; margin-bottom: 12px; }
 
 /* Per-set RPE picker: thin row that appears below a completed strength set.
    Compact 1-10 pills so users can rate effort with one tap. Hidden for
@@ -1318,8 +1318,8 @@ html, body { background: var(--bg); }
 }
 .set-rpe-pills { display: flex; gap: 3px; flex: 1; }
 .set-rpe-pill {
-  flex: 1; min-width: 0; padding: 4px 0;
-  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  flex: 1; min-width: 0; padding: 9px 0; min-height: 38px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700;
   background: transparent; border: 1px solid var(--border); color: var(--muted);
   border-radius: 4px; cursor: pointer; transition: all 0.12s;
   -webkit-tap-highlight-color: transparent;
@@ -1348,7 +1348,7 @@ html, body { background: var(--bg); }
 .stepper {
   display: flex; align-items: stretch; gap: 0;
   background: var(--s2); border: 1px solid var(--border); border-radius: 9px;
-  overflow: hidden; min-height: 48px;
+  overflow: hidden; min-height: 56px;
   transition: border-color 0.18s, box-shadow 0.18s, transform 0.12s;
 }
 .stepper:focus-within {
@@ -1357,7 +1357,7 @@ html, body { background: var(--bg); }
               0 4px 14px color-mix(in srgb, var(--primary) 18%, transparent);
 }
 .step-btn {
-  flex: 0 0 30px; min-width: 30px;
+  flex: 0 0 38px; min-width: 38px;
   background: transparent; border: none;
   color: var(--accent); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
@@ -1393,7 +1393,7 @@ html, body { background: var(--bg); }
 .stepper:has(.set-inp.done) .step-plus { border-color: rgba(76,168,124,0.25); }
 
 .check-btn {
-  width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border);
+  width: 54px; height: 54px; border-radius: 50%; border: 2px solid var(--border);
   background: transparent; color: var(--muted); cursor: pointer;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
   transition: all 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -1404,7 +1404,7 @@ html, body { background: var(--bg); }
 .check-btn:hover:not(.done) { border-color: var(--green); color: var(--green); transform: scale(1.08); }
 .check-btn:active { transform: scale(0.9) !important; }
 .rm-set-btn {
-  width: 28px; height: 48px; background: transparent; border: none; color: var(--border);
+  width: 28px; height: 54px; background: transparent; border: none; color: var(--border);
   cursor: pointer; transition: color 0.15s;
   display: flex; align-items: center; justify-content: center;
   -webkit-tap-highlight-color: transparent;
@@ -1414,11 +1414,11 @@ html, body { background: var(--bg); }
 
 @media (max-width: 380px) {
   .set-col-hdr,
-  .set-row { grid-template-columns: 16px 1fr 1fr 44px 22px; gap: 4px; }
-  .step-btn { flex-basis: 26px; min-width: 26px; }
+  .set-row { grid-template-columns: 16px 1fr 1fr 48px 24px; gap: 5px; }
+  .step-btn { flex-basis: 32px; min-width: 32px; }
   .step-inp { font-size: 16px; }
-  .check-btn { width: 44px; height: 44px; }
-  .rm-set-btn { width: 22px; height: 44px; }
+  .check-btn { width: 48px; height: 48px; }
+  .rm-set-btn { width: 24px; height: 48px; }
 }
 
 /* ── EXERCISE PICKER ── */
@@ -3905,7 +3905,7 @@ html, body { background: var(--bg); }
     transform   0.42s ease,
     filter      0.42s ease;
   overflow: hidden;
-  max-height: 80px;
+  max-height: 96px;
 }
 .set-row.set-locked {
   opacity: 0.4;
@@ -3977,7 +3977,7 @@ html, body { background: var(--bg); }
   color: var(--accent);
   border: 1px solid var(--ad2);
   padding: 8px 12px;
-  flex: 1 1 110px; min-width: 0;
+  flex: 1 1 110px; min-width: 0; min-height: 50px;
   border-radius: 8px;
   font-family: 'Bebas Neue', sans-serif;
   font-size: 14px;
