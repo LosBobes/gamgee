@@ -1,4 +1,4 @@
-import type { WorkoutSession, StatusDef, ExerciseConfig, ProgressionOverride } from "./types";
+import type { WorkoutSession, WorkoutSet, StatusDef, ExerciseConfig, ProgressionOverride } from "./types";
 import { UPPER_IDS, STATUS } from "./constants";
 import { orm1, e1rmWithRir, rpeToRir } from "./utils";
 
@@ -180,6 +180,58 @@ export function analyzeEx(
   }
 
   return steer({ sessions, last, est1RM, status, nextWeight, nextReps, trendPerSession: slope, reason });
+}
+
+
+/**
+ * Build a pre-populated set layout for an exercise from the user's saved
+ * history, for seeding a freshly built workout.
+ *
+ * Strategy: find the most recent session that included this exercise and
+ * reproduce its set *structure* (set count, warmup flags, per-set reps), then —
+ * for strength lifts — overwrite the working sets with {@link analyzeEx}'s next
+ * target so the user starts one progressive step ahead (ramped up). Warmups,
+ * cardio, and assisted lifts carry their last logged numbers forward as-is.
+ *
+ * Returns null when the exercise has no usable history — the caller should
+ * leave it blank, exactly like a brand-new lift, so only exercises the user has
+ * actually logged get pre-populated.
+ *
+ * `history` is expected newest-first (the order the API returns it).
+ */
+export function rampedSetsFromHistory(
+  exId: string,
+  exType: string,
+  isAssisted: boolean,
+  history: WorkoutSession[],
+  override?: ProgressionOverride | null,
+): WorkoutSet[] | null {
+  const lastSession = history.find(s => s.exercises.some(e => e.id === exId));
+  if (!lastSession) return null;
+  const lastEx = lastSession.exercises.find(e => e.id === exId);
+  if (!lastEx || lastEx.sets.length === 0) return null;
+
+  // Only strength lifts get an analyzer-driven progression; cardio / assisted
+  // work just carries the last numbers forward.
+  const a = exType === "strength" && !isAssisted ? analyzeEx(exId, history, override) : null;
+
+  return lastEx.sets.map(s => {
+    if (a && !s.is_warmup) {
+      return {
+        weight: String(a.nextWeight),
+        reps: String(a.nextReps),
+        done: false,
+        prefilled: true,
+      };
+    }
+    return {
+      weight: s.weight,
+      reps: s.reps,
+      done: false,
+      prefilled: !!(s.weight || s.reps),
+      ...(s.is_warmup ? { is_warmup: true } : {}),
+    };
+  });
 }
 
 

@@ -35,7 +35,7 @@ import NotificationBell from "./components/NotificationBell";
 import FeedbackModal from "./components/FeedbackModal";
 import OnboardingWelcome from "./components/Onboarding";
 import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
-import { analyzeEx, prescribeExercise } from "./analysis";
+import { analyzeEx, prescribeExercise, rampedSetsFromHistory } from "./analysis";
 import { loadPrescribeConfigs, mergePrescribeConfigs } from "./data/prescribeConfigs";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
 import { useEventStream } from "./hooks/useEventStream";
@@ -709,18 +709,11 @@ export default function WorkoutTracker({
         }));
         initSets = [...warmupSets, ...workingSets];
       } else if (autoFill) {
-        const lastSession = history.find(s => s.exercises.some(e => e.id === ex.id));
-        if (lastSession) {
-          const lastEx = lastSession.exercises.find(e => e.id === ex.id)!;
-          if (lastEx.sets.length > 0)
-            initSets = lastEx.sets.map(s => ({
-              weight:    s.weight,
-              reps:      s.reps,
-              done:      false,
-              prefilled: !!(s.weight || s.reps),
-              is_warmup: s.is_warmup,
-            }));
-        }
+        // Pre-populate from saved history: reproduce the last session's set
+        // layout with the working sets ramped to the next progression target.
+        // Exercises with no history stay blank, like a brand-new lift.
+        const ramped = rampedSetsFromHistory(ex.id, ex.type, !!ex.is_assisted, history, progressionOverrides[ex.id]);
+        if (ramped) initSets = ramped;
       }
       return { ...ex, uid: `${ex.id}_${Date.now()}_${Math.random()}`, sets: initSets };
     });
@@ -748,7 +741,12 @@ export default function WorkoutTracker({
   };
 
   const addExercise = (ex: ExerciseDef) =>
-    setExercises(p => [...p, { ...ex, uid: `${ex.id}_${Date.now()}`, sets: [{ weight: "", reps: "", done: false }] }]);
+    setExercises(p => {
+      // An ad-hoc add mid-workout also benefits from history: ramp it from the
+      // last session if we've logged it before, otherwise leave it blank.
+      const ramped = rampedSetsFromHistory(ex.id, ex.type, !!ex.is_assisted, history, progressionOverrides[ex.id]);
+      return [...p, { ...ex, uid: `${ex.id}_${Date.now()}`, sets: ramped ?? [{ weight: "", reps: "", done: false }] }];
+    });
 
   const removeExercise = (uid: string) =>
     setExercises(p => p.filter(e => e.uid !== uid));
