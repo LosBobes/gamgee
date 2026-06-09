@@ -54,11 +54,53 @@ interface WorkoutTrackerProps {
   forceAuthScreen?: boolean;
 }
 
+// ── Wizard / workout snapshot ────────────────────────────────────────────────
+// We persist the in-progress wizard step (and, if logging, the live workout)
+// to sessionStorage so a page refresh drops the user back exactly where they
+// were instead of bouncing them to the start screen. sessionStorage (rather
+// than localStorage) matches the existing active-tab persistence and scopes
+// the snapshot to the tab — a fresh tab starts clean.
+const SESSION_STATE_KEY = "gamgee_session_state";
+
+interface PersistedSessionState {
+  wStep: number;
+  focus: string | null;
+  cardio: CardioPlan;
+  planned: ExerciseDef[];
+  plannedConfigs: Record<string, import("./types").ExerciseConfig>;
+  active: boolean;
+  startTs: number | null;
+  exercises: WorkoutExercise[];
+  // Which completed sets we've already broadcast to a live session, plus the
+  // session they belong to — restored so a refresh mid-broadcast doesn't
+  // re-POST (and duplicate) every logged set on the trainer timeline.
+  broadcastSets: string[];
+  broadcastSessionId: string | null;
+}
+
+function loadSessionState(): Partial<PersistedSessionState> {
+  try {
+    const raw = sessionStorage.getItem(SESSION_STATE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 export default function WorkoutTracker({
   initialAuthView,
   initialAuthToken,
   forceAuthScreen = false,
 }: WorkoutTrackerProps = {}) {
+  // Restore the in-progress wizard / workout snapshot saved on the previous
+  // render so a refresh keeps the user where they were. Read once (guarded) —
+  // the lazy useState initialisers below pull their seed values from here.
+  const restoredRef = useRef<Partial<PersistedSessionState>>();
+  if (!restoredRef.current) restoredRef.current = loadSessionState();
+  const restored = restoredRef.current;
+
   // UI
   const [tab,       setTab]       = useState<string>(() => {
     const valid  = ["workout", "history", "prs", "buddies", "health", "coach", "exercises", "notifications", "profile", "settings", "chat", "coaching", "trainees", "regimes"];
@@ -70,28 +112,29 @@ export default function WorkoutTracker({
     const stored = sessionStorage.getItem("gamgee_active_tab");
     return stored && valid.includes(stored) ? stored : "workout";
   });
-  const [wStep,     setWStep]     = useState(0);
-  const [focus,     setFocus]     = useState<string | null>(null);
+  const [wStep,     setWStep]     = useState(() => typeof restored.wStep === "number" ? restored.wStep : 0);
+  const [focus,     setFocus]     = useState<string | null>(() => restored.focus ?? null);
   // `timing: null` means the user hasn't picked yet — the wizard screen lands
   // with nothing pre-selected so they make a deliberate choice.
-  const [cardio,    setCardio]    = useState<CardioPlan>({ timing: null, before: null, after: null });
-  const [planned,   setPlanned]   = useState<ExerciseDef[]>([]);
+  const [cardio,    setCardio]    = useState<CardioPlan>(() => restored.cardio ?? { timing: null, before: null, after: null });
+  const [planned,   setPlanned]   = useState<ExerciseDef[]>(() => restored.planned ?? []);
   // Per-exercise prescription from the day's regime (warmup/working sets, RPE,
   // reference max). Populated by loadTodayPlan; consumed by startFromWizard
   // to pre-populate the active workout with prescribed warmup + working sets.
   // Also written by the RPE-driven prescribe step (WizardPrescribe) before it
   // hands off to startFromWizard.
-  const [plannedConfigs, setPlannedConfigs] = useState<Record<string, import("./types").ExerciseConfig>>({});
+  const [plannedConfigs, setPlannedConfigs] = useState<Record<string, import("./types").ExerciseConfig>>(() => restored.plannedConfigs ?? {});
   // Last-used RPE prescribe configs from localStorage so the prescribe step
   // pre-seeds the same target effort/reference next time the user opts in.
   // Merged with `plannedConfigs` (which wins) so a regime day's RPE always
   // takes precedence over saved freeform configs.
   const [savedPrescribeConfigs, setSavedPrescribeConfigs] = useState<Record<string, import("./types").ExerciseConfig>>(() => loadPrescribeConfigs());
   // logging
-  const [active,    setActive]    = useState(false);
-  const [startTs,   setStartTs]   = useState<number | null>(null);
-  const [elapsed,   setElapsed]   = useState(0);
-  const [exercises, setExercises] = useState<WorkoutExercise[]>([]);
+  const [active,    setActive]    = useState(() => restored.active ?? false);
+  const [startTs,   setStartTs]   = useState<number | null>(() => restored.startTs ?? null);
+  const [elapsed,   setElapsed]   = useState(() =>
+    restored.active && restored.startTs ? Date.now() - restored.startTs : 0);
+  const [exercises, setExercises] = useState<WorkoutExercise[]>(() => restored.exercises ?? []);
   // data
   const [history,       setHistory]       = useState<WorkoutSession[]>([]);
   const [prs,           setPrs]           = useState<PRDict>({});
@@ -539,11 +582,35 @@ export default function WorkoutTracker({
 
   // ── Live broadcast: progress + set events ──
   // Track which sets have already been broadcast so we only POST each one once.
-  const broadcastSetsRef = useRef<Set<string>>(new Set());
-  // Reset the dedupe set when a new live session starts.
+  // Seeded from the restored snapshot so a refresh mid-broadcast doesn't
+  // re-POST already-sent sets.
+  const broadcastSetsRef = useRef<Set<string>>(new Set(restored.broadcastSets ?? []));
+  // The live-session id those broadcast sets belong to. Initialised from the
+  // snapshot so we can tell a genuinely new session (reset the dedupe set)
+  // apart from the same session re-loading after a refresh (keep it).
+  const broadcastSessionIdRef = useRef<string | null>(restored.broadcastSessionId ?? null);
   useEffect(() => {
-    broadcastSetsRef.current = new Set();
+    const id = myLiveSession?.id ?? null;
+    if (id == null) return;            // session not loaded yet — leave the set alone
+    if (id !== broadcastSessionIdRef.current) {
+      broadcastSetsRef.current = new Set();
+      broadcastSessionIdRef.current = id;
+    }
   }, [myLiveSession?.id]);
+
+  // Persist the in-progress wizard / workout snapshot so a refresh restores it.
+  // Declared after the broadcast effect so broadcastSetsRef reflects this
+  // render's just-added keys. Clears the snapshot on logout / 401.
+  useEffect(() => {
+    if (!token) { sessionStorage.removeItem(SESSION_STATE_KEY); return; }
+    const snap: PersistedSessionState = {
+      wStep, focus, cardio, planned, plannedConfigs,
+      active, startTs, exercises,
+      broadcastSets: [...broadcastSetsRef.current],
+      broadcastSessionId: myLiveSession?.id ?? null,
+    };
+    try { sessionStorage.setItem(SESSION_STATE_KEY, JSON.stringify(snap)); } catch { /* quota — best effort */ }
+  }, [token, wStep, focus, cardio, planned, plannedConfigs, active, startTs, exercises, myLiveSession?.id]);
 
   // Register the service worker once we have a session, so push messages can
   // wake the browser even when no tab is open. Service-worker click events
