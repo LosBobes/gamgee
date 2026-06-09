@@ -492,9 +492,24 @@ html, body { background: var(--bg); }
 /* ── Saved templates (WizardMode picker · WizardBuild save · weekly assign) ── */
 .wm-templates { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
 .wm-templates-head {
-  display: flex; align-items: center; gap: 6px;
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
   font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
   color: var(--muted); margin-bottom: 2px;
+}
+.wm-templates-title { display: flex; align-items: center; gap: 6px; }
+.wm-template-new {
+  display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+  font-family: inherit; font-size: 10px; font-weight: 700; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--accent);
+  background: var(--ad); border: 1px solid var(--ad2); border-radius: 8px;
+  padding: 5px 10px; transition: all 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.wm-template-new:hover { border-color: var(--accent); }
+.wm-template-new:active { transform: scale(0.97); }
+.wm-templates-empty {
+  font-size: 12px; color: var(--muted); font-family: 'Nunito', sans-serif;
+  background: var(--ad); border: 1px dashed var(--ad2); border-radius: 12px;
+  padding: 14px; text-align: center; line-height: 1.45;
 }
 .wm-template-card {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;

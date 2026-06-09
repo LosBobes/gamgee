@@ -138,6 +138,7 @@ export default function WorkoutTab({
             onSingle={() => setWStepQuake(2)}
             onLoadToday={onLoadTodayQuake}
             onLoadTemplate={tpl => { triggerQuake(); onLoadTemplate(tpl); }}
+            onNewTemplate={() => setWStepQuake(2)}
             onSetupPlan={() => setWStepQuake(6)}
             onBack={() => setWStepQuake(0)}
           />

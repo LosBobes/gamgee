@@ -1,4 +1,4 @@
-import { Calendar, Zap, ArrowLeft, Bookmark } from "lucide-react";
+import { Calendar, Zap, ArrowLeft, Bookmark, Plus } from "lucide-react";
 import type { DayPlan, WeeklyPlan, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
@@ -12,11 +12,12 @@ interface Props {
   onSingle:       () => void;
   onLoadToday:    (plan: DayPlan) => void;
   onLoadTemplate: (tpl: WorkoutTemplate) => void;
+  onNewTemplate:  () => void;
   onSetupPlan:    () => void;
   onBack:         () => void;
 }
 
-export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onSetupPlan, onBack }: Props) {
+export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onNewTemplate, onSetupPlan, onBack }: Props) {
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
@@ -137,13 +138,20 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToda
         </div>
       </div>
 
-      {/* Saved templates — one tap loads a blueprint straight into the build step. */}
-      {templates.length > 0 && (
-        <div className="wm-templates">
-          <div className="wm-templates-head">
+      {/* Saved templates — one tap loads a blueprint straight into the build step.
+          The "New" button launches the build flow where the user can pick lifts
+          and save them as a reusable template. */}
+      <div className="wm-templates">
+        <div className="wm-templates-head">
+          <span className="wm-templates-title">
             <Bookmark size={13} /> {t("Your Templates", "Your Templates", "Your Templates")}
-          </div>
-          {templates.map(tpl => {
+          </span>
+          <button className="wm-template-new" onClick={onNewTemplate}>
+            <Plus size={13} /> {t("New", "New", "New")}
+          </button>
+        </div>
+        {templates.length > 0 ? (
+          templates.map(tpl => {
             const fd = tpl.focus ? getFocusDef(tpl.focus) : null;
             const names = tpl.exercise_ids
               .map(id => ALL_EX.find(e => e.id === id)?.name)
@@ -162,9 +170,17 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToda
                 <Zap size={15} className="wm-template-go" />
               </button>
             );
-          })}
-        </div>
-      )}
+          })
+        ) : (
+          <div className="wm-templates-empty">
+            {t(
+              "No templates yet. Tap New to build one and reuse it in a single tap.",
+              "No templates yet. Tap New to build one — reuse it in one tap.",
+              "No templates yet. Tap New to build one and serve it in one tap."
+            )}
+          </div>
+        )}
+      </div>
     </>
   );
 }
