@@ -529,6 +529,27 @@ html, body { background: var(--bg); }
 }
 .wm-template-go { color: var(--accent); flex-shrink: 0; }
 
+/* Dedicated template builder (WizardTemplate). */
+.tpl-name-input { width: 100%; margin-top: 14px; font-size: 15px; font-weight: 700; }
+.tpl-focus-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--muted); margin: 14px 0 8px;
+}
+.tpl-focus-row {
+  display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 4px;
+  scrollbar-width: none;
+}
+.tpl-focus-row::-webkit-scrollbar { display: none; }
+.tpl-focus-chip {
+  display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: pointer;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 700; white-space: nowrap;
+  color: var(--muted); background: var(--ad); border: 1px solid var(--ad2);
+  border-radius: 999px; padding: 7px 13px; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.tpl-focus-chip:hover { border-color: var(--accent); }
+.tpl-focus-chip.selected { color: var(--accent); border-color: var(--accent); background: var(--ad2); }
+
 /* Inline "Save as template" form in the build step. */
 .tpl-save-row { display: flex; gap: 6px; margin-top: 6px; align-items: stretch; }
 .tpl-save-input { flex: 1; min-width: 0; }

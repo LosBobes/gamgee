@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeEx, prescribeExercise, weightForRpe } from "../../src/analysis";
+import { analyzeEx, prescribeExercise, rampedSetsFromHistory, weightForRpe } from "../../src/analysis";
 import { rirToRpe } from "../../src/utils";
 import type { WorkoutSession } from "../../src/types";
 
@@ -279,5 +279,69 @@ describe("prescribeExercise", () => {
     // 4 warmups: 30/50/70/85% — ascending pattern.
     const ws = presc.warmup.map(w => w.weight);
     for (let i = 1; i < ws.length; i++) expect(ws[i]).toBeGreaterThanOrEqual(ws[i - 1]);
+  });
+});
+
+describe("rampedSetsFromHistory", () => {
+  it("returns null for an exercise with no history (treated as brand-new)", () => {
+    expect(rampedSetsFromHistory("bench", "strength", false, [])).toBeNull();
+    // History exists but not for this exercise.
+    expect(rampedSetsFromHistory("squat", "strength", false, [session("2026-05-01", "60", "8")])).toBeNull();
+  });
+
+  it("reproduces the last set count and ramps the working weight up", () => {
+    const last: WorkoutSession = {
+      id: "s1", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "bench", name: "Bench Press", type: "strength", uid: "bench_s1",
+        sets: [
+          { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
+          { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
+          { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
+        ],
+      }],
+    };
+    const sets = rampedSetsFromHistory("bench", "strength", false, [last])!;
+    expect(sets).toHaveLength(3);
+    // Baseline with 3 RIR adds a 2.5kg plate → every working set ramps to 62.5.
+    sets.forEach(s => {
+      expect(s.weight).toBe("62.5");
+      expect(s.reps).toBe("8");
+      expect(s.prefilled).toBe(true);
+      expect(s.done).toBe(false);
+    });
+  });
+
+  it("carries warmups forward verbatim and only ramps the working sets", () => {
+    const last: WorkoutSession = {
+      id: "s2", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "bench", name: "Bench Press", type: "strength", uid: "bench_s2",
+        sets: [
+          { weight: "40", reps: "5", done: true, is_warmup: true },
+          { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
+        ],
+      }],
+    };
+    const sets = rampedSetsFromHistory("bench", "strength", false, [last])!;
+    expect(sets).toHaveLength(2);
+    // Warmup is untouched.
+    expect(sets[0]).toMatchObject({ weight: "40", reps: "5", is_warmup: true });
+    // Working set ramped.
+    expect(sets[1]).toMatchObject({ weight: "62.5", reps: "8", prefilled: true });
+    expect(sets[1].is_warmup).toBeUndefined();
+  });
+
+  it("carries values forward without ramping for assisted lifts", () => {
+    const last: WorkoutSession = {
+      id: "s3", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "dips", name: "Dips", type: "strength", is_assisted: true, uid: "dips_s3",
+        sets: [{ weight: "20", reps: "8", done: true }],
+      }],
+    };
+    const sets = rampedSetsFromHistory("dips", "strength", true, [last])!;
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ weight: "20", reps: "8", prefilled: true });
   });
 });

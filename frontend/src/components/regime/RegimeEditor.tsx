@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ArrowLeft, Save, Search, X, Plus, Settings2, Check, Copy, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Search, X, Plus, Settings2, Check, Copy, Trash2, Bookmark } from "lucide-react";
 import type {
-  Regime, DayPlan, WeekPlanDay, ExerciseConfig, ExerciseDef, WeekPlan,
+  Regime, DayPlan, WeekPlanDay, ExerciseConfig, ExerciseDef, WeekPlan, WorkoutTemplate,
 } from "../../types";
 import { WEEK_DAYS } from "../../data/weeklyPlan";
+import { getFocusDef } from "../../data/focuses";
 import { ALL_EX } from "../../data/exercises";
 import { prescribeExercise, weightForRpe } from "../../analysis";
 import { orm1 } from "../../utils";
@@ -12,6 +13,7 @@ import { UPPER_IDS } from "../../constants";
 interface Props {
   authFetch: (url: string, opts?: RequestInit) => Promise<Response>;
   regime: Regime;
+  templates?: WorkoutTemplate[];
   onSaved: (regime: Regime) => void;
   onCancel: () => void;
 }
@@ -49,7 +51,7 @@ function regimeToWeeks(r: Regime): WeekPlan[] {
   return [cloneWeek({ label: "Week 1", days: r.days || {} })];
 }
 
-export default function RegimeEditor({ authFetch, regime, onSaved, onCancel }: Props) {
+export default function RegimeEditor({ authFetch, regime, templates = [], onSaved, onCancel }: Props) {
   const [name, setName] = useState(regime.name);
   const [description, setDescription] = useState(regime.description ?? "");
   const [weeks, setWeeks] = useState<WeekPlan[]>(() => regimeToWeeks(regime));
@@ -102,6 +104,33 @@ export default function RegimeEditor({ authFetch, regime, onSaved, onCancel }: P
       const nextCfg = { ...(d.exerciseConfig ?? {}), [exId]: cfg };
       return { ...d, exerciseIds: [...(d.exerciseIds ?? []), exId], exerciseConfig: nextCfg };
     });
+  };
+
+  // Load a saved template into the current day: set the focus and replace the
+  // day's exercises with the template's, seeding the same default prescription
+  // a manual add would so each lift has working sets/reps to prescribe from.
+  // Any per-exercise targets the template carries override those defaults.
+  const applyTemplate = (tpl: WorkoutTemplate) => {
+    updateDay(d => {
+      const cfg: Record<string, ExerciseConfig> = {};
+      tpl.exercise_ids.forEach(id => {
+        cfg[id] = {
+          rpe: DEFAULT_RPE,
+          warmup_sets: DEFAULT_WARMUP_SETS,
+          working_sets: DEFAULT_WORKING_SETS,
+          working_reps: DEFAULT_WORKING_REPS,
+          ...(tpl.exercise_config?.[id] ?? {}),
+        };
+      });
+      return {
+        ...d,
+        enabled: true,
+        focus: tpl.focus || d.focus,
+        exerciseIds: [...tpl.exercise_ids],
+        exerciseConfig: cfg,
+      };
+    });
+    setPopoverFor(null);
   };
 
   const setExerciseConfig = (exId: string, patch: Partial<ExerciseConfig>) => {
@@ -448,6 +477,26 @@ export default function RegimeEditor({ authFetch, regime, onSaved, onCancel }: P
             Training day
           </label>
         </div>
+
+        {day.enabled && templates.length > 0 && (
+          <div className="ww-template-row">
+            <span className="ww-template-lbl"><Bookmark size={11} /> From template</span>
+            {templates.map(tpl => {
+              const fd = tpl.focus ? getFocusDef(tpl.focus) : null;
+              return (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  className="ww-focus-chip"
+                  title={`${fd ? `${fd.name} · ` : ""}${tpl.exercise_ids.length} exercise${tpl.exercise_ids.length !== 1 ? "s" : ""} — replaces this day`}
+                  onClick={() => applyTemplate(tpl)}
+                >
+                  {tpl.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {day.enabled && (
           <>

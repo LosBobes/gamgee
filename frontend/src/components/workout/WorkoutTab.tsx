@@ -8,6 +8,7 @@ import WizardCardio from "./WizardCardio";
 import WizardBuild from "./WizardBuild";
 import WizardPrescribe from "./WizardPrescribe";
 import WizardWeeklySetup from "./WizardWeeklySetup";
+import WizardTemplate from "./WizardTemplate";
 import ActiveWorkout from "./ActiveWorkout";
 
 interface Props {
@@ -138,7 +139,7 @@ export default function WorkoutTab({
             onSingle={() => setWStepQuake(2)}
             onLoadToday={onLoadTodayQuake}
             onLoadTemplate={tpl => { triggerQuake(); onLoadTemplate(tpl); }}
-            onNewTemplate={() => setWStepQuake(2)}
+            onNewTemplate={() => setWStepQuake(7)}
             onSetupPlan={() => setWStepQuake(6)}
             onBack={() => setWStepQuake(0)}
           />
@@ -208,6 +209,17 @@ export default function WorkoutTab({
             onDone={() => setWStepQuake(1)}
             templates={templates}
             authFetch={authFetch}
+          />
+        </div>
+      )}
+
+      {/* Step 7 — dedicated template builder (no workout) */}
+      {!active && wStep === 7 && (
+        <div key="wstep-7" className={stepAnim}>
+          <WizardTemplate
+            onSaveTemplate={onSaveTemplate}
+            onDone={() => setWStepQuake(1)}
+            history={history}
           />
         </div>
       )}

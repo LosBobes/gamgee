@@ -60,6 +60,11 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
         .filter((x): x is ExerciseDef => !!x)
     : [];
 
+  // Whether any picked exercise has logged history — drives the "ramped" start
+  // label and the "start fresh" escape hatch. Prefill is per-exercise (handled
+  // in startFromWizard): logged lifts come up populated + ramped, the rest blank.
+  const anyPlannedHasHistory = planned.some(ex => history.some(s => s.exercises.some(e => e.id === ex.id)));
+
   // Show the popup once per wizard build entry, only when there's something to populate
   // and the user hasn't already added exercises.
   const [showAutoPopup, setShowAutoPopup] = useState(() => planned.length === 0);
@@ -175,7 +180,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
         </span>
         <button
           className="wz-next"
-          onClick={() => onStart(lastFocusSession != null)}
+          onClick={() => onStart(true)}
           disabled={planned.length === 0}
         >
           START <ChevronRight size={16} />
@@ -252,9 +257,9 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
               <button
                 className="wz-next"
                 style={{ width: "100%", marginTop: 10, padding: 16, fontSize: 15 }}
-                onClick={() => onStart(lastFocusSession != null)}
+                onClick={() => onStart(true)}
               >
-                {lastFocusSession ? <>START WITH LAST WEIGHTS <ChevronRight size={16} /></> : <>START WORKOUT <ChevronRight size={16} /></>}
+                {anyPlannedHasHistory ? <>START WITH SMART WEIGHTS <ChevronRight size={16} /></> : <>START WORKOUT <ChevronRight size={16} /></>}
               </button>
               <button
                 className="wz-back wz-rpe-cta"
@@ -269,7 +274,7 @@ export default function WizardBuild({ focus, planned, setPlanned, onBack, onStar
                   "Pick effort, we'll do the math"
                 )}
               </button>
-              {lastFocusSession && (
+              {anyPlannedHasHistory && (
                 <button
                   className="wz-back"
                   style={{ width: "100%", marginTop: 8, padding: 13, fontSize: 13 }}

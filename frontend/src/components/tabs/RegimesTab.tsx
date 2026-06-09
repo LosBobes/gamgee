@@ -64,6 +64,7 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
       <RegimeEditor
         authFetch={authFetch}
         regime={editing}
+        templates={templates}
         onSaved={() => { setEditing(null); refresh(); }}
         onCancel={() => setEditing(null)}
       />
@@ -168,8 +169,8 @@ export default function RegimesTab({ authFetch, weeklyPlan: _weeklyPlan, setWeek
       </div>
 
       {/* Saved templates — single-session blueprints. Loaded into a workout
-          from the Workout tab, or dropped onto a weekday in the plan editor;
-          here the user can just review and prune them. */}
+          from the Workout tab, or dropped onto a weekday in the plan editor or
+          a regime's day; here the user can just review and prune them. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <h2 style={{ margin: "4px 0 0", fontSize: 16, letterSpacing: 1, display: "flex", alignItems: "center", gap: 8 }}>
           <Bookmark size={16} /> MY TEMPLATES
