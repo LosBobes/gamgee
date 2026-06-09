@@ -1,4 +1,4 @@
-import { Calendar, Zap, ArrowLeft, Bookmark, Plus } from "lucide-react";
+import { Calendar, Zap, ArrowLeft, Bookmark, Plus, Pencil, Trash2 } from "lucide-react";
 import type { DayPlan, WeeklyPlan, WorkoutTemplate } from "../../types";
 import { WEEK_DAYS, getTodayKey, dayMapForCurrentWeek } from "../../data/weeklyPlan";
 import { getFocusDef } from "../../data/focuses";
@@ -13,11 +13,13 @@ interface Props {
   onLoadToday:    (plan: DayPlan) => void;
   onLoadTemplate: (tpl: WorkoutTemplate) => void;
   onNewTemplate:  () => void;
+  onEditTemplate: (tpl: WorkoutTemplate) => void;
+  onDeleteTemplate: (id: number) => Promise<boolean>;
   onSetupPlan:    () => void;
   onBack:         () => void;
 }
 
-export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onNewTemplate, onSetupPlan, onBack }: Props) {
+export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToday, onLoadTemplate, onNewTemplate, onEditTemplate, onDeleteTemplate, onSetupPlan, onBack }: Props) {
   const t = useTxt();
   const todayKey  = getTodayKey();
   const todayMeta = WEEK_DAYS.find(d => d.key === todayKey)!;
@@ -157,18 +159,40 @@ export default function WizardMode({ weeklyPlan, templates, onSingle, onLoadToda
               .map(id => ALL_EX.find(e => e.id === id)?.name)
               .filter((n): n is string => !!n);
             return (
-              <button key={tpl.id} className="wm-template-card" onClick={() => onLoadTemplate(tpl)}>
-                <div className="wm-template-main">
-                  <div className="wm-template-name">{tpl.name}</div>
-                  <div className="wm-template-meta">
-                    {fd ? `${fd.name} · ` : ""}{tpl.exercise_ids.length} exercise{tpl.exercise_ids.length !== 1 ? "s" : ""}
+              <div key={tpl.id} className="wm-template-card">
+                <button className="wm-template-load" onClick={() => onLoadTemplate(tpl)} title={t("Load into a workout", "Load into a workout", "Load into a workout")}>
+                  <div className="wm-template-main">
+                    <div className="wm-template-name">{tpl.name}</div>
+                    <div className="wm-template-meta">
+                      {fd ? `${fd.name} · ` : ""}{tpl.exercise_ids.length} exercise{tpl.exercise_ids.length !== 1 ? "s" : ""}
+                    </div>
+                    {names.length > 0 && (
+                      <div className="wm-template-exs">{names.slice(0, 4).join(", ")}{names.length > 4 ? "…" : ""}</div>
+                    )}
                   </div>
-                  {names.length > 0 && (
-                    <div className="wm-template-exs">{names.slice(0, 4).join(", ")}{names.length > 4 ? "…" : ""}</div>
-                  )}
+                  <Zap size={15} className="wm-template-go" />
+                </button>
+                <div className="wm-template-actions">
+                  <button
+                    className="wm-template-act"
+                    onClick={() => onEditTemplate(tpl)}
+                    aria-label={`Edit ${tpl.name}`}
+                    title={t("Edit", "Edit", "Edit")}
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    className="wm-template-act danger"
+                    onClick={() => {
+                      if (confirm(`Delete template "${tpl.name}"?`)) onDeleteTemplate(tpl.id);
+                    }}
+                    aria-label={`Delete ${tpl.name}`}
+                    title={t("Delete", "Delete", "Delete")}
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
-                <Zap size={15} className="wm-template-go" />
-              </button>
+              </div>
             );
           })
         ) : (

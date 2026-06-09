@@ -29,6 +29,8 @@ interface Props {
   setWeeklyPlan:   (plan: WeeklyPlan) => void;
   templates:       WorkoutTemplate[];
   onSaveTemplate:  (draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
+  onUpdateTemplate:(id: number, draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
+  onDeleteTemplate:(id: number) => Promise<boolean>;
   onLoadTemplate:  (tpl: WorkoutTemplate) => void;
   progressionOverrides: Record<string, ProgressionOverride>;
   restPrefs:       RestPrefs;
@@ -57,7 +59,7 @@ interface Props {
 export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
-  weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
+  weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
 }: Props) {
@@ -79,6 +81,10 @@ export default function WorkoutTab({
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
+
+  // Which template the dedicated builder (step 7) is editing, or null for a
+  // fresh "new template" flow.
+  const [editingTpl, setEditingTpl] = useState<WorkoutTemplate | null>(null);
 
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [quake, setQuake] = useState<{ vx: number; vy: number; lx: number; ly: number; id: number } | null>(null);
@@ -139,7 +145,9 @@ export default function WorkoutTab({
             onSingle={() => setWStepQuake(2)}
             onLoadToday={onLoadTodayQuake}
             onLoadTemplate={tpl => { triggerQuake(); onLoadTemplate(tpl); }}
-            onNewTemplate={() => setWStepQuake(7)}
+            onNewTemplate={() => { setEditingTpl(null); setWStepQuake(7); }}
+            onEditTemplate={tpl => { setEditingTpl(tpl); setWStepQuake(7); }}
+            onDeleteTemplate={onDeleteTemplate}
             onSetupPlan={() => setWStepQuake(6)}
             onBack={() => setWStepQuake(0)}
           />
@@ -217,8 +225,10 @@ export default function WorkoutTab({
       {!active && wStep === 7 && (
         <div key="wstep-7" className={stepAnim}>
           <WizardTemplate
+            initial={editingTpl}
             onSaveTemplate={onSaveTemplate}
-            onDone={() => setWStepQuake(1)}
+            onUpdateTemplate={onUpdateTemplate}
+            onDone={() => { setEditingTpl(null); setWStepQuake(1); }}
             history={history}
           />
         </div>

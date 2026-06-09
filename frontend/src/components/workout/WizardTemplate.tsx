@@ -12,8 +12,13 @@ import { useTxt } from "../../context/ToneContext";
 import OnboardingHint from "../OnboardingHint";
 
 interface Props {
-  /** Persist the assembled template. */
+  /** When set, the builder edits this existing template instead of creating a
+   * new one (prefilled name/focus/exercises; Save calls onUpdateTemplate). */
+  initial?: WorkoutTemplate | null;
+  /** Persist a brand-new template. */
   onSaveTemplate: (draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
+  /** Overwrite the template identified by `initial`. */
+  onUpdateTemplate: (id: number, draft: WorkoutTemplateDraft) => Promise<WorkoutTemplate | null>;
   /** Return to the mode screen (after save or cancel). */
   onDone:  () => void;
   history: WorkoutSession[];
@@ -23,13 +28,18 @@ interface Props {
  * Dedicated template builder — assemble a reusable workout (name + optional
  * focus + exercises) and save it, *without* starting or logging a workout.
  * Holds its own local state so it never touches the live workout wizard's
- * `planned` list.
+ * `planned` list. Doubles as the editor when `initial` is supplied.
  */
-export default function WizardTemplate({ onSaveTemplate, onDone, history }: Props) {
+export default function WizardTemplate({ initial, onSaveTemplate, onUpdateTemplate, onDone, history }: Props) {
   const t = useTxt();
-  const [name,            setName]            = useState("");
-  const [focus,           setFocus]           = useState<string | null>(null);
-  const [planned,         setPlanned]         = useState<ExerciseDef[]>([]);
+  const isEdit = !!initial;
+  const [name,            setName]            = useState(initial?.name ?? "");
+  const [focus,           setFocus]           = useState<string | null>(initial?.focus ?? null);
+  const [planned,         setPlanned]         = useState<ExerciseDef[]>(() =>
+    (initial?.exercise_ids ?? [])
+      .map(id => ALL_EX.find(e => e.id === id))
+      .filter((e): e is ExerciseDef => !!e),
+  );
   const [hovEx,           setHovEx]           = useState<ExerciseDef | null>(null);
   const [search,          setSearch]          = useState("");
   const [showCustomModal, setShowCustomModal] = useState(false);
@@ -44,12 +54,19 @@ export default function WizardTemplate({ onSaveTemplate, onDone, history }: Prop
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
-    const result = await onSaveTemplate({
-      name: name.trim(),
-      focus,
-      exercise_ids: planned.map(p => p.id),
-      exercise_config: {},
-    });
+    const ids = planned.map(p => p.id);
+    // When editing, carry forward any per-exercise targets the template already
+    // had for exercises that survive the edit — the builder has no config UI,
+    // so we mustn't wipe them.
+    const exercise_config = initial
+      ? Object.fromEntries(
+          Object.entries(initial.exercise_config || {}).filter(([id]) => ids.includes(id)),
+        )
+      : {};
+    const draft: WorkoutTemplateDraft = { name: name.trim(), focus, exercise_ids: ids, exercise_config };
+    const result = initial
+      ? await onUpdateTemplate(initial.id, draft)
+      : await onSaveTemplate(draft);
     setSaving(false);
     if (result) {
       setSaved(true);
@@ -118,14 +135,18 @@ export default function WizardTemplate({ onSaveTemplate, onDone, history }: Prop
       <div className="wz-hdr">
         <button className="wz-back" onClick={onDone}><ArrowLeft size={13} /> BACK</button>
         <span className="wz-focus-label">
-          <Bookmark size={14} /> {t("NEW TEMPLATE", "NEW TEMPLATE", "NEW TEMPLATE")}
+          <Bookmark size={14} /> {isEdit ? t("EDIT TEMPLATE", "EDIT TEMPLATE", "EDIT TEMPLATE") : t("NEW TEMPLATE", "NEW TEMPLATE", "NEW TEMPLATE")}
         </span>
         <button className="wz-next" onClick={handleSave} disabled={!canSave}>
           {saved ? <>SAVED <Check size={14} /></> : <>SAVE <Check size={14} /></>}
         </button>
       </div>
 
-      <div className="wizard-title">{t("Build a template", "Cook up a template", "Build a template, bestie")}</div>
+      <div className="wizard-title">
+        {isEdit
+          ? t("Edit your template", "Tweak your template", "Edit your template, bestie")
+          : t("Build a template", "Cook up a template", "Build a template, bestie")}
+      </div>
       <div className="wizard-sub">
         {t(
           "Assemble a reusable workout and save it — no logging, no timer. Load it in one tap whenever you train.",
@@ -240,8 +261,8 @@ export default function WizardTemplate({ onSaveTemplate, onDone, history }: Prop
                 disabled={!canSave}
               >
                 {saved
-                  ? <>{t("Template Saved", "Template Saved", "Template Saved")} <Check size={16} /></>
-                  : <><Bookmark size={15} style={{ verticalAlign: -2, marginRight: 4 }} /> {t("Save Template", "Save Template", "Save Template")}</>}
+                  ? <>{isEdit ? t("Template Updated", "Template Updated", "Template Updated") : t("Template Saved", "Template Saved", "Template Saved")} <Check size={16} /></>
+                  : <><Bookmark size={15} style={{ verticalAlign: -2, marginRight: 4 }} /> {isEdit ? t("Update Template", "Update Template", "Update Template") : t("Save Template", "Save Template", "Save Template")}</>}
               </button>
             </div>
           )}

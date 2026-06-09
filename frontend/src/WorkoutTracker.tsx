@@ -10,7 +10,7 @@ import type {
 } from "./types";
 import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
-import { listTemplates, createTemplate, deleteTemplate } from "./data/templatesApi";
+import { listTemplates, createTemplate, updateTemplate, deleteTemplate } from "./data/templatesApi";
 import { getFocusDef } from "./data/focuses";
 import AuthScreen from "./components/AuthScreen";
 import AppHeader from "./components/AppHeader";
@@ -244,6 +244,14 @@ export default function WorkoutTracker({
     const created = await createTemplate(authFetch, draft);
     if (created) setTemplates(prev => [created, ...prev]);
     return created;
+  }, [authFetch]);
+
+  /** Overwrite an existing template (name / focus / exercises / config) and
+   * mirror the change into local state. Returns the saved row or null. */
+  const editTemplate = useCallback(async (id: number, draft: import("./types").WorkoutTemplateDraft) => {
+    const updated = await updateTemplate(authFetch, id, draft);
+    if (updated) setTemplates(prev => prev.map(t => (t.id === id ? updated : t)));
+    return updated;
   }, [authFetch]);
 
   const removeTemplate = useCallback(async (id: number) => {
@@ -1090,6 +1098,7 @@ export default function WorkoutTracker({
             doneSets={doneSets}
             weeklyPlan={weeklyPlan} setWeeklyPlan={setWeeklyPlan} onLoadToday={loadTodayPlan}
             templates={templates} onSaveTemplate={saveTemplate} onLoadTemplate={loadTemplate}
+            onUpdateTemplate={editTemplate} onDeleteTemplate={removeTemplate}
             progressionOverrides={progressionOverrides}
             restPrefs={restPrefs}
             bodyweight={bodyweightKg}
