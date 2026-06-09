@@ -1011,7 +1011,7 @@ export default function WorkoutTracker({
     else if (tab === "chat" && activeConvId != null) { setActiveConvId(null); consumed = true; }
     else if (tab !== "workout")                 { setTab("workout"); consumed = true; }
     else if (active)                            { consumed = true; }
-    else if (wStep === 6)                       { setWStep(1); consumed = true; }
+    else if (wStep === 6 || wStep === 7)        { setWStep(1); consumed = true; }
     else if (wStep > 0)                         { setWStep(wStep - 1); consumed = true; }
     if (consumed) setBackFxId(Date.now() + Math.random());
     return consumed;
