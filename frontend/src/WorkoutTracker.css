@@ -512,14 +512,30 @@ html, body { background: var(--bg); }
   padding: 14px; text-align: center; line-height: 1.45;
 }
 .wm-template-card {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px;
-  width: 100%; text-align: left; cursor: pointer;
+  display: flex; align-items: stretch; gap: 0;
+  width: 100%; overflow: hidden;
   background: var(--ad); border: 1px solid var(--ad2); border-radius: 12px;
-  padding: 12px 14px; color: var(--text); transition: all 0.15s;
+  color: var(--text); transition: border-color 0.15s;
   -webkit-tap-highlight-color: transparent;
 }
 .wm-template-card:hover { border-color: var(--accent); }
-.wm-template-card:active { transform: scale(0.99); }
+/* Primary tap-target: load the template into a workout. */
+.wm-template-load {
+  flex: 1; min-width: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  text-align: left; cursor: pointer; background: transparent; border: none;
+  padding: 12px 14px; color: inherit; font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.wm-template-load:active { transform: scale(0.99); }
+.wm-template-actions { display: flex; align-items: stretch; border-left: 1px solid var(--ad2); }
+.wm-template-act {
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: transparent; border: none; color: var(--muted); padding: 0 12px;
+  transition: color 0.15s, background 0.15s; -webkit-tap-highlight-color: transparent;
+}
+.wm-template-act + .wm-template-act { border-left: 1px solid var(--ad2); }
+.wm-template-act:hover { color: var(--accent); background: var(--ad2); }
+.wm-template-act.danger:hover { color: var(--red); }
 .wm-template-main { min-width: 0; }
 .wm-template-name { font-family: 'Nunito', sans-serif; font-size: 15px; font-weight: 800; color: var(--text); }
 .wm-template-meta { font-size: 11px; color: var(--accent); margin-top: 1px; }
