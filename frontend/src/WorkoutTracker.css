@@ -10,16 +10,25 @@
 @media (max-width: 480px) { :root { --hdr-h: 65px; } }
 
 /* ── DARK THEME (default) ──
-   Text/muted/border values are tuned for WCAG-AA contrast on the dark
-   surfaces: --muted now clears ~4.5:1 on --bg (the old #6E6860 sat near
-   3:1, which is why fine print and borders read as invisible). A lighter
-   --border makes card and input edges actually visible. */
+   Monochromatic by design: every surface is a *shade of the selected
+   accent* rather than a fixed neutral. Each variable is the accent
+   (--primary, set live on <html>) mixed into a near-black anchor, so the
+   whole app re-tints to whatever colour the user picks — darkest at --bg,
+   stepping up in both lightness and accent saturation through the
+   elevation ramp (--s1 → --s3 → --border).
+
+   The mix percentages stay modest and the anchors stay dark, which keeps
+   the scheme genuinely dark for any hue (even a near-white accent leaves
+   --bg near-black). Text/muted are anchored to white/grey instead, so they
+   stay legible — --muted clears ~4.5:1 on --bg for WCAG AA. Semantic
+   colours (red/green/blue/purple) are deliberately NOT tinted so status
+   still reads as status. */
 :root {
-  --bg:     #0E0C0A;
-  --s1:     #171412;
-  --s2:     #1E1B17;
-  --s3:     #272320;
-  --border: #4A443D;
+  --bg:     color-mix(in srgb, var(--primary) 9%,  #060606);
+  --s1:     color-mix(in srgb, var(--primary) 12%, #0d0d0e);
+  --s2:     color-mix(in srgb, var(--primary) 15%, #131315);
+  --s3:     color-mix(in srgb, var(--primary) 20%, #1b1b1e);
+  --border: color-mix(in srgb, var(--primary) 34%, #2a2a2e);
   --accent:   var(--primary);
   --ad:       color-mix(in srgb, var(--primary) 13%, transparent);
   --ad2:      color-mix(in srgb, var(--primary) 26%, transparent);
@@ -29,8 +38,8 @@
   --green:    #5BBA8C;
   --blue:     #6FA3D2;
   --purple:   #9D83E0;
-  --text:     #DAD5CB;
-  --muted:    #8C857A;
+  --text:     color-mix(in srgb, var(--primary) 15%, #F2F0F4);
+  --muted:    color-mix(in srgb, var(--primary) 28%, #9a9a9e);
   --input-text: color-mix(in srgb, var(--primary) 70%, white);
   --on-accent: #0a0804;
   color-scheme: dark;
