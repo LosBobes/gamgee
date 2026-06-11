@@ -6,9 +6,9 @@ import type {
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, WorkoutTemplate,
   ProgressionOverride, RestPrefs,
-  WizardTransitionStyle,
+  WizardTransitionStyle, ThemeMode,
 } from "./types";
-import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION } from "./types";
+import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION, DEFAULT_THEME } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { listTemplates, createTemplate, updateTemplate, deleteTemplate } from "./data/templatesApi";
 import { getFocusDef } from "./data/focuses";
@@ -202,6 +202,14 @@ export default function WorkoutTracker({
     setReducedMotionState(next);
     localStorage.setItem("gamgee_reduced_motion", next ? "1" : "0");
   }, []);
+  const [theme, setThemeState] = useState<ThemeMode>(() => {
+    const raw = localStorage.getItem("gamgee_theme");
+    return raw === "light" || raw === "dark" || raw === "system" ? raw : DEFAULT_THEME;
+  });
+  const updateTheme = useCallback((next: ThemeMode) => {
+    setThemeState(next);
+    localStorage.setItem("gamgee_theme", next);
+  }, []);
   const [weeklyPlan, setWeeklyPlanState] = useState<WeeklyPlan | null>(() => loadWeeklyPlan());
   // buddy/notif/live state
   const [buddies,        setBuddies]        = useState<Buddy[]>([]);
@@ -336,6 +344,25 @@ export default function WorkoutTracker({
     if (reducedMotion) document.documentElement.setAttribute("data-reduced-motion", "1");
     else               document.documentElement.removeAttribute("data-reduced-motion");
   }, [reducedMotion]);
+
+  // Resolve the colour-scheme preference to a concrete light/dark and tag
+  // <html data-theme>. "system" tracks the OS via matchMedia and re-applies
+  // when the OS toggles. Dark is the implicit default (no attribute needed),
+  // so we only set the attribute when light should win.
+  useEffect(() => {
+    const mql = window.matchMedia("(prefers-color-scheme: light)");
+    const apply = () => {
+      const resolved = theme === "system" ? (mql.matches ? "light" : "dark") : theme;
+      const root = document.documentElement;
+      if (resolved === "light") root.setAttribute("data-theme", "light");
+      else                      root.setAttribute("data-theme", "dark");
+    };
+    apply();
+    if (theme === "system") {
+      mql.addEventListener("change", apply);
+      return () => mql.removeEventListener("change", apply);
+    }
+  }, [theme]);
 
   useEffect(() => {
     localStorage.setItem("gamgee_rest_prefs", JSON.stringify(restPrefs));
@@ -1279,7 +1306,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} overrides={progressionOverrides} onSetOverride={setProgressionOverride} onUpdateSession={updateWorkout} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} theme={theme} onThemeChange={updateTheme} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (
