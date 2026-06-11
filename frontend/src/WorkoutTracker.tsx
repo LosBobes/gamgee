@@ -872,6 +872,14 @@ export default function WorkoutTracker({
       ex.uid !== uid ? ex : { ...ex, sets: ex.sets.filter((_, i) => i !== idx) }
     ));
 
+  /** Lock (finish) or unlock a single exercise. Locking freezes its sets, reps
+   * and weights so the card becomes read-only — the user is telling us they're
+   * done with this movement. Unlocking reopens it for edits. */
+  const toggleExerciseLock = (uid: string) =>
+    setExercises(p => p.map(ex =>
+      ex.uid !== uid ? ex : { ...ex, locked: !ex.locked }
+    ));
+
   /** Apply the analyzer's recommendation to every strength exercise's
    * still-undone working sets in one shot. The on-card APPLY button does the
    * same thing for a single exercise — this is the top-of-workout
@@ -955,7 +963,7 @@ export default function WorkoutTracker({
     // Strip the `prefilled` flag — it's a UI-only marker that doesn't belong
     // in the persisted history.
     const done = exercises
-      .map(ex => ({
+      .map(({ locked: _locked, ...ex }) => ({
         ...ex,
         sets: ex.sets.filter(s => s.done).map(s => ({
           weight: s.weight, reps: s.reps, done: s.done,
@@ -999,6 +1007,19 @@ export default function WorkoutTracker({
     setWStep(0); setPlanned([]); setFocus(null);
     setCardio({ timing: "none", before: null, after: null });
     setCompleted(session);
+  };
+
+  /** Abandon the in-progress workout without saving anything. Mirrors
+   * finishWorkout's state teardown (and auto-ends any live broadcast) but
+   * persists no session, PRs or history. */
+  const cancelWorkout = () => {
+    if (myLiveSession && myLiveSession.status === "active") {
+      authFetch(`/api/live-sessions/${myLiveSession.id}/end`, { method: "POST" })
+        .then(() => { setMyLiveSession(null); refreshLive(); }).catch(() => {});
+    }
+    setActive(false); setExercises([]); setStartTs(null); setElapsed(0);
+    setWStep(0); setPlanned([]); setFocus(null);
+    setCardio({ timing: "none", before: null, after: null });
   };
 
   const dismissCompleted = () => {
@@ -1176,7 +1197,8 @@ export default function WorkoutTracker({
             startFromPrescribe={startFromPrescribe}
             addExercise={addExercise} removeExercise={removeExercise}
             updateSet={updateSet} setSetRpe={setSetRpe} toggleSet={toggleSet} addSet={addSet} removeSet={removeSet}
-            isNewPr={isNewPr} finishWorkout={finishWorkout}
+            toggleExerciseLock={toggleExerciseLock}
+            isNewPr={isNewPr} finishWorkout={finishWorkout} cancelWorkout={cancelWorkout}
             applyProgressionAll={applyProgressionAll}
           />
         )}

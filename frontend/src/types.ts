@@ -35,7 +35,11 @@ export interface WorkoutSet {
   is_warmup?: boolean;
   rpe?: number | null;
 }
-export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; }
+/** `locked` marks an exercise the user has explicitly finished during an active
+ * workout. A locked exercise is frozen: its sets, weights and reps become
+ * read-only and its rest timer / add-set affordances are hidden until the user
+ * unlocks it again. UI-only — stripped before a session is persisted. */
+export interface WorkoutExercise extends ExerciseDef { uid: string; sets: WorkoutSet[]; locked?: boolean; }
 /** `null` = the user hasn't picked yet (default when entering the cardio screen).
  *  `"none"` = the user explicitly chose to skip cardio. */
 export type CardioTiming = "none" | "before" | "after" | "both" | null;
