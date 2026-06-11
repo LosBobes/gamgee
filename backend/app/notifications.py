@@ -17,7 +17,7 @@ from typing import Iterable
 from sqlalchemy import event as sa_event
 from sqlalchemy.orm import Session
 
-from . import chat_ws, models, push
+from . import chat_ws, fcm, models, push
 from .events import publish_one
 
 
@@ -97,7 +97,12 @@ def _drain_after_commit(session: Session) -> None:
                 "notification_id": nid,
                 "url":             item.get("url"),
             })
+        # Fan out to both channels: browser Web Push and native FCM. Each is a
+        # no-op when its credentials are unset, so installs with only one
+        # configured still work, and a user with both a browser and the mobile
+        # app gets the notification on every device.
         push.dispatch_batch_async(dispatch)
+        fcm.dispatch_batch_async(dispatch)
 
 
 @sa_event.listens_for(Session, "after_rollback")

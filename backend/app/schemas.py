@@ -584,6 +584,22 @@ class PushPublicKeyOut(BaseModel):
     enabled: bool = False
 
 
+# ── Native push (FCM) device tokens ───────────────────────────────────────────
+
+class DeviceTokenIn(BaseModel):
+    token: str = Field(min_length=10, max_length=4096)
+    platform: str | None = Field(default=None, max_length=20)
+    device_info: str | None = Field(default=None, max_length=500)
+
+
+class DeviceTokenUnregisterIn(BaseModel):
+    token: str = Field(min_length=10, max_length=4096)
+
+
+class FcmStatusOut(BaseModel):
+    enabled: bool = False
+
+
 # ── Live (co-working-out) sessions ────────────────────────────────────────────
 
 class LiveSessionCreate(BaseModel):

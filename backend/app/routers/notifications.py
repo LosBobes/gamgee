@@ -5,7 +5,7 @@ import time
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from .. import models, push, schemas
+from .. import fcm, models, push, schemas
 from ..auth import get_current_user
 from ..database import get_db
 
@@ -161,6 +161,71 @@ def unsubscribe_push(
         .filter(
             models.PushSubscription.user_id == current_user.id,
             models.PushSubscription.endpoint == payload.endpoint,
+        )
+        .delete(synchronize_session=False)
+    )
+    db.commit()
+
+
+# ── Native push (FCM) device tokens ───────────────────────────────────────────
+
+@router.get("/devices/status", response_model=schemas.FcmStatusOut)
+def native_push_status():
+    """Whether the server can deliver native (FCM) pushes. The mobile app uses
+    this to decide whether to bother registering its device token."""
+    return schemas.FcmStatusOut(enabled=fcm.is_configured())
+
+
+@router.post("/devices/register", status_code=204)
+def register_device(
+    payload: schemas.DeviceTokenIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Register (or refresh) the native FCM token for this user/device. Idempotent
+    on ``(user_id, token)`` — the mobile app re-posts whenever the token rotates,
+    so we upsert instead of duplicating. Unlike Web Push subscribe, this does not
+    503 when FCM is unconfigured: the app can register optimistically and the
+    token simply sits unused until the operator provisions Firebase."""
+    now = int(time.time() * 1000)
+    existing = (
+        db.query(models.DeviceToken)
+        .filter(
+            models.DeviceToken.user_id == current_user.id,
+            models.DeviceToken.token == payload.token,
+        )
+        .first()
+    )
+    if existing is not None:
+        existing.last_seen_at = now
+        if payload.platform:
+            existing.platform = payload.platform
+        if payload.device_info:
+            existing.device_info = payload.device_info
+    else:
+        db.add(models.DeviceToken(
+            user_id=current_user.id,
+            token=payload.token,
+            platform=payload.platform,
+            device_info=payload.device_info,
+            created_at=now,
+            last_seen_at=now,
+        ))
+    db.commit()
+
+
+@router.post("/devices/unregister", status_code=204)
+def unregister_device(
+    payload: schemas.DeviceTokenUnregisterIn,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+):
+    """Drop a native token (logout / disable on this device)."""
+    (
+        db.query(models.DeviceToken)
+        .filter(
+            models.DeviceToken.user_id == current_user.id,
+            models.DeviceToken.token == payload.token,
         )
         .delete(synchronize_session=False)
     )
