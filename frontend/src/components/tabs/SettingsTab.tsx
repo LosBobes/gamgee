@@ -6,7 +6,7 @@ import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
-import type { RestPrefs, WizardTransitionStyle } from "../../types";
+import type { RestPrefs, WizardTransitionStyle, ThemeMode } from "../../types";
 import { DEFAULT_REST_PREFS } from "../../types";
 import { readCountsBar, writeCountsBar, type CountsBar } from "../../data/barbell";
 import { APP_VERSION } from "../../version";
@@ -39,6 +39,8 @@ interface Props {
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
   reducedMotion:            boolean;
   onReducedMotionChange:    (next: boolean) => void;
+  theme:                    ThemeMode;
+  onThemeChange:            (next: ThemeMode) => void;
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
 }
 
@@ -204,6 +206,64 @@ function CountsBarCard() {
           "Haven't asked yet — pick a side or turn it off.",
           "Haven't asked yet, bestie — pick a side or turn it off.",
         )}
+      </div>
+    </div>
+  );
+}
+
+function ThemeCard({
+  value,
+  onChange,
+}: {
+  value: ThemeMode;
+  onChange: (next: ThemeMode) => void;
+}) {
+  const t = useTxt();
+  const options: Array<{ id: ThemeMode; label: string }> = [
+    { id: "system", label: t("System", "System", "System") },
+    { id: "dark",   label: t("Dark",   "Dark",   "Dark")   },
+    { id: "light",  label: t("Light",  "Light",  "Light")  },
+  ];
+  const descriptions: Record<ThemeMode, string> = {
+    system: t("Match your device's light/dark setting automatically.",
+              "Match your device's light/dark setting automatically.",
+              "Match your device's light/dark setting automatically."),
+    dark:   t("Dark surfaces with high-contrast text.",
+              "Dark surfaces with high-contrast text.",
+              "Dark surfaces with high-contrast text."),
+    light:  t("Bright surfaces with near-black text for maximum contrast.",
+              "Bright surfaces with near-black text for maximum contrast.",
+              "Bright surfaces with near-black text for maximum contrast."),
+  };
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
+        {t("Theme", "Theme", "Theme")}
+      </div>
+      <div style={{ display: "flex", gap: 8 }} role="group" aria-label="Theme">
+        {options.map(({ id, label }) => {
+          const active = value === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(id)}
+              style={{
+                flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", whiteSpace: "nowrap",
+                background: active ? "var(--primary)" : "transparent",
+                color: active ? "var(--on-accent, #000)" : "var(--muted)",
+                border: active ? "none" : "1px solid var(--border)",
+                cursor: "pointer", transition: "all 0.15s",
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 10, lineHeight: 1.4 }}>
+        {descriptions[value]}
       </div>
     </div>
   );
@@ -863,6 +923,7 @@ export default function SettingsTab({
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
   wizardTransition, onWizardTransitionChange,
   reducedMotion, onReducedMotionChange,
+  theme, onThemeChange,
   authFetch,
 }: Props) {
   const t = useTxt();
@@ -881,6 +942,7 @@ export default function SettingsTab({
       />
 
       <div className="profile-section">{t("Appearance", "Appearance")}</div>
+      <ThemeCard value={theme} onChange={onThemeChange} />
       <ToneToggle toneMode={toneMode} onToneChange={onToneChange} />
       <ColorPicker color={primaryColor} onChange={onColorChange} token={token} />
       <WizardTransitionCard value={wizardTransition} onChange={onWizardTransitionChange} />

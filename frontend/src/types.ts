@@ -124,6 +124,11 @@ export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 
 export type WizardTransitionStyle = "earthquake" | "none";
 export const DEFAULT_WIZARD_TRANSITION: WizardTransitionStyle = "none";
 
+/** Colour-scheme preference. `system` follows the OS/browser setting via
+ * `prefers-color-scheme`; `dark`/`light` force a scheme regardless. */
+export type ThemeMode = "system" | "dark" | "light";
+export const DEFAULT_THEME: ThemeMode = "dark";
+
 export interface MetricDef { id: string; label: string; unit: string; color: string; step: number; min: number; max: number; }
 export interface BodyMapProps { active?: ActiveMuscles; preview?: ActiveMuscles; focusMuscles?: ActiveMuscles; onHoverMuscle?: (mid: string | null) => void; }
 

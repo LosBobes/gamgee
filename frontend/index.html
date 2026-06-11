@@ -29,6 +29,17 @@
           var m = document.querySelector('meta[name="theme-color"]');
           if (m) m.setAttribute('content', c);
         }
+        // Resolve the saved theme preference and tag <html> before first
+        // paint so the splash/app never flashes the wrong scheme.
+        var pref = localStorage.getItem('gamgee_theme');
+        var resolved = pref === 'light' || pref === 'dark'
+          ? pref
+          : (pref === 'system' &&
+             window.matchMedia &&
+             window.matchMedia('(prefers-color-scheme: light)').matches)
+            ? 'light'
+            : 'dark';
+        document.documentElement.setAttribute('data-theme', resolved);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
