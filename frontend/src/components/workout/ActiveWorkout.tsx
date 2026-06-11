@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Dumbbell, TrendingUp } from "lucide-react";
+import { Check, Dumbbell, TrendingUp, X } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, RestPrefs, ProgressionOverride } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
@@ -18,6 +18,7 @@ interface Props {
   restPrefs:      RestPrefs;
   bodyweight:     number | null;
   onFinish:       () => void;
+  onCancel:       () => void;
   addExercise:    (ex: ExerciseDef) => void;
   removeExercise: (uid: string) => void;
   updateSet:      (uid: string, idx: number, field: keyof WorkoutSet, value: string) => void;
@@ -25,6 +26,7 @@ interface Props {
   toggleSet:      (uid: string, idx: number) => void;
   addSet:         (uid: string) => void;
   removeSet:      (uid: string, idx: number) => void;
+  toggleExerciseLock: (uid: string) => void;
   isNewPr:        (exId: string, weight: string) => boolean;
   applyProgressionAll: () => void;
 }
@@ -38,7 +40,7 @@ interface RestState {
 
 export default function ActiveWorkout({
   exercises, prs, history, doneSets, progressionOverrides, restPrefs, bodyweight,
-  onFinish, addExercise, removeExercise, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr,
+  onFinish, onCancel, addExercise, removeExercise, updateSet, setSetRpe, toggleSet, addSet, removeSet, toggleExerciseLock, isNewPr,
   applyProgressionAll,
 }: Props) {
   const [showPick, setShowPick] = useState(false);
@@ -65,6 +67,14 @@ export default function ActiveWorkout({
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
     setShowPick(false);
+  };
+
+  const handleCancel = () => {
+    // Guard the throw-away: a workout in progress represents real effort the
+    // user is about to discard, so make them confirm before we wipe it.
+    const anyLogged = doneSets > 0 || exercises.length > 0;
+    if (anyLogged && !confirm("Cancel this workout? Your logged sets won't be saved.")) return;
+    onCancel();
   };
 
   // Wrap toggleSet so we start the rest timer when a strength set transitions
@@ -137,6 +147,7 @@ export default function ActiveWorkout({
             <TrendingUp size={14} /> PROGRESS
           </button>
         )}
+        <button className="btn-cancel-wx" onClick={handleCancel}><X size={14} /> CANCEL</button>
         <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
       </div>
 
@@ -157,6 +168,12 @@ export default function ActiveWorkout({
           bodyweight={bodyweight}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
           onRemove={() => removeExercise(ex.uid)}
+          onToggleLock={() => {
+            // Clear any running rest timer for this card when it's being
+            // locked so the cool-down bar doesn't linger on a frozen card.
+            if (!ex.locked && rest?.uid === ex.uid) setRest(null);
+            toggleExerciseLock(ex.uid);
+          }}
           updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
           setSetRpe={(idx, rpe) => setSetRpe(ex.uid, idx, rpe)}
           toggleSet={(idx) => handleToggleSet(ex.uid, idx)}

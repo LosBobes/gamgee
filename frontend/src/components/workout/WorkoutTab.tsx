@@ -51,8 +51,10 @@ interface Props {
   toggleSet:       (uid: string, idx: number) => void;
   addSet:          (uid: string) => void;
   removeSet:       (uid: string, idx: number) => void;
+  toggleExerciseLock: (uid: string) => void;
   isNewPr:         (exId: string, weight: string) => boolean;
   finishWorkout:   () => void;
+  cancelWorkout:   () => void;
   applyProgressionAll: () => void;
 }
 
@@ -61,7 +63,7 @@ export default function WorkoutTab({
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
   startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
-  updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, finishWorkout, applyProgressionAll,
+  updateSet, setSetRpe, toggleSet, addSet, removeSet, toggleExerciseLock, isNewPr, finishWorkout, cancelWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
   const goingBack   = wStep < prevStepRef.current;
@@ -246,6 +248,7 @@ export default function WorkoutTab({
             restPrefs={restPrefs}
             bodyweight={bodyweight}
             onFinish={finishWorkout}
+            onCancel={cancelWorkout}
             addExercise={addExercise}
             removeExercise={removeExercise}
             updateSet={updateSet}
@@ -253,6 +256,7 @@ export default function WorkoutTab({
             toggleSet={toggleSet}
             addSet={addSet}
             removeSet={removeSet}
+            toggleExerciseLock={toggleExerciseLock}
             isNewPr={isNewPr}
             applyProgressionAll={applyProgressionAll}
           />

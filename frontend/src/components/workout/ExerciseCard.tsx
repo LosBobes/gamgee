@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Check, Circle, Play, Square, TrendingUp, Plus, Minus, Eye, Gauge } from "lucide-react";
+import { X, Check, Circle, Play, Square, TrendingUp, Plus, Minus, Eye, Gauge, Lock, Unlock } from "lucide-react";
 import type { WorkoutExercise, PersonalRecord, WorkoutSet, RestPrefs } from "../../types";
 import type { AnalysisResult } from "../../analysis";
 import { rpeToRir, rirToRpe } from "../../utils";
@@ -16,6 +16,7 @@ interface Props {
   rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
   bodyweight: number | null;
   onRemove:   () => void;
+  onToggleLock: () => void;
   updateSet:  (idx: number, field: keyof WorkoutSet, value: string) => void;
   setSetRpe:  (idx: number, rpe: number | null) => void;
   toggleSet:  (idx: number) => void;
@@ -37,12 +38,13 @@ interface TimedSetRowProps {
   set: WorkoutSet;
   idx: number;
   setCount: number;
+  disabled: boolean;
   updateSet: (idx: number, field: keyof WorkoutSet, value: string) => void;
   toggleSet: (idx: number) => void;
   removeSet: (idx: number) => void;
 }
 
-function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: TimedSetRowProps) {
+function TimedSetRow({ set, idx, setCount, disabled, updateSet, toggleSet, removeSet }: TimedSetRowProps) {
   const [running, setRunning] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef<number>(0);
@@ -84,27 +86,32 @@ function TimedSetRow({ set, idx, setCount, updateSet, toggleSet, removeSet }: Ti
             type="text" placeholder="—"
             value={set.reps}
             onChange={e => updateSet(idx, "reps", e.target.value)}
+            disabled={disabled}
+            readOnly={disabled}
           />
         </>
       )}
       {running ? (
         <button className="timed-stop-btn" onClick={handleStop}><Square size={13} /></button>
       ) : set.done ? (
-        <button className="check-btn done" onClick={() => toggleSet(idx)}><Check size={13} /></button>
+        <button className="check-btn done" onClick={() => toggleSet(idx)} disabled={disabled}><Check size={13} /></button>
       ) : (
-        <button className="timed-start-btn" onClick={handleStart}><Play size={13} /></button>
+        <button className="timed-start-btn" onClick={handleStart} disabled={disabled}><Play size={13} /></button>
       )}
-      <button className="rm-set-btn" onClick={() => removeSet(idx)} disabled={setCount <= 1}>
+      <button className="rm-set-btn" onClick={() => removeSet(idx)} disabled={disabled || setCount <= 1}>
         <X size={13} />
       </button>
     </div>
   );
 }
 
-export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodyweight, onRemove, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
+export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodyweight, onRemove, onToggleLock, updateSet, setSetRpe, toggleSet, addSet, removeSet, isNewPr, onPickRestTier, onAdjustRest, onStartCustomRest }: Props) {
   const [wL, rL] = colLabels(ex);
   const [inspectOpen, setInspectOpen] = useState(false);
   const doneCt = ex.sets.filter(s => s.done).length;
+  // A locked (finished) exercise is frozen: every input, stepper, check and
+  // remove control is disabled, and the rest/add-set affordances are hidden.
+  const locked = !!ex.locked;
 
   // Joke-feature hint: only shown when the user gave a definite answer
   // ("yes" / "no") and the exercise is bar-loaded. "off" hides it entirely.
@@ -177,7 +184,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
 
   return (
     <>
-    <div className="ex-card">
+    <div className={`ex-card${locked ? " ex-card-locked" : ""}`}>
       <div className="ex-hdr">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
@@ -193,8 +200,9 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
           <div className="ex-meta">
             <span style={{ color: TYPE_COLOR[ex.type] }}>●</span>
             <span>{doneCt}/{ex.sets.length} sets</span>
+            {locked && <span className="ex-locked-tag"><Lock size={9} /> FINISHED</span>}
             {analysis && <span style={{ color: analysis.status.color }}>→ {analysis.nextWeight}kg × {analysis.nextReps}</span>}
-            {analysis && ex.type === "strength" && (
+            {analysis && ex.type === "strength" && !locked && (
               <button className="btn-progress" onClick={applyProgression} title="Apply coach recommendation to all sets">
                 <TrendingUp size={15} /> APPLY
               </button>
@@ -210,6 +218,15 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
             title="How-to & animation"
           >
             <Eye size={14} />
+          </button>
+          <button
+            type="button"
+            className={`btn-icon btn-lock${locked ? " btn-lock-on" : ""}`}
+            onClick={onToggleLock}
+            aria-label={locked ? "Unlock exercise to edit" : "Finish and lock exercise"}
+            title={locked ? "Unlock to edit" : "Finish & lock"}
+          >
+            {locked ? <Unlock size={14} /> : <Lock size={14} />}
           </button>
           <button className="btn-icon" onClick={onRemove} aria-label="Remove exercise"><X size={14} /></button>
         </div>
@@ -236,6 +253,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
               set={set}
               idx={idx}
               setCount={ex.sets.length}
+              disabled={locked}
               updateSet={updateSet}
               toggleSet={toggleSet}
               removeSet={removeSet}
@@ -247,7 +265,8 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
             // For strength: only the in-progress set is interactive. Earlier
             // sets are read-only (checked off). Later sets are locked until
             // the current one is checked, so the user can't ghost-fill ahead.
-            const isLocked = ex.type === "strength" && !set.done && idx !== activeIdx;
+            // A locked (finished) exercise freezes every set regardless.
+            const isLocked = locked || (ex.type === "strength" && !set.done && idx !== activeIdx);
             const isHidden = setIsHidden(set);
             // Mark the first non-warmup set as the "work transition" so the
             // UI clearly indicates "warmup ramp ends here, working sets start".
@@ -382,7 +401,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
             );
           })
         )}
-        {ex.type === "strength" && (
+        {ex.type === "strength" && !locked && (
           <SetRestButton
             prefs={restPrefs}
             rest={rest}
