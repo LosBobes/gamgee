@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Plus, Minus } from "lucide-react";
+import { Plus, Minus, Check } from "lucide-react";
 import type { RestPrefs } from "../../types";
 import { playTimerAlarm, vibrateAlarm } from "../../sound";
 
@@ -10,6 +10,8 @@ interface Props {
   /** Active rest state — null means we're idle and the component renders nothing. */
   rest:       { endAt: number; totalSec: number; tier: RestTier } | null;
   onAddSet:   () => void;
+  /** Finish the exercise without adding another set (clears rest + locks card). */
+  onFinishExercise: () => void;
   onPickTier: (tier: Exclude<RestTier, "custom">) => void;
   onAdjust:   (deltaSec: number) => void;
   onStartCustom: (seconds: number) => void;
@@ -20,7 +22,7 @@ const fmt = (sec: number) => {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 };
 
-export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdjust, onStartCustom }: Props) {
+export default function SetRestButton({ prefs, rest, onAddSet, onFinishExercise, onPickTier, onAdjust, onStartCustom }: Props) {
   const [now, setNow] = useState(Date.now());
   const [customOpen, setCustomOpen] = useState(false);
   const [customVal, setCustomVal] = useState<string>(String(prefs.medium));
@@ -128,6 +130,17 @@ export default function SetRestButton({ prefs, rest, onAddSet, onPickTier, onAdj
           </button>
         </div>
       )}
+
+      {/* Escape hatch from the rest-centric flow: finish the exercise without
+          appending another set. Locks the card and clears the cool-down. */}
+      <button
+        type="button"
+        className="btn-finish-ex"
+        onClick={onFinishExercise}
+        aria-label="Finish this exercise — don't add another set"
+      >
+        <Check size={15} strokeWidth={3} /> DONE — NO MORE SETS
+      </button>
     </div>
   );
 }

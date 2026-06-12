@@ -406,6 +406,7 @@ export default function ExerciseCard({ ex, pr, analysis, restPrefs, rest, bodywe
             prefs={restPrefs}
             rest={rest}
             onAddSet={addSet}
+            onFinishExercise={onToggleLock}
             onPickTier={onPickRestTier}
             onAdjust={onAdjustRest}
             onStartCustom={onStartCustomRest}

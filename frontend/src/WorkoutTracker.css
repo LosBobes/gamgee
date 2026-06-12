@@ -1408,6 +1408,64 @@ html, body { background: var(--bg); }
 .btn-add-set:active { transform: scale(0.98); }
 .wx-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
 
+/* ── VIEW MODE TOGGLE (all vs. one-at-a-time) ── */
+.wx-viewmode {
+  display: flex; gap: 6px; margin-bottom: 14px;
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px; padding: 4px;
+}
+.wx-viewmode-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+  letter-spacing: 1.2px; text-transform: uppercase;
+  background: transparent; color: var(--muted); border: none; border-radius: 6px;
+  padding: 10px 8px; min-height: 42px; cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wx-viewmode-btn:hover { color: var(--text); }
+.wx-viewmode-btn.active { background: var(--ad); color: var(--accent); }
+
+/* ── SINGLE-EXERCISE NAVIGATION ── */
+.wx-single-nav {
+  display: flex; align-items: stretch; gap: 8px; margin-bottom: 10px;
+}
+.wx-nav-btn {
+  flex: 0 0 48px; display: inline-flex; align-items: center; justify-content: center;
+  background: var(--s1); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wx-nav-btn:not(:disabled):hover { background: var(--ad); transform: translateY(-1px); }
+.wx-nav-btn:not(:disabled):active { transform: translateY(0); }
+.wx-nav-btn:disabled { opacity: 0.3; cursor: default; color: var(--muted); }
+.wx-single-pick {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px;
+  background: var(--s1); border: 1px solid var(--border); border-radius: 8px;
+  padding: 7px 10px; justify-content: center;
+}
+.wx-single-pick select {
+  font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+  letter-spacing: 0.5px; text-transform: uppercase;
+  background: transparent; color: var(--text); border: none; outline: none;
+  width: 100%; cursor: pointer; padding: 0;
+  text-overflow: ellipsis;
+}
+.wx-single-pick select option { background: var(--s1); color: var(--text); text-transform: none; }
+.wx-single-sub { font-size: 9px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; }
+.wx-single-foot { display: flex; gap: 10px; margin-top: 4px; }
+.wx-single-foot-btn {
+  flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  font-family: 'Nunito', sans-serif; font-size: 13px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  background: var(--ad); color: var(--accent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: 8px; padding: 13px; min-height: 48px; cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.wx-single-foot-btn:not(:disabled):hover { background: var(--ad2); transform: translateY(-1px); }
+.wx-single-foot-btn:not(:disabled):active { transform: translateY(0); }
+.wx-single-foot-btn:disabled { opacity: 0.3; cursor: default; }
+
 /* ── EXERCISE CARD (logging) ── */
 .ex-card {
   background: var(--s1); border: 1px solid var(--border); border-radius: 10px;
@@ -3388,6 +3446,19 @@ html, body { background: var(--bg); }
   margin-top: 10px;
   display: flex; flex-direction: column; gap: 8px;
 }
+/* Escape hatch: finish the exercise without appending another set. */
+.btn-finish-ex {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  width: 100%; padding: 11px; min-height: 44px;
+  background: transparent; color: var(--green);
+  border: 1px solid color-mix(in srgb, var(--green) 38%, transparent);
+  border-radius: 8px; cursor: pointer; transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn-finish-ex:hover { background: color-mix(in srgb, var(--green) 12%, transparent); border-color: var(--green); }
+.btn-finish-ex:active { transform: scale(0.98); }
 .btn-add-set-resting {
   position: relative;
   overflow: hidden;
