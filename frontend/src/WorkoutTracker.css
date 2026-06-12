@@ -1768,6 +1768,16 @@ html, body { background: var(--bg); }
 .coach-card-tappable:hover { border-color: var(--accent); }
 .coach-card-tappable:active { transform: scale(0.995); }
 
+/* Cardio section divider + cards: runs progress on time/distance/pace, never
+   on weight, so they get a lighter, non-tappable treatment. */
+.coach-cardio-head {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+  margin: 18px 2px 10px;
+}
+.coach-card-cardio { border-left: 3px solid var(--cardio, #52B788); }
+
 /* ── Exercise diagnostics (chart + edit + steer) ── */
 .diag { display: flex; flex-direction: column; }
 .diag-readout {

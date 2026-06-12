@@ -163,7 +163,7 @@ export default function ActiveWorkout({
           key={ex.uid}
           ex={ex}
           pr={prs[ex.id]}
-          analysis={ex.is_assisted ? null : analyzeEx(ex.id, history, progressionOverrides[ex.id])}
+          analysis={ex.type === "strength" && !ex.is_assisted ? analyzeEx(ex.id, history, progressionOverrides[ex.id]) : null}
           restPrefs={restPrefs}
           bodyweight={bodyweight}
           rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}

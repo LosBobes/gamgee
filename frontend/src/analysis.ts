@@ -45,8 +45,6 @@ function linregSlope(points: ReadonlyArray<readonly [number, number]>): number {
   return denom === 0 ? 0 : (n * sxy - sx * sy) / denom;
 }
 
-const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
-
 /**
  * Read an exercise's progression from the user's whole history and extrapolate
  * the next target.
@@ -138,48 +136,192 @@ export function analyzeEx(
     return steer({ sessions, last, est1RM, status: STATUS.NEW, nextWeight, nextReps, trendPerSession: 0, reason });
   }
 
-  // ── Fit the trend of RIR-adjusted 1RM over the recent window. ─────────────
+  // ── Fit the trend of RIR-adjusted 1RM over the recent window. The slope
+  // still drives the status read (gaining / holding / slipping) and the chart,
+  // but the next *target* now comes from a double-progression scheme rather
+  // than a raw 1RM projection. The old projection multiplied the top weight by
+  // a clamped growth factor and rounded to the nearest plate — on a shallow
+  // trend that rounds straight back to the same plate every session, so the
+  // recommendation got stuck on "hold the weight, bank another rep" forever and
+  // the load never actually moved. ─────────────────────────────────────────
   const window = sessions.slice(-TREND_WINDOW);
   const slope = linregSlope(window.map((s, i) => [i, s.e1rm] as const)); // kg per session
-  const lastE1 = last.e1rm || last.topW;
-  // Project one session forward, then clamp the growth to a sane band so a
-  // single freak session can't recommend a wild jump (or a steep drop).
-  const predicted = clamp(lastE1 + slope, lastE1 * 0.95, lastE1 * 1.08);
-  const growth = lastE1 > 0 ? predicted / lastE1 : 1;
   // "Holding" gets a small dead-band tied to the lift's plate so the read
   // isn't knife-edge around zero.
   const gainThresh = plate * 0.1;
+
+  // Double progression: add a rep at the current load each session until you
+  // reach the top of the rep range, then add a plate and reset to the bottom.
+  // The rep floor is the fewest working reps logged at the *current* top weight
+  // (where this load started); the ceiling sits a few reps above it. A low-rep
+  // strength range gets a tighter window than a higher-rep hypertrophy range.
+  const repsAtTopW = window
+    .filter(s => Math.abs(s.topW - last.topW) < 1e-6 && s.topR > 0)
+    .map(s => s.topR);
+  const floor = repsAtTopW.length ? Math.min(...repsAtTopW) : (last.topR > 0 ? last.topR : 8);
+  const repWindow = floor <= 5 ? 2 : 3;
+  const ceiling = floor + repWindow;
+  const plateUp = roundPlate(last.topW + plate);
+  const rir = last.topRir;
+  // A top set with reps still in the tank earns the plate early — no need to
+  // grind out every rep in the range first when the load was clearly light.
+  const easyHeadroom = rir != null && rir >= 3;
+  const atCeiling = last.topR >= ceiling;
 
   let status: StatusDef;
   let nextWeight: number;
   let nextReps = targetReps;
   let reason: string;
 
-  if (slope > gainThresh) {
-    status = STATUS.GAINING;
-    nextWeight = roundPlate(last.topW * growth);
-    if (nextWeight > last.topW) {
-      reason = `Trending up ~${slope.toFixed(1)}kg/session. Step up to ${nextWeight}kg for ${nextReps}.`;
-    } else {
-      // Positive trend, but not enough yet to round up a plate — bank a rep.
-      nextWeight = last.topW;
-      nextReps = targetReps + 1;
-      reason = `Climbing steadily. Hold ${last.topW}kg and bank rep #${nextReps} — the next plate is close.`;
-    }
-  } else if (slope < -gainThresh) {
+  if (slope < -gainThresh && last.topR <= floor) {
+    // Genuinely slipping and already at the bottom of the range — back the load
+    // off a plate and rebuild the reps from there.
     status = STATUS.SLIPPING;
-    nextWeight = roundPlate(last.topW * growth); // growth < 1 here → a small back-off
+    nextWeight = Math.max(plate, roundPlate(last.topW - plate));
+    nextReps = ceiling;
     reason = nextWeight < last.topW
-      ? `Drifting down lately. Reset to ${nextWeight}kg, own every rep, then build back up.`
-      : `Drifting down lately. Stay at ${last.topW}kg and rebuild your reps before pushing on.`;
+      ? `Drifting down lately. Drop to ${nextWeight}kg and rebuild toward ${ceiling} reps before pushing on.`
+      : `Drifting down lately. Hold ${last.topW}kg and own every rep before the plate goes on.`;
+  } else if (atCeiling || easyHeadroom) {
+    // Top of the rep range, or an easy set with headroom → progressive overload:
+    // add a plate and reset the reps to the bottom of the range.
+    status = slope < -gainThresh ? STATUS.SLIPPING : STATUS.GAINING;
+    nextWeight = plateUp;
+    nextReps = floor;
+    reason = easyHeadroom && !atCeiling
+      ? `That set had ~${rir} in reserve — bank the plate now. Start ${nextWeight}kg × ${floor} and build the reps back up.`
+      : `You topped the range at ${last.topR} reps — plate up. Start ${nextWeight}kg × ${floor} and climb again.`;
   } else {
-    status = STATUS.HOLDING;
+    // Still inside the rep range → keep the load and add a rep, working toward
+    // the ceiling where the next plate goes on.
+    status = slope > gainThresh ? STATUS.GAINING : slope < -gainThresh ? STATUS.SLIPPING : STATUS.HOLDING;
     nextWeight = last.topW;
-    nextReps = targetReps + 1;
-    reason = `Flat across your last ${window.length} sessions. Same ${last.topW}kg — chase rep #${nextReps} to crack it open.`;
+    nextReps = Math.min(ceiling, last.topR + 1);
+    reason = `Hold ${last.topW}kg and chase rep #${nextReps} — hit ${ceiling} and the plate goes on (→ ${plateUp}kg).`;
   }
 
   return steer({ sessions, last, est1RM, status, nextWeight, nextReps, trendPerSession: slope, reason });
+}
+
+
+// ── Cardio progression ──────────────────────────────────────────────────────
+
+/** One cardio session, aggregated across its sets. For cardio the two logged
+ * columns are duration (minutes, stored in `weight`) and distance (km, stored
+ * in `reps`) — see ExerciseCard's column labels. Either may legitimately be 0
+ * (run for time without tracking distance, or vice-versa). */
+export interface CardioSessionSummary {
+  date: string;
+  /** Total minutes across the session's sets. */
+  duration: number;
+  /** Total kilometres across the session's sets. */
+  distance: number;
+}
+
+export interface CardioAnalysisResult {
+  sessions: CardioSessionSummary[];
+  last: CardioSessionSummary;
+  /** The metric the progression is driven on — distance when the user tracks
+   * it, otherwise duration. */
+  metric: "distance" | "duration";
+  status: StatusDef;
+  nextDuration: number;
+  nextDistance: number;
+  /** Change in the primary metric per session (km or min). */
+  trendPerSession: number;
+  reason: string;
+}
+
+const round1 = (v: number) => Math.round(v * 10) / 10;
+const roundHalf = (v: number) => Math.round(v * 2) / 2;
+
+/**
+ * Cardio counterpart to {@link analyzeEx}. Strength's weight×reps / 1RM model is
+ * meaningless for a run — there's no plate to add and no 1RM to estimate — so
+ * cardio gets its own read: progressive overload here means covering more
+ * ground or holding the same distance in less time (a quicker pace), or simply
+ * lasting longer when distance isn't tracked.
+ *
+ * `history` is expected newest-first (the order the API returns it).
+ */
+export function analyzeCardio(exId: string, history: WorkoutSession[]): CardioAnalysisResult | null {
+  const sessions: CardioSessionSummary[] = [];
+  [...history].reverse().forEach(w => {
+    const f = w.exercises.find(e => e.id === exId);
+    if (!f || !f.sets.length) return;
+    let duration = 0, distance = 0;
+    f.sets.forEach(s => {
+      const d = parseFloat(s.weight); // minutes
+      const k = parseFloat(s.reps);   // kilometres
+      if (Number.isFinite(d) && d > 0) duration += d;
+      if (Number.isFinite(k) && k > 0) distance += k;
+    });
+    // Skip only the truly empty sessions — a session with just one of the two
+    // columns filled (the other left at 0) is still a real, logged effort.
+    if (duration <= 0 && distance <= 0) return;
+    sessions.push({ date: w.date, duration: round1(duration), distance: round1(distance) });
+  });
+  if (!sessions.length) return null;
+
+  const last = sessions[sessions.length - 1];
+  const tracksDistance = sessions.some(s => s.distance > 0);
+  const metric: "distance" | "duration" = tracksDistance ? "distance" : "duration";
+
+  // Sensible single-step overload increments: ~10% of the last effort, floored
+  // so the target always nudges forward (½ km for distance, 1 min for time).
+  const distStep = Math.max(0.5, roundHalf(last.distance * 0.1));
+  const durStep  = Math.max(1, Math.round(last.duration * 0.1));
+
+  // First session: no trend yet — just seed a small step up.
+  if (sessions.length === 1) {
+    const nextDistance = tracksDistance ? round1(last.distance + distStep) : 0;
+    const nextDuration = tracksDistance ? last.duration : last.duration + durStep;
+    const reason = tracksDistance
+      ? `Baseline logged. Aim for ${nextDistance}km next time${last.duration > 0 ? " — same time means a quicker pace" : ""}.`
+      : `Baseline logged at ${last.duration} min. Add a few minutes next time to build your engine.`;
+    return { sessions, last, metric, status: STATUS.NEW, nextDuration, nextDistance, trendPerSession: 0, reason };
+  }
+
+  const window = sessions.slice(-TREND_WINDOW);
+  const slope = linregSlope(window.map((s, i) => [i, metric === "distance" ? s.distance : s.duration] as const));
+  const thresh = metric === "distance" ? 0.1 : 0.5;
+
+  let status: StatusDef;
+  let nextDuration: number;
+  let nextDistance: number;
+  let reason: string;
+
+  if (metric === "distance") {
+    nextDistance = round1(last.distance + distStep);
+    nextDuration = last.duration; // hold the time → the extra distance is a faster pace
+    if (slope < -thresh) {
+      status = STATUS.SLIPPING;
+      nextDistance = round1(last.distance); // rebuild at the current distance first
+      reason = `Distance has slipped lately. Lock in ${nextDistance}km clean before reaching further.`;
+    } else if (slope > thresh) {
+      status = STATUS.GAINING;
+      reason = `Up ~${round1(slope)}km/session. Push to ${nextDistance}km${last.duration > 0 ? " — hold the time for a quicker pace" : ""}.`;
+    } else {
+      status = STATUS.HOLDING;
+      reason = `Flat lately. Reach for ${nextDistance}km${last.duration > 0 ? " — same minutes, a touch faster" : ""}.`;
+    }
+  } else {
+    nextDuration = last.duration + durStep;
+    nextDistance = last.distance;
+    if (slope < -thresh) {
+      status = STATUS.SLIPPING;
+      nextDuration = last.duration;
+      reason = `Time has dropped off lately. Rebuild ${nextDuration} clean minutes before going longer.`;
+    } else if (slope > thresh) {
+      status = STATUS.GAINING;
+      reason = `Up ~${round1(slope)} min/session. Stretch it to ${nextDuration} min.`;
+    } else {
+      status = STATUS.HOLDING;
+      reason = `Flat lately. Add a few minutes — go for ${nextDuration} min to push the engine.`;
+    }
+  }
+
+  return { sessions, last, metric, status, nextDuration, nextDistance, trendPerSession: round1(slope), reason };
 }
 
 
