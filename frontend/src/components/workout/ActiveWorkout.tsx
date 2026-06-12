@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Dumbbell, TrendingUp, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Dumbbell, Layers, Square, TrendingUp, X } from "lucide-react";
 import type { ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, RestPrefs, ProgressionOverride } from "../../types";
 import { analyzeEx } from "../../analysis";
 import ExerciseCard from "./ExerciseCard";
@@ -49,7 +49,24 @@ export default function ActiveWorkout({
   const [lastTier, setLastTier]       = useState<RestTier>("medium");
   const [lastCustomSec, setLastCustomSec] = useState<number>(restPrefs.medium);
   const [rest, setRest] = useState<RestState | null>(null);
+  // View mode: "all" scrolls every exercise card (classic), "single" shows one
+  // exercise per screen with prev/next navigation. Persisted across reloads so
+  // the user's preference sticks for the session.
+  const [viewMode, setViewMode] = useState<"all" | "single">(
+    () => (typeof sessionStorage !== "undefined" && sessionStorage.getItem("gamgee_active_viewmode") === "single" ? "single" : "all")
+  );
+  const [focusIdx, setFocusIdx] = useState(0);
   const t = useTxt();
+
+  useEffect(() => {
+    try { sessionStorage.setItem("gamgee_active_viewmode", viewMode); } catch { /* private mode */ }
+  }, [viewMode]);
+
+  // Keep the focused index in range as exercises are added/removed.
+  const safeIdx = exercises.length === 0 ? 0 : Math.min(focusIdx, exercises.length - 1);
+  useEffect(() => {
+    if (focusIdx !== safeIdx) setFocusIdx(safeIdx);
+  }, [focusIdx, safeIdx]);
 
   // Unlock the shared AudioContext on the user's taps so the rest-timer alarm
   // can actually ring on mobile (contexts created outside a gesture stay muted).
@@ -67,6 +84,8 @@ export default function ActiveWorkout({
   const handleAdd = (ex: ExerciseDef) => {
     addExercise(ex);
     setShowPick(false);
+    // Jump focus to the freshly-added exercise so single mode lands on it.
+    setFocusIdx(exercises.length);
   };
 
   const handleCancel = () => {
@@ -126,6 +145,36 @@ export default function ActiveWorkout({
     setRest({ uid, endAt: Date.now() + secs * 1000, totalSec: secs, tier: "custom" });
   };
 
+  const renderCard = (ex: WorkoutExercise) => (
+    <ExerciseCard
+      key={ex.uid}
+      ex={ex}
+      pr={prs[ex.id]}
+      analysis={ex.type === "strength" && !ex.is_assisted ? analyzeEx(ex.id, history, progressionOverrides[ex.id]) : null}
+      restPrefs={restPrefs}
+      bodyweight={bodyweight}
+      rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
+      onRemove={() => removeExercise(ex.uid)}
+      onToggleLock={() => {
+        // Clear any running rest timer for this card when it's being
+        // locked so the cool-down bar doesn't linger on a frozen card.
+        if (!ex.locked && rest?.uid === ex.uid) setRest(null);
+        toggleExerciseLock(ex.uid);
+      }}
+      updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
+      setSetRpe={(idx, rpe) => setSetRpe(ex.uid, idx, rpe)}
+      toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
+      addSet={() => handleAddSet(ex.uid)}
+      removeSet={(idx) => removeSet(ex.uid, idx)}
+      isNewPr={(w) => isNewPr(ex.id, w)}
+      onPickRestTier={(tier) => handlePickTier(ex.uid, tier)}
+      onAdjustRest={(delta) => handleAdjust(ex.uid, delta)}
+      onStartCustomRest={(s) => handleStartCustom(ex.uid, s)}
+    />
+  );
+
+  const focusEx = exercises[safeIdx];
+
   return (
     <>
       <OnboardingHint hintKey="active" step="GO TIME" title={t("Log each set as you go", "Log each set as you go", "Log each set as you serve")}>
@@ -151,6 +200,29 @@ export default function ActiveWorkout({
         <button className="btn-finish" onClick={onFinish} disabled={doneSets === 0}><Check size={14} /> FINISH</button>
       </div>
 
+      {/* View toggle: scroll-all vs. one-exercise-at-a-time. Hidden when there's
+          nothing to page through (a single exercise reads the same either way). */}
+      {exercises.length > 1 && (
+        <div className="wx-viewmode" role="tablist" aria-label="Exercise view">
+          <button
+            role="tab"
+            aria-selected={viewMode === "all"}
+            className={`wx-viewmode-btn${viewMode === "all" ? " active" : ""}`}
+            onClick={() => setViewMode("all")}
+          >
+            <Layers size={14} /> ALL
+          </button>
+          <button
+            role="tab"
+            aria-selected={viewMode === "single"}
+            className={`wx-viewmode-btn${viewMode === "single" ? " active" : ""}`}
+            onClick={() => setViewMode("single")}
+          >
+            <Square size={14} /> ONE AT A TIME
+          </button>
+        </div>
+      )}
+
       {exercises.length === 0 && (
         <div className="empty">
           <div className="empty-icon"><Dumbbell size={40} /></div>
@@ -158,33 +230,64 @@ export default function ActiveWorkout({
         </div>
       )}
 
-      {exercises.map(ex => (
-        <ExerciseCard
-          key={ex.uid}
-          ex={ex}
-          pr={prs[ex.id]}
-          analysis={ex.type === "strength" && !ex.is_assisted ? analyzeEx(ex.id, history, progressionOverrides[ex.id]) : null}
-          restPrefs={restPrefs}
-          bodyweight={bodyweight}
-          rest={rest?.uid === ex.uid ? { endAt: rest.endAt, totalSec: rest.totalSec, tier: rest.tier } : null}
-          onRemove={() => removeExercise(ex.uid)}
-          onToggleLock={() => {
-            // Clear any running rest timer for this card when it's being
-            // locked so the cool-down bar doesn't linger on a frozen card.
-            if (!ex.locked && rest?.uid === ex.uid) setRest(null);
-            toggleExerciseLock(ex.uid);
-          }}
-          updateSet={(idx, field, val) => updateSet(ex.uid, idx, field, val)}
-          setSetRpe={(idx, rpe) => setSetRpe(ex.uid, idx, rpe)}
-          toggleSet={(idx) => handleToggleSet(ex.uid, idx)}
-          addSet={() => handleAddSet(ex.uid)}
-          removeSet={(idx) => removeSet(ex.uid, idx)}
-          isNewPr={(w) => isNewPr(ex.id, w)}
-          onPickRestTier={(tier) => handlePickTier(ex.uid, tier)}
-          onAdjustRest={(delta) => handleAdjust(ex.uid, delta)}
-          onStartCustomRest={(s) => handleStartCustom(ex.uid, s)}
-        />
-      ))}
+      {/* Single-exercise mode: one card per screen with a picker + prev/next. */}
+      {viewMode === "single" && exercises.length > 1 && focusEx ? (
+        <div className="wx-single">
+          <div className="wx-single-nav">
+            <button
+              className="wx-nav-btn"
+              onClick={() => setFocusIdx(i => Math.max(0, i - 1))}
+              disabled={safeIdx === 0}
+              aria-label="Previous exercise"
+            >
+              <ChevronLeft size={22} />
+            </button>
+            <div className="wx-single-pick">
+              <select
+                value={safeIdx}
+                onChange={e => setFocusIdx(Number(e.target.value))}
+                aria-label="Jump to exercise"
+              >
+                {exercises.map((ex, i) => (
+                  <option key={ex.uid} value={i}>
+                    {ex.name} ({ex.sets.filter(s => s.done).length}/{ex.sets.length}){ex.locked ? " ✓" : ""}
+                  </option>
+                ))}
+              </select>
+              <div className="wx-single-sub">Exercise {safeIdx + 1} of {exercises.length}</div>
+            </div>
+            <button
+              className="wx-nav-btn"
+              onClick={() => setFocusIdx(i => Math.min(exercises.length - 1, i + 1))}
+              disabled={safeIdx === exercises.length - 1}
+              aria-label="Next exercise"
+            >
+              <ChevronRight size={22} />
+            </button>
+          </div>
+
+          {renderCard(focusEx)}
+
+          <div className="wx-single-foot">
+            <button
+              className="wx-single-foot-btn"
+              onClick={() => setFocusIdx(i => Math.max(0, i - 1))}
+              disabled={safeIdx === 0}
+            >
+              <ChevronLeft size={16} /> PREV
+            </button>
+            <button
+              className="wx-single-foot-btn"
+              onClick={() => setFocusIdx(i => Math.min(exercises.length - 1, i + 1))}
+              disabled={safeIdx === exercises.length - 1}
+            >
+              NEXT <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        exercises.map(renderCard)
+      )}
 
       {showPick && (
         <ExercisePicker prs={prs} onAdd={handleAdd} onClose={() => setShowPick(false)} />
