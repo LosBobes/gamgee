@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { analyzeEx, prescribeExercise, rampedSetsFromHistory, weightForRpe } from "../../src/analysis";
+import { analyzeCardio, analyzeEx, prescribeExercise, rampedSetsFromHistory, weightForRpe } from "../../src/analysis";
 import { rirToRpe } from "../../src/utils";
 import type { WorkoutSession } from "../../src/types";
 
@@ -67,7 +67,9 @@ describe("analyzeEx", () => {
     });
   });
 
-  it("reads a steady climb as PROGRESSING and pushes the weight up", () => {
+  it("reads a steady climb as PROGRESSING and banks a rep toward the ceiling", () => {
+    // Double progression: while inside the rep range the load holds and a rep is
+    // added — the plate only goes on once the ceiling is hit.
     const res = analyzeEx(
       "bench",
       history(
@@ -78,9 +80,40 @@ describe("analyzeEx", () => {
       ),
     )!;
     expect(res.status.label).toBe("PROGRESSING");
-    expect(res.nextWeight).toBe(70);
-    expect(res.nextReps).toBe(8);
+    expect(res.nextWeight).toBe(67.5); // hold the load…
+    expect(res.nextReps).toBe(9);      // …and chase the next rep
     expect(res.trendPerSession).toBeGreaterThan(0);
+  });
+
+  it("adds a plate and resets reps once the rep ceiling is reached", () => {
+    // 60kg climbing 8→9→10→11 reps. Floor is 8, ceiling 8+3=11, so the last
+    // session tops the range → plate up to 62.5kg, reps reset to the floor.
+    const res = analyzeEx(
+      "bench",
+      history(
+        session("2026-05-07", "60", "11"),
+        session("2026-05-05", "60", "10"),
+        session("2026-05-03", "60", "9"),
+        session("2026-05-01", "60", "8"),
+      ),
+    )!;
+    expect(res.nextWeight).toBe(62.5);
+    expect(res.nextReps).toBe(8);
+  });
+
+  it("banks the plate early when the top set was easy (RIR in reserve)", () => {
+    // Flat 60×8, but the latest set left 3 reps in the tank → the load is light,
+    // so progress the weight now instead of grinding reps in the range first.
+    const res = analyzeEx(
+      "bench",
+      history(
+        session("2026-05-05", "60", "8", 3),
+        session("2026-05-03", "60", "8"),
+        session("2026-05-01", "60", "8"),
+      ),
+    )!;
+    expect(res.nextWeight).toBe(62.5);
+    expect(res.nextReps).toBe(8);
   });
 
   it("reads flat sessions as HOLDING and suggests one more rep", () => {
@@ -193,6 +226,96 @@ describe("analyzeEx", () => {
     const res = analyzeEx("bench", [session("2026-05-01", "60", "8", 3)], { weight: 0, reps: 5 })!;
     expect(res.status.label).toBe("BASELINE");
     expect(res.nextWeight).toBe(62.5);
+  });
+});
+
+// Cardio sessions log duration (minutes) in the `weight` column and distance
+// (km) in the `reps` column — see ExerciseCard's column labels.
+const cardio = (date: string, durationMin: string, distanceKm: string): WorkoutSession => ({
+  id: date,
+  date,
+  duration: 0,
+  exercises: [
+    {
+      id: "run",
+      name: "Running",
+      type: "cardio",
+      uid: `run_${date}`,
+      sets: [{ weight: durationMin, reps: distanceKm, done: true }],
+    },
+  ],
+});
+
+describe("analyzeCardio", () => {
+  it("returns null when there is no usable cardio history", () => {
+    expect(analyzeCardio("run", [])).toBeNull();
+    // Both columns empty/zero → nothing was actually logged.
+    expect(analyzeCardio("run", [cardio("2026-05-01", "0", "0")])).toBeNull();
+  });
+
+  it("never reports kg or reps — it tracks duration and distance", () => {
+    const res = analyzeCardio("run", [cardio("2026-05-01", "30", "5")])!;
+    expect(res.metric).toBe("distance");
+    expect(res.last.duration).toBe(30);
+    expect(res.last.distance).toBe(5);
+    expect(res.status.label).toBe("BASELINE");
+    // Hold the time, push the distance → a quicker pace.
+    expect(res.nextDistance).toBe(5.5);
+    expect(res.nextDuration).toBe(30);
+  });
+
+  it("accepts a 0 in one column (run for time, no distance tracked)", () => {
+    const res = analyzeCardio("run", [cardio("2026-05-01", "30", "0")])!;
+    // The session is kept, not dropped, and progression falls back to duration.
+    expect(res.sessions).toHaveLength(1);
+    expect(res.metric).toBe("duration");
+    expect(res.nextDuration).toBeGreaterThan(30);
+    expect(res.nextDistance).toBe(0);
+  });
+
+  it("accepts a 0 in the duration column (run for distance only)", () => {
+    const res = analyzeCardio("run", [cardio("2026-05-01", "0", "5")])!;
+    expect(res.sessions).toHaveLength(1);
+    expect(res.metric).toBe("distance");
+    expect(res.last.distance).toBe(5);
+  });
+
+  it("reads growing distance as PROGRESSING and pushes further", () => {
+    const res = analyzeCardio(
+      "run",
+      [cardio("2026-05-05", "30", "5"), cardio("2026-05-03", "30", "4.5"), cardio("2026-05-01", "30", "4")],
+    )!;
+    expect(res.status.label).toBe("PROGRESSING");
+    expect(res.nextDistance).toBeGreaterThan(res.last.distance);
+    expect(res.trendPerSession).toBeGreaterThan(0);
+  });
+
+  it("reads shrinking distance as BACKING OFF and rebuilds", () => {
+    const res = analyzeCardio(
+      "run",
+      [cardio("2026-05-05", "30", "4"), cardio("2026-05-03", "30", "5"), cardio("2026-05-01", "30", "6")],
+    )!;
+    expect(res.status.label).toBe("BACKING OFF");
+    // Rebuild at the current distance before reaching further.
+    expect(res.nextDistance).toBe(res.last.distance);
+    expect(res.trendPerSession).toBeLessThan(0);
+  });
+
+  it("aggregates interval sets into one session total", () => {
+    const intervals: WorkoutSession = {
+      id: "iv", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "run", name: "Running", type: "cardio", uid: "run_iv",
+        sets: [
+          { weight: "5", reps: "1", done: true },
+          { weight: "5", reps: "1", done: true },
+          { weight: "5", reps: "1", done: true },
+        ],
+      }],
+    };
+    const res = analyzeCardio("run", [intervals])!;
+    expect(res.last.duration).toBe(15);
+    expect(res.last.distance).toBe(3);
   });
 });
 
