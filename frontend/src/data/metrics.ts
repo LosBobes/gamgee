@@ -9,4 +9,5 @@ export const METRICS: MetricDef[] = [
   { id: "bicep",      label: "Bicep",       unit: "cm",  color: "#8b5cf6", step: 0.5, min: 20,  max: 70  },
   { id: "thigh",      label: "Thigh",       unit: "cm",  color: "#f97316", step: 0.5, min: 30,  max: 100 },
   { id: "resting_hr", label: "Resting HR",  unit: "bpm", color: "#ef4444", step: 1,   min: 30,  max: 120 },
+  { id: "zinc",       label: "Zinc Intake", unit: "mg",  color: "#71717a", step: 0.5, min: 0,   max: 100 },
 ];

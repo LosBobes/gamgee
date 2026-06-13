@@ -104,6 +104,32 @@ export const FOCUS: Record<string, FocusDef> = {
       "burpees", "hiit",
     ],
   },
+  calisthenics: {
+    name: "Calisthenics",
+    icon: PersonStanding,
+    desc: "Full bodyweight push · pull · legs",
+    exIds: [
+      "push_up", "decline_pushup", "diamond_pushup", "archer_pushup", "pike_pushup",
+      "dips", "ring_dips", "korean_dips", "pseudo_planche_pu",
+      "pullups", "chinups", "neutral_pullup", "archer_pullup", "typewriter_pullup",
+      "explosive_pullup", "muscle_up", "inverted_row", "ring_row",
+      "pistol_squat", "box_pistol", "shrimp_squat", "bulg_split", "nordic_curl", "sissy_sq",
+      "glute_bridge", "calf_raise",
+      "hanging_lr", "knee_raise", "l_sit", "tuck_l_sit", "hollow_hold", "dragon", "ab_wheel",
+    ],
+  },
+  skills: {
+    name: "Skill Work",
+    icon: Star,
+    desc: "Statics · levers · planche · handstand",
+    exIds: [
+      "wall_handstand", "handstand", "wall_hspu", "hspu",
+      "planche_lean", "tuck_planche", "adv_tuck_planche", "straddle_planche", "full_planche",
+      "skin_cat", "fl_raise", "tuck_fl", "adv_tuck_fl", "straddle_fl", "front_lever",
+      "tuck_bl", "back_lever", "ice_cream_maker",
+      "tuck_l_sit", "l_sit", "v_sit", "tuck_human_flag", "human_flag", "dragon",
+    ],
+  },
 };
 
 export const ICON_OPTIONS: { name: string; icon: LucideIcon }[] = [
