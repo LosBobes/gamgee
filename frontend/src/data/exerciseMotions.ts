@@ -1333,6 +1333,435 @@ const HIIT_FRAMES: Frame[] = [
   { t: 1,    pose: HIIT_STAND },
 ];
 
+// ── More baseline motions ────────────────────────────────────────────────
+// Starter animations for every remaining default exercise that had none.
+// Like the section above, these favour simple, readable two-keyframe loops
+// that admins can refine in the editor; close variants reuse a neighbouring
+// movement's skeleton (e.g. chin-ups share the pull-up arc). New skeletons are
+// authored only where the mechanics differ enough to need them (handstands,
+// planches, levers, the human flag, single-leg squats, neck work, …).
+
+// Two extra rigs: arms mirrored with independent legs (mountain climber,
+// loaded carries) and independent arms with a single leg-line (human flag).
+const RIG_LEGS_IND: RigConfig = { feet: "oval", arm2: "mirror",       leg2: "independent" };
+const RIG_ARMS_IND: RigConfig = { feet: "oval", arm2: "independent",  leg2: "none"        };
+
+// Seated chest-press machine — press forward from the chest.
+const MCHEST_BASE: Pose = {
+  head: [36, 40], neck: [38, 48], shoulder: [40, 58],
+  elbow: [40, 76], hand: [40, 96],
+  hip: [48, 92], knee: [70, 96], ankle: [92, 116], toe: [98, 122],
+};
+const MCHEST_BACK: Pose  = { ...MCHEST_BASE, elbow: [30, 64], hand: [46, 60] };
+const MCHEST_PRESS: Pose = { ...MCHEST_BASE, elbow: [56, 60], hand: [74, 58] };
+const MCHEST_FRAMES = loop(MCHEST_BACK, MCHEST_PRESS);
+
+// DB pullover — lying on a bench, arms arc from behind the head to over chest.
+const PULLOVER_OVER: Pose = {
+  head: [80, 80], neck: [73, 82], shoulder: [66, 84],
+  elbow: [60, 64], hand: [56, 46],
+  hip: [42, 86], knee: [27, 104], ankle: [27, 138], toe: [16, 138],
+};
+const PULLOVER_BACK: Pose = { ...PULLOVER_OVER, elbow: [78, 66], hand: [92, 58] };
+const PULLOVER_FRAMES = loop(PULLOVER_OVER, PULLOVER_BACK);
+
+// Tricep kickback — hinged torso, upper arm fixed, forearm extends back.
+const KICKBACK_BENT: Pose = {
+  head: [70, 60], neck: [64, 66], shoulder: [58, 72],
+  elbow: [48, 82], hand: [52, 100],
+  hip: [38, 84], knee: [46, 112], ankle: [50, 140], toe: [60, 140],
+};
+const KICKBACK_EXT: Pose = { ...KICKBACK_BENT, hand: [38, 74] };
+const KICKBACK_FRAMES = loop(KICKBACK_BENT, KICKBACK_EXT);
+
+// Straight-arm pulldown — standing, straight arms sweep from forward to thighs.
+const STRAIGHT_ARM_TOP: Pose = { ...STAND, shoulder: [50, 36], elbow: [62, 46], hand: [74, 54] };
+const STRAIGHT_ARM_BOT: Pose = { ...STAND, shoulder: [50, 36], elbow: [54, 60], hand: [56, 86] };
+const STRAIGHT_ARM_FRAMES = loop(STRAIGHT_ARM_TOP, STRAIGHT_ARM_BOT);
+
+// Seal row — lying prone on a raised bench; arms hang then pull to the ribs.
+const SEAL_DOWN: Pose = {
+  head: [80, 84], neck: [74, 86], shoulder: [68, 88],
+  elbow: [66, 106], hand: [64, 124],
+  hip: [44, 88], knee: [24, 88], ankle: [4, 88], toe: [-2, 94],
+};
+const SEAL_UP: Pose = { ...SEAL_DOWN, elbow: [60, 92], hand: [64, 102] };
+const SEAL_FRAMES = loop(SEAL_DOWN, SEAL_UP);
+
+// Inverted / ring row — supine under a bar, body straight, chest rises to the bar.
+const IROW_DOWN: Pose = {
+  head: [80, 102], neck: [74, 102], shoulder: [66, 104],
+  elbow: [60, 86], hand: [58, 66],
+  hip: [44, 112], knee: [24, 118], ankle: [4, 124], toe: [4, 132],
+};
+const IROW_UP: Pose = {
+  ...IROW_DOWN,
+  head: [80, 90], neck: [74, 90], shoulder: [66, 92],
+  elbow: [50, 80], hip: [44, 100], knee: [24, 108], ankle: [4, 116],
+};
+const IROW_FRAMES = loop(IROW_DOWN, IROW_UP);
+
+// Landmine press — angled one-arm press up and forward.
+const LANDMINE_LOW: Pose  = { ...STAND, shoulder: [50, 38], elbow: [58, 46], hand: [64, 34] };
+const LANDMINE_HIGH: Pose = { ...STAND, shoulder: [50, 36], elbow: [62, 28], hand: [74, 14] };
+const LANDMINE_FRAMES = loop(LANDMINE_LOW, LANDMINE_HIGH);
+
+// Rack pull — partial deadlift from knee height to lockout.
+const RACK_BOT: Pose = {
+  head: [58, 42], neck: [54, 50], shoulder: [50, 58],
+  elbow: [50, 78], hand: [52, 100],
+  hip: [44, 86], knee: [50, 112], ankle: [50, 140], toe: [60, 140],
+};
+const RACK_TOP: Pose = { ...STAND, elbow: [52, 70], hand: [52, 90] };
+const RACK_FRAMES = loop(RACK_BOT, RACK_TOP, [52, 100], [52, 90]);
+
+// Glute bridge / frog pump — floor variant of the hip thrust.
+const GB_DOWN: Pose = {
+  head: [22, 118], neck: [30, 118], shoulder: [38, 118],
+  elbow: [42, 128], hand: [46, 138],
+  hip: [60, 120], knee: [80, 112], ankle: [88, 138], toe: [96, 138],
+};
+const GB_UP: Pose = { ...GB_DOWN, hip: [60, 98], knee: [80, 98] };
+const GB_FRAMES = loop(GB_DOWN, GB_UP);
+
+// Cable glute kickback — quadruped, one leg drives back and up.
+const GKB_DOWN: Pose = {
+  head: [80, 84], neck: [74, 86], shoulder: [68, 88],
+  elbow: [68, 108], hand: [68, 124],
+  hip: [40, 92], knee: [40, 120], ankle: [52, 138], toe: [60, 140],
+};
+const GKB_UP: Pose = { ...GKB_DOWN, knee: [30, 104], ankle: [16, 92], toe: [8, 88] };
+const GKB_FRAMES = loop(GKB_DOWN, GKB_UP);
+
+// Kettlebell swing — hip hinge to standing; arms swing the bell up to shoulder height.
+const KB_BACK: Pose = {
+  head: [66, 52], neck: [60, 58], shoulder: [54, 64],
+  elbow: [52, 86], hand: [52, 108],
+  hip: [40, 86], knee: [48, 112], ankle: [50, 140], toe: [60, 140],
+};
+const KB_FRONT: Pose = { ...STAND, shoulder: [50, 36], elbow: [58, 46], hand: [72, 40] };
+const KB_SWING_FRAMES = loop(KB_BACK, KB_FRONT);
+
+// Nordic curl — knees anchored, body lowers forward under control.
+const NORDIC_UP: Pose = {
+  head: [48, 46], neck: [47, 54], shoulder: [46, 62],
+  elbow: [46, 80], hand: [46, 98],
+  hip: [42, 110], knee: [40, 138], ankle: [30, 140], toe: [24, 148],
+};
+const NORDIC_DOWN: Pose = {
+  head: [96, 74], neck: [92, 80], shoulder: [88, 86],
+  elbow: [90, 104], hand: [96, 120],
+  hip: [58, 118], knee: [40, 138], ankle: [30, 140], toe: [24, 148],
+};
+const NORDIC_FRAMES = loop(NORDIC_UP, NORDIC_DOWN);
+
+// V-up — lying flat, then folding hands and feet up toward each other.
+const VUP_DOWN: Pose = {
+  head: [82, 118], neck: [74, 118], shoulder: [66, 118],
+  elbow: [58, 116], hand: [50, 114],
+  hip: [44, 118], knee: [26, 118], ankle: [8, 118], toe: [2, 124],
+};
+const VUP_UP: Pose = {
+  head: [62, 86], neck: [60, 92], shoulder: [56, 98],
+  elbow: [66, 86], hand: [78, 74],
+  hip: [44, 118], knee: [60, 98], ankle: [78, 82], toe: [86, 78],
+};
+const VUP_FRAMES = loop(VUP_DOWN, VUP_UP);
+
+// Bicycle crunch — supine, opposite knee and elbow cycle together.
+const BIKE_A: Pose = {
+  head: [80, 104], neck: [74, 104], shoulder: [68, 104],
+  elbow: [62, 96], hand: [56, 88],
+  hip: [44, 108], knee: [58, 84], ankle: [64, 104], toe: [72, 104],
+  arm2: { shoulder: [68, 104], elbow: [74, 112], hand: [82, 118] },
+  leg2: { hip: [44, 108], knee: [26, 110], ankle: [8, 112], toe: [2, 118] },
+};
+const BIKE_B: Pose = {
+  ...BIKE_A,
+  elbow: [74, 112], hand: [82, 118],
+  knee: [26, 110], ankle: [8, 112], toe: [2, 118],
+  arm2: { shoulder: [68, 104], elbow: [62, 96], hand: [56, 88] },
+  leg2: { hip: [44, 108], knee: [58, 84], ankle: [64, 104], toe: [72, 104] },
+};
+const BIKE_FRAMES = loop(BIKE_A, BIKE_B);
+
+// Russian twist — seated lean-back, hands sweep across the body.
+const RT_A: Pose = {
+  head: [40, 56], neck: [42, 64], shoulder: [44, 72],
+  elbow: [54, 78], hand: [66, 76],
+  hip: [58, 98], knee: [78, 90], ankle: [92, 110], toe: [98, 114],
+};
+const RT_B: Pose = { ...RT_A, elbow: [50, 86], hand: [56, 92] };
+const RT_FRAMES = loop(RT_A, RT_B);
+
+// Cable woodchop — diagonal pull from high on one side to low on the other.
+const WC_HIGH: Pose = { ...STAND, shoulder: [50, 36], elbow: [58, 28], hand: [70, 18] };
+const WC_LOW: Pose  = { ...STAND, shoulder: [50, 40], elbow: [46, 64], hand: [34, 84] };
+const WC_FRAMES = loop(WC_HIGH, WC_LOW);
+
+// Dead bug — supine, arm and opposite leg extend and return.
+const DEADBUG_IN: Pose = {
+  head: [78, 100], neck: [70, 100], shoulder: [62, 100],
+  elbow: [66, 84], hand: [68, 70],
+  hip: [44, 104], knee: [34, 90], ankle: [26, 76], toe: [20, 72],
+};
+const DEADBUG_OUT: Pose = {
+  ...DEADBUG_IN,
+  elbow: [72, 80], hand: [84, 72],
+  knee: [30, 100], ankle: [12, 96], toe: [6, 100],
+};
+const DEADBUG_FRAMES = loop(DEADBUG_IN, DEADBUG_OUT);
+
+// Bird dog — quadruped, opposite arm and leg reach out level.
+const BIRDDOG_IN: Pose = {
+  head: [80, 84], neck: [74, 86], shoulder: [68, 88],
+  elbow: [68, 104], hand: [68, 120],
+  hip: [40, 92], knee: [40, 120], ankle: [52, 138], toe: [60, 140],
+};
+const BIRDDOG_OUT: Pose = {
+  ...BIRDDOG_IN,
+  elbow: [80, 92], hand: [92, 84],
+  knee: [30, 104], ankle: [16, 92], toe: [8, 88],
+};
+const BIRDDOG_FRAMES = loop(BIRDDOG_IN, BIRDDOG_OUT);
+
+// L-sit — supported on the hands, legs straight out (held, subtle settle).
+const LSIT_HOLD: Pose = {
+  head: [50, 48], neck: [50, 56], shoulder: [50, 64],
+  elbow: [50, 82], hand: [50, 100],
+  hip: [50, 96], knee: [72, 96], ankle: [94, 96], toe: [98, 102],
+};
+const LSIT_SETTLE: Pose = { ...LSIT_HOLD, hip: [50, 98], knee: [72, 98], ankle: [94, 98] };
+const LSIT_FRAMES = loop(LSIT_HOLD, LSIT_SETTLE);
+
+// V-sit — like an L-sit but legs raised high into a V.
+const VSIT_HOLD: Pose = {
+  head: [50, 54], neck: [50, 62], shoulder: [50, 70],
+  elbow: [58, 84], hand: [68, 80],
+  hip: [50, 96], knee: [66, 76], ankle: [84, 58], toe: [92, 52],
+};
+const VSIT_SETTLE: Pose = { ...VSIT_HOLD, knee: [66, 78], ankle: [84, 60] };
+const VSIT_FRAMES = loop(VSIT_HOLD, VSIT_SETTLE);
+
+// Hollow hold — supine dish, arms overhead, off the floor (held).
+const HOLLOW_A: Pose = {
+  head: [76, 102], neck: [70, 100], shoulder: [64, 98],
+  elbow: [74, 90], hand: [86, 82],
+  hip: [44, 104], knee: [28, 98], ankle: [12, 92], toe: [6, 88],
+};
+const HOLLOW_B: Pose = { ...HOLLOW_A, hip: [44, 106], knee: [28, 100] };
+const HOLLOW_FRAMES = loop(HOLLOW_A, HOLLOW_B);
+
+// Mountain climber — plank with the knees driving in alternately.
+const MTN_A: Pose = {
+  head: [82, 100], neck: [74, 102], shoulder: [66, 104],
+  elbow: [66, 122], hand: [60, 138],
+  hip: [38, 106], knee: [40, 116], ankle: [52, 124], toe: [60, 126],
+  leg2: { hip: [38, 106], knee: [18, 112], ankle: [0, 118], toe: [-2, 126] },
+};
+const MTN_B: Pose = {
+  ...MTN_A,
+  knee: [18, 112], ankle: [0, 118], toe: [-2, 126],
+  leg2: { hip: [38, 106], knee: [40, 116], ankle: [52, 124], toe: [60, 126] },
+};
+const MTN_FRAMES = loop(MTN_A, MTN_B);
+
+// Loaded carry — upright walk holding the weight at the sides.
+const CARRY_A: Pose = {
+  head: [50, 22], neck: [50, 32], shoulder: [50, 38],
+  elbow: [52, 60], hand: [54, 86],
+  hip: [50, 86], knee: [64, 104], ankle: [74, 124], toe: [84, 126],
+  leg2: { hip: [50, 86], knee: [40, 112], ankle: [34, 138], toe: [44, 138] },
+};
+const CARRY_B: Pose = {
+  ...CARRY_A,
+  knee: [40, 110], ankle: [34, 130], toe: [44, 132],
+  leg2: { hip: [50, 86], knee: [64, 104], ankle: [74, 124], toe: [84, 126] },
+};
+const CARRY_FRAMES = loop(CARRY_A, CARRY_B);
+
+// Pike push-up — hips high, head lowers between the hands.
+const PIKE_UP: Pose = {
+  head: [72, 92], neck: [66, 96], shoulder: [62, 100],
+  elbow: [70, 118], hand: [78, 138],
+  hip: [40, 80], knee: [24, 108], ankle: [8, 136], toe: [8, 144],
+};
+const PIKE_DOWN: Pose = {
+  ...PIKE_UP,
+  head: [86, 132], neck: [78, 126], shoulder: [66, 118], elbow: [74, 128],
+};
+const PIKE_FRAMES = loop(PIKE_UP, PIKE_DOWN);
+
+// Handstand hold — inverted, body vertical, hands on the floor (subtle sway).
+const HANDSTAND_HOLD: Pose = {
+  head: [50, 118], neck: [50, 110], shoulder: [50, 104],
+  elbow: [50, 128], hand: [50, 150],
+  hip: [50, 74], knee: [50, 44], ankle: [50, 16], toe: [58, 12],
+};
+const HANDSTAND_SWAY: Pose = { ...HANDSTAND_HOLD, hip: [51, 76], knee: [51, 46], ankle: [51, 18] };
+const HANDSTAND_FRAMES = loop(HANDSTAND_HOLD, HANDSTAND_SWAY);
+
+// Handstand push-up — inverted, body dips toward the floor and presses back up.
+const HSPU_DOWN: Pose = {
+  ...HANDSTAND_HOLD,
+  head: [50, 138], neck: [50, 128], shoulder: [50, 118],
+  elbow: [40, 134], hip: [50, 90], knee: [50, 60], ankle: [50, 32], toe: [58, 28],
+};
+const HSPU_FRAMES = loop(HANDSTAND_HOLD, HSPU_DOWN);
+
+// Planche — body held horizontal over the hands (subtle hold).
+const PLANCHE_HOLD: Pose = {
+  head: [74, 96], neck: [66, 98], shoulder: [58, 100],
+  elbow: [58, 118], hand: [58, 138],
+  hip: [40, 98], knee: [22, 98], ankle: [4, 98], toe: [-2, 104],
+};
+const PLANCHE_SETTLE: Pose = { ...PLANCHE_HOLD, hip: [40, 100], knee: [22, 100], ankle: [4, 100] };
+const PLANCHE_FRAMES = loop(PLANCHE_HOLD, PLANCHE_SETTLE);
+
+// Front lever — body horizontal, hanging face-up from a bar overhead.
+const FLEVER_HOLD: Pose = {
+  head: [66, 62], neck: [60, 62], shoulder: [52, 62],
+  elbow: [51, 42], hand: [50, 22],
+  hip: [38, 62], knee: [22, 62], ankle: [6, 62], toe: [-2, 58],
+};
+const FLEVER_SETTLE: Pose = { ...FLEVER_HOLD, hip: [38, 64], knee: [22, 64], ankle: [6, 64] };
+const FLEVER_FRAMES = loop(FLEVER_HOLD, FLEVER_SETTLE);
+
+// Front-lever raise / ice-cream maker — from a hang up to the horizontal lever.
+const FL_HANG: Pose = {
+  head: [50, 44], neck: [50, 54], shoulder: [50, 62],
+  elbow: [50, 42], hand: [50, 22],
+  hip: [50, 96], knee: [50, 126], ankle: [50, 152], toe: [58, 154],
+};
+const FL_RAISE_FRAMES = loop(FL_HANG, FLEVER_HOLD);
+
+// Back lever — body horizontal, face-down, hanging from a bar behind.
+const BLEVER_HOLD: Pose = {
+  head: [34, 68], neck: [42, 66], shoulder: [52, 64],
+  elbow: [51, 44], hand: [50, 24],
+  hip: [64, 66], knee: [80, 66], ankle: [96, 66], toe: [98, 72],
+};
+const BLEVER_SETTLE: Pose = { ...BLEVER_HOLD, hip: [64, 68], knee: [80, 68], ankle: [96, 68] };
+const BLEVER_FRAMES = loop(BLEVER_HOLD, BLEVER_SETTLE);
+
+// Muscle-up — pull-up into a transition over the bar to support.
+const MU_HANG: Pose = {
+  head: [50, 50], neck: [50, 60], shoulder: [50, 67],
+  elbow: [54, 47], hand: [56, 24],
+  hip: [50, 115], knee: [55, 138], ankle: [55, 156], toe: [62, 156],
+};
+const MU_PULL: Pose = {
+  head: [50, 34], neck: [50, 44], shoulder: [50, 52],
+  elbow: [40, 40], hand: [56, 24],
+  hip: [50, 100], knee: [55, 124], ankle: [55, 144], toe: [62, 144],
+};
+const MU_OVER: Pose = {
+  head: [50, 18], neck: [50, 28], shoulder: [50, 36],
+  elbow: [58, 46], hand: [56, 52],
+  hip: [50, 86], knee: [55, 110], ankle: [55, 134], toe: [62, 134],
+};
+const MU_FRAMES: Frame[] = [
+  { t: 0, pose: MU_HANG },
+  { t: 0.4, pose: MU_PULL },
+  { t: 0.7, pose: MU_OVER },
+  { t: 1, pose: MU_HANG },
+];
+
+// Human flag — body horizontal, gripping a vertical pole (two-arm support).
+const FLAG_HOLD: Pose = {
+  head: [62, 60], neck: [54, 62], shoulder: [44, 64],
+  elbow: [36, 52], hand: [30, 40],
+  hip: [68, 66], knee: [82, 68], ankle: [96, 70], toe: [98, 76],
+  arm2: { shoulder: [44, 64], elbow: [36, 80], hand: [30, 96] },
+};
+const FLAG_SETTLE: Pose = { ...FLAG_HOLD, hip: [68, 68], knee: [82, 70], ankle: [96, 72] };
+const FLAG_FRAMES = loop(FLAG_HOLD, FLAG_SETTLE);
+
+// Pistol squat — single-leg squat, free leg extended forward.
+const PISTOL_UP: Pose = {
+  ...STAND,
+  shoulder: [50, 36], elbow: [60, 46], hand: [74, 46],
+  hip: [50, 86], knee: [50, 115], ankle: [50, 140], toe: [60, 140],
+  leg2: { hip: [50, 86], knee: [64, 100], ankle: [80, 104], toe: [90, 104] },
+};
+const PISTOL_DOWN: Pose = {
+  head: [50, 60], neck: [50, 68], shoulder: [50, 74],
+  elbow: [62, 74], hand: [78, 70],
+  hip: [44, 116], knee: [60, 120], ankle: [50, 140], toe: [60, 140],
+  leg2: { hip: [44, 116], knee: [70, 104], ankle: [92, 96], toe: [98, 94] },
+};
+const PISTOL_FRAMES = loop(PISTOL_UP, PISTOL_DOWN);
+
+// Dead hang — hanging from a bar, subtle sway.
+const HANG_A: Pose = {
+  head: [50, 34], neck: [50, 44], shoulder: [50, 52],
+  elbow: [52, 38], hand: [54, 16],
+  hip: [50, 98], knee: [50, 128], ankle: [50, 154], toe: [58, 156],
+};
+const HANG_B: Pose = { ...HANG_A, hip: [51, 99], knee: [51, 129], ankle: [51, 155] };
+const HANG_FRAMES = loop(HANG_A, HANG_B);
+
+// Static loaded hold (plate pinch / fat-grip / thick-bar) — standing, slight breath.
+const HOLD_A: Pose = { ...STAND, elbow: [51, 60], hand: [52, 88] };
+const HOLD_B: Pose = { ...STAND, neck: [50, 31], shoulder: [50, 36], elbow: [51, 61], hand: [52, 89] };
+const HOLD_FRAMES = loop(HOLD_A, HOLD_B);
+
+// Wrist curl — seated, forearm on the thigh, the load flexes up and down.
+const WRIST_DOWN: Pose = {
+  head: [38, 40], neck: [40, 48], shoulder: [42, 56],
+  elbow: [42, 82], hand: [66, 92],
+  hip: [46, 88], knee: [66, 110], ankle: [66, 140], toe: [76, 140],
+};
+const WRIST_UP: Pose = { ...WRIST_DOWN, hand: [66, 78] };
+const WRIST_FRAMES = loop(WRIST_DOWN, WRIST_UP);
+
+// Gripper (captains of crush) — standing, the hand squeezes closed.
+const GRIP_OPEN: Pose = { ...STAND, elbow: [54, 58], hand: [64, 64] };
+const GRIP_SHUT: Pose = { ...STAND, elbow: [54, 58], hand: [58, 62] };
+const GRIPPER_FRAMES = loop(GRIP_OPEN, GRIP_SHUT);
+
+// Neck flexion — head nods forward against resistance.
+const NECK_BASE: Pose = {
+  head: [50, 18], neck: [50, 30], shoulder: [50, 38],
+  elbow: [50, 62], hand: [50, 86],
+  hip: [50, 86], knee: [50, 115], ankle: [50, 140], toe: [60, 140],
+};
+const NECK_CURL_BACK: Pose = { ...NECK_BASE, head: [44, 20], neck: [48, 30] };
+const NECK_CURL_FWD: Pose  = { ...NECK_BASE, head: [57, 24], neck: [52, 31] };
+const NECK_CURL_FRAMES = loop(NECK_CURL_BACK, NECK_CURL_FWD);
+
+// Neck extension — head travels from down to back.
+const NECK_EXT_DOWN: Pose = { ...NECK_BASE, head: [57, 26], neck: [52, 32] };
+const NECK_EXT_BACK: Pose = { ...NECK_BASE, head: [42, 18], neck: [47, 29] };
+const NECK_EXT_FRAMES = loop(NECK_EXT_DOWN, NECK_EXT_BACK);
+
+// Lateral neck flexion — head tilts side to side (subtle in side view).
+const NECK_LAT_A: Pose = { ...NECK_BASE, head: [54, 18] };
+const NECK_LAT_B: Pose = { ...NECK_BASE, head: [46, 18] };
+const NECK_LAT_FRAMES = loop(NECK_LAT_A, NECK_LAT_B);
+
+// Neck bridge — supine arch supported on the head.
+const NECK_BRIDGE_DOWN: Pose = {
+  head: [80, 122], neck: [74, 117], shoulder: [66, 112],
+  elbow: [60, 124], hand: [56, 138],
+  hip: [40, 100], knee: [28, 118], ankle: [20, 138], toe: [12, 140],
+};
+const NECK_BRIDGE_UP: Pose = { ...NECK_BRIDGE_DOWN, shoulder: [66, 108], hip: [40, 88] };
+const NECK_BRIDGE_FRAMES = loop(NECK_BRIDGE_DOWN, NECK_BRIDGE_UP);
+
+// Ski erg — double-pole: arms drive from overhead down past the hips.
+const SKI_UP: Pose = {
+  head: [50, 26], neck: [50, 36], shoulder: [50, 42],
+  elbow: [54, 26], hand: [58, 12],
+  hip: [50, 88], knee: [54, 114], ankle: [54, 140], toe: [64, 140],
+};
+const SKI_DOWN: Pose = {
+  head: [54, 40], neck: [52, 48], shoulder: [50, 56],
+  elbow: [52, 78], hand: [54, 98],
+  hip: [48, 96], knee: [56, 118], ankle: [54, 140], toe: [64, 140],
+};
+const SKI_FRAMES = loop(SKI_UP, SKI_DOWN);
+
 export const MOTIONS: Record<string, ExerciseMotion> = {
   // ── Push ────────────────────────────────────────────────────────────────
   bench:       { name: "Bench press",      frames: BENCH_FRAMES,        duration: 2200,                category: "Push",      rig: RIG_SYMMETRIC, equipment: [flatBench(), barbell("bar1", [68, 35], 30)] },
@@ -1423,6 +1852,163 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   sled_push:   { name: "Sled push",    frames: SLED_FRAMES,    duration: 1200, floor: true, category: "Cardio", rig: RIG_ASYM },
   battle_rope: { name: "Battle ropes", frames: BATTLE_FRAMES,  duration: 900,  floor: true, category: "Cardio", rig: RIG_ASYM },
   hiit:        { name: "HIIT",         frames: HIIT_FRAMES,    duration: 2000, floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
+
+  // ── Push (added) ──────────────────────────────────────────────────────────
+  smith_bench:    { name: "Smith Machine Bench", frames: BENCH_FRAMES,   duration: 2200,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench(), barbell("bar1", [68, 35], 30)] },
+  machine_chest:  { name: "Chest Press Machine", frames: MCHEST_FRAMES,  duration: 2000,              category: "Push", rig: RIG_SYMMETRIC },
+  floor_press:    { name: "Floor Press",         frames: BENCH_FRAMES,   duration: 2200, floor: true, category: "Push", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [68, 35], 30)] },
+  larsen_press:   { name: "Larsen Press",        frames: BENCH_FRAMES,   duration: 2200,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench(), barbell("bar1", [68, 35], 30)] },
+  db_pullover:    { name: "DB Pullover",         frames: PULLOVER_FRAMES, duration: 2400,             category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
+  svend_press:    { name: "Svend Press",         frames: CABLE_FLY_FRAMES, duration: 2000, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  decline_pushup: { name: "Decline Push-up",     frames: PUSHUP_FRAMES,  duration: 1800, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  diamond_pushup: { name: "Diamond Push-up",     frames: PUSHUP_FRAMES,  duration: 1800, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  archer_pushup:  { name: "Archer Push-up",      frames: PUSHUP_FRAMES,  duration: 2000, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  tate_press:     { name: "Tate Press",          frames: SKULL_FRAMES,   duration: 2000,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
+  jm_press:       { name: "JM Press",            frames: SKULL_FRAMES,   duration: 2000,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
+  rope_pushdown:  { name: "Rope Pushdown",       frames: TRI_PUSH_FRAMES, duration: 1600, floor: true, category: "Push", rig: RIG_SYMMETRIC, equipment: [cableHigh("cable", [50, 6], [60, 50])] },
+  sa_pushdown:    { name: "Single-Arm Pushdown", frames: TRI_PUSH_FRAMES, duration: 1600, floor: true, category: "Push", rig: RIG_SINGLE,    equipment: [cableHigh("cable", [50, 6], [60, 50])] },
+  kickback:       { name: "Tricep Kickback",     frames: KICKBACK_FRAMES, duration: 1800, floor: true, category: "Push", rig: RIG_SINGLE },
+  assisted_dips:  { name: "Assisted Dips",       frames: DIPS_FRAMES,    duration: 2200,              category: "Push", rig: RIG_SYMMETRIC },
+
+  // ── Pull (added) ──────────────────────────────────────────────────────────
+  machine_pd:       { name: "Machine Pulldown",      frames: LATPD_FRAMES,        duration: 2000,              category: "Pull", rig: RIG_SYMMETRIC, equipment: [cableHigh("cable", [56, 4], [58, 22])] },
+  straight_arm:     { name: "Straight-Arm Pulldown", frames: STRAIGHT_ARM_FRAMES, duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [cableHigh("cable", [80, 6], [74, 54])] },
+  assisted_pullups: { name: "Assisted Pull-ups",     frames: PULLUP_FRAMES,       duration: 2400,              category: "Pull", rig: RIG_SYMMETRIC },
+  chinups:          { name: "Chin-ups",              frames: PULLUP_FRAMES,       duration: 2400,              category: "Pull", rig: RIG_SYMMETRIC },
+  assisted_chinups: { name: "Assisted Chin-ups",     frames: PULLUP_FRAMES,       duration: 2400,              category: "Pull", rig: RIG_SYMMETRIC },
+  neutral_pullup:   { name: "Neutral-Grip Pull-ups", frames: PULLUP_FRAMES,       duration: 2400,              category: "Pull", rig: RIG_SYMMETRIC },
+  weighted_pull:    { name: "Weighted Pull-ups",     frames: PULLUP_FRAMES,       duration: 2600,              category: "Pull", rig: RIG_SYMMETRIC },
+  pendlay_row:      { name: "Pendlay Row",           frames: ROW_FRAMES,          duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [58, 118], 30)] },
+  kroc_row:         { name: "Kroc Row",              frames: TBAR_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SINGLE },
+  seal_row:         { name: "Seal Row",              frames: SEAL_FRAMES,         duration: 2000,              category: "Pull", rig: RIG_SYMMETRIC, equipment: [flatBench("bench", [22, 92])] },
+  machine_row:      { name: "Machine Row",           frames: CS_ROW_FRAMES,       duration: 2000,              category: "Pull", rig: RIG_SYMMETRIC },
+  inverted_row:     { name: "Inverted Row",          frames: IROW_FRAMES,         duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC },
+  ez_curl:          { name: "EZ-Bar Curl",           frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [53, 85], 24)] },
+  cable_curl:       { name: "Cable Curl",            frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [cableLow("cable", [50, 154], [53, 85])] },
+  spider_curl:      { name: "Spider Curl",           frames: PREACHER_FRAMES,     duration: 1800,              category: "Pull", rig: RIG_SYMMETRIC, equipment: [preacherBench()] },
+  conc_curl:        { name: "Concentration Curl",    frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SINGLE },
+  drag_curl:        { name: "Drag Curl",             frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [53, 85], 24)] },
+  zottman:          { name: "Zottman Curl",          frames: CURL_FRAMES,         duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC },
+
+  // ── Shoulders (added) ─────────────────────────────────────────────────────
+  mach_lat:       { name: "Machine Lateral Raise", frames: LAT_RAISE_FRAMES,   duration: 1800, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  lean_lat:       { name: "Leaning Lateral Raise", frames: LAT_RAISE_FRAMES,   duration: 1800, floor: true, category: "Shoulders", rig: RIG_SINGLE },
+  y_raise:        { name: "Y-Raise",               frames: FRONT_RAISE_FRAMES, duration: 1800, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  plate_front:    { name: "Plate Front Raise",     frames: FRONT_RAISE_FRAMES, duration: 1800, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  viking_press:   { name: "Viking Press",          frames: OHP_FRAMES,         duration: 2000, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  landmine_press: { name: "Landmine Press",        frames: LANDMINE_FRAMES,    duration: 2000, floor: true, category: "Shoulders", rig: RIG_SINGLE },
+  behind_neck:    { name: "Behind-the-Neck Press", frames: OHP_FRAMES,         duration: 2000, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 35], 30)] },
+  cuban_press:    { name: "Cuban Press",           frames: OHP_FRAMES,         duration: 2200, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  rack_pull:      { name: "Rack Pull",             frames: RACK_FRAMES,        duration: 2400, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [52, 100], 30)] },
+
+  // ── Legs (added) ──────────────────────────────────────────────────────────
+  goblet_sq:      { name: "Goblet Squat",        frames: FRONT_SQ_FRAMES, duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  zercher_sq:     { name: "Zercher Squat",       frames: FRONT_SQ_FRAMES, duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  box_sq:         { name: "Box Squat",           frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
+  pause_sq:       { name: "Paused Squat",        frames: SQUAT_FRAMES,    duration: 3200, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
+  safety_sq:      { name: "Safety-Bar Squat",    frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
+  pendulum_sq:    { name: "Pendulum Squat",      frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  sissy_sq:       { name: "Sissy Squat",         frames: FRONT_SQ_FRAMES, duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  walking_lunge:  { name: "Walking Lunge",       frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
+  reverse_lunge:  { name: "Reverse Lunge",       frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
+  curtsy_lunge:   { name: "Curtsy Lunge",        frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
+  single_rdl:     { name: "Single-Leg RDL",      frames: RDL_FRAMES,      duration: 2600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  sumo_dl:        { name: "Sumo Deadlift",       frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
+  trap_bar_dl:    { name: "Trap-Bar Deadlift",   frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  snatch_dl:      { name: "Snatch-Grip Deadlift", frames: DEAD_FRAMES,    duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
+  deficit_dl:     { name: "Deficit Deadlift",    frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
+  glute_bridge:   { name: "Glute Bridge",        frames: GB_FRAMES,       duration: 2000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  frog_pump:      { name: "Frog Pump",           frames: GB_FRAMES,       duration: 1600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  glute_kickback: { name: "Cable Glute Kickback", frames: GKB_FRAMES,     duration: 2000, floor: true, category: "Legs", rig: RIG_SINGLE,    equipment: [cableLow("cable", [98, 138], [16, 92])] },
+  pull_through:   { name: "Cable Pull-Through",  frames: RDL_FRAMES,      duration: 2400, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [cableLow("cable", [98, 150], [52, 116])] },
+  kb_swing:       { name: "Kettlebell Swing",    frames: KB_SWING_FRAMES, duration: 1600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  nordic_curl:    { name: "Nordic Hamstring Curl", frames: NORDIC_FRAMES, duration: 2600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  abductor_m:     { name: "Hip Abductor Machine", frames: LEG_EXT_FRAMES, duration: 1800,             category: "Legs", rig: RIG_LEGS_ONLY },
+  adductor_m:     { name: "Hip Adductor Machine", frames: LEG_EXT_FRAMES, duration: 1800,             category: "Legs", rig: RIG_LEGS_ONLY },
+  donkey_calf:    { name: "Donkey Calf Raise",   frames: CALF_FRAMES,     duration: 1400, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+
+  // ── Core (added) ──────────────────────────────────────────────────────────
+  knee_raise:     { name: "Hanging Knee Raise", frames: HANGING_FRAMES, duration: 2000,              category: "Core", rig: RIG_SYMMETRIC },
+  v_up:           { name: "V-Up",               frames: VUP_FRAMES,     duration: 1800, floor: true, category: "Core", rig: RIG_SYMMETRIC },
+  bicycle:        { name: "Bicycle Crunch",     frames: BIKE_FRAMES,    duration: 1400, floor: true, category: "Core", rig: RIG_ASYM },
+  russian_twist:  { name: "Russian Twist",      frames: RT_FRAMES,      duration: 1400,              category: "Core", rig: RIG_SYMMETRIC },
+  woodchop:       { name: "Cable Woodchop",     frames: WC_FRAMES,      duration: 1800, floor: true, category: "Core", rig: RIG_SINGLE,    equipment: [cableHigh("cable", [90, 6], [70, 18])] },
+  dead_bug:       { name: "Dead Bug",           frames: DEADBUG_FRAMES, duration: 2000, floor: true, category: "Core", rig: RIG_SINGLE },
+  bird_dog:       { name: "Bird Dog",           frames: BIRDDOG_FRAMES, duration: 2200, floor: true, category: "Core", rig: RIG_SINGLE },
+  l_sit:          { name: "L-Sit",              frames: LSIT_FRAMES,    duration: 2400,              category: "Core", rig: RIG_SYMMETRIC },
+  hollow_hold:    { name: "Hollow Hold",        frames: HOLLOW_FRAMES,  duration: 2400, floor: true, category: "Core", rig: RIG_SYMMETRIC },
+  mtn_climber:    { name: "Mountain Climber",   frames: MTN_FRAMES,     duration: 900,  floor: true, category: "Core", rig: RIG_LEGS_IND },
+  copenhagen:     { name: "Copenhagen Plank",   frames: SIDE_PLANK_FRAMES, duration: 2400, floor: true, category: "Core", rig: RIG_SINGLE },
+  suitcase_carry: { name: "Suitcase Carry",     frames: CARRY_FRAMES,   duration: 1100, floor: true, category: "Core", rig: RIG_LEGS_IND },
+
+  // ── Calisthenics (added) ──────────────────────────────────────────────────
+  pike_pushup:        { name: "Pike Push-up",           frames: PIKE_FRAMES,      duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
+  wall_hspu:          { name: "Wall Handstand Push-up", frames: HSPU_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  hspu:               { name: "Handstand Push-up",      frames: HSPU_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  pseudo_planche_pu:  { name: "Pseudo-Planche Push-up", frames: PUSHUP_FRAMES,    duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
+  ring_dips:          { name: "Ring Dips",              frames: DIPS_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  korean_dips:        { name: "Korean Dips",            frames: DIPS_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  wall_handstand:     { name: "Wall Handstand Hold",    frames: HANDSTAND_FRAMES, duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  handstand:          { name: "Freestanding Handstand", frames: HANDSTAND_FRAMES, duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  planche_lean:       { name: "Planche Lean",           frames: PLANCHE_FRAMES,   duration: 2600, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
+  tuck_planche:       { name: "Tuck Planche",           frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  adv_tuck_planche:   { name: "Adv. Tuck Planche",      frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  straddle_planche:   { name: "Straddle Planche",       frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  full_planche:       { name: "Full Planche",           frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  ring_row:           { name: "Ring Row",               frames: IROW_FRAMES,      duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
+  archer_pullup:      { name: "Archer Pull-up",         frames: PULLUP_FRAMES,    duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  typewriter_pullup:  { name: "Typewriter Pull-up",     frames: PULLUP_FRAMES,    duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  explosive_pullup:   { name: "Explosive Pull-up",      frames: PULLUP_FRAMES,    duration: 1600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  muscle_up:          { name: "Muscle-up",              frames: MU_FRAMES,        duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  bar_muscle_up:      { name: "Bar Muscle-up",          frames: MU_FRAMES,        duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  ring_muscle_up:     { name: "Ring Muscle-up",         frames: MU_FRAMES,        duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  fl_raise:           { name: "Front Lever Raise",      frames: FL_RAISE_FRAMES,  duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  ice_cream_maker:    { name: "Ice Cream Maker",        frames: FL_RAISE_FRAMES,  duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  skin_cat:           { name: "Skin the Cat",           frames: FL_RAISE_FRAMES,  duration: 2800,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  tuck_fl:            { name: "Tuck Front Lever",       frames: FLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  adv_tuck_fl:        { name: "Adv. Tuck Front Lever",  frames: FLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  straddle_fl:        { name: "Straddle Front Lever",   frames: FLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  front_lever:        { name: "Front Lever",            frames: FLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  tuck_bl:            { name: "Tuck Back Lever",        frames: BLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  back_lever:         { name: "Back Lever",             frames: BLEVER_FRAMES,    duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  tuck_l_sit:         { name: "Tuck L-Sit",             frames: LSIT_FRAMES,      duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  v_sit:              { name: "V-Sit",                  frames: VSIT_FRAMES,      duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  tuck_human_flag:    { name: "Tuck Human Flag",        frames: FLAG_FRAMES,      duration: 2600,              category: "Calisthenics", rig: RIG_ARMS_IND },
+  human_flag:         { name: "Human Flag",             frames: FLAG_FRAMES,      duration: 2600,              category: "Calisthenics", rig: RIG_ARMS_IND },
+  pistol_squat:       { name: "Pistol Squat",           frames: PISTOL_FRAMES,    duration: 2600, floor: true, category: "Calisthenics", rig: RIG_ASYM },
+  box_pistol:         { name: "Box Pistol Squat",       frames: PISTOL_FRAMES,    duration: 2600, floor: true, category: "Calisthenics", rig: RIG_ASYM },
+  assisted_pistol:    { name: "Assisted Pistol Squat",  frames: PISTOL_FRAMES,    duration: 2600, floor: true, category: "Calisthenics", rig: RIG_ASYM },
+  shrimp_squat:       { name: "Shrimp Squat",           frames: PISTOL_FRAMES,    duration: 2600, floor: true, category: "Calisthenics", rig: RIG_ASYM },
+
+  // ── Grip (added) ──────────────────────────────────────────────────────────
+  farmers:     { name: "Farmer's Carry",     frames: CARRY_FRAMES,   duration: 1100, floor: true, category: "Grip", rig: RIG_LEGS_IND },
+  dead_hang:   { name: "Dead Hang",          frames: HANG_FRAMES,    duration: 2600,              category: "Grip", rig: RIG_SYMMETRIC },
+  plate_pinch: { name: "Plate Pinch",        frames: HOLD_FRAMES,    duration: 2000, floor: true, category: "Grip", rig: RIG_SYMMETRIC },
+  wrist_curl:  { name: "Wrist Curl",         frames: WRIST_FRAMES,   duration: 1600,              category: "Grip", rig: RIG_SINGLE },
+  rev_curl:    { name: "Reverse Curl",       frames: CURL_FRAMES,    duration: 1800, floor: true, category: "Grip", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [53, 85], 24)] },
+  fat_grip:    { name: "Fat-Grip Hold",      frames: HOLD_FRAMES,    duration: 2200, floor: true, category: "Grip", rig: RIG_SYMMETRIC },
+  captains:    { name: "Captains-of-Crush",  frames: GRIPPER_FRAMES, duration: 1200, floor: true, category: "Grip", rig: RIG_SINGLE },
+  towel_pull:  { name: "Towel Pull-up",      frames: PULLUP_FRAMES,  duration: 2400,              category: "Grip", rig: RIG_SYMMETRIC },
+  thick_hold:  { name: "Thick-Bar Hold",     frames: HOLD_FRAMES,    duration: 2200, floor: true, category: "Grip", rig: RIG_SYMMETRIC },
+  kb_bottoms:  { name: "KB Bottoms-Up Hold", frames: HOLD_FRAMES,    duration: 2200, floor: true, category: "Grip", rig: RIG_SINGLE },
+
+  // ── Neck (added) ──────────────────────────────────────────────────────────
+  neck_curl:    { name: "Plate Neck Curl",      frames: NECK_CURL_FRAMES,   duration: 1800, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+  neck_ext:     { name: "Plate Neck Extension",  frames: NECK_EXT_FRAMES,   duration: 1800, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+  neck_harness: { name: "Neck Harness",          frames: NECK_EXT_FRAMES,   duration: 1800, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+  neck_lat:     { name: "Lateral Neck Flex",     frames: NECK_LAT_FRAMES,   duration: 1800, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+  nm_4way:      { name: "4-Way Neck Machine",    frames: NECK_CURL_FRAMES,  duration: 1800, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+  neck_bridge:  { name: "Neck Bridge",           frames: NECK_BRIDGE_FRAMES, duration: 2400, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
+
+  // ── Cardio (added) ────────────────────────────────────────────────────────
+  incline_walk: { name: "Incline Treadmill Walk", frames: RUN_FRAMES,   duration: 1400, floor: true, category: "Cardio", rig: RIG_ASYM },
+  sprint:       { name: "Sprints",                frames: RUN_FRAMES,   duration: 650,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  hill_sprint:  { name: "Hill Sprints",           frames: RUN_FRAMES,   duration: 700,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  shuttle_run:  { name: "Shuttle Run",            frames: RUN_FRAMES,   duration: 800,  floor: true, category: "Cardio", rig: RIG_ASYM },
+  elliptical:   { name: "Elliptical",             frames: STAIR_FRAMES, duration: 1200, floor: true, category: "Cardio", rig: RIG_ASYM },
+  ski_erg:      { name: "Ski Erg",                frames: SKI_FRAMES,   duration: 1800, floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
+  burpees:      { name: "Burpees",                frames: HIIT_FRAMES,  duration: 2000, floor: true, category: "Cardio", rig: RIG_SYMMETRIC },
+  prowler:      { name: "Prowler Push",           frames: SLED_FRAMES,  duration: 1200, floor: true, category: "Cardio", rig: RIG_ASYM },
 };
 
 // Silence "unused" if the consumer doesn't import RIG_SINGLE.
