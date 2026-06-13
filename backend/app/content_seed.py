@@ -446,6 +446,7 @@ METRIC_DEFS = [
     ("bicep", "Bicep", "cm", "#8b5cf6", 0.5, 20, 70),
     ("thigh", "Thigh", "cm", "#f97316", 0.5, 30, 100),
     ("resting_hr", "Resting HR", "bpm", "#ef4444", 1, 30, 120),
+    ("zinc", "Zinc Intake", "mg", "#71717a", 0.5, 0, 100),
 ]
 
 
@@ -845,12 +846,17 @@ def seed_if_empty():
             ])
             db.commit()
 
-        if db.query(models.MetricDef).count() == 0:
-            db.add_all([
-                models.MetricDef(id=mid, label=lab, unit=u, color=col, step=st,
-                                 min_value=mn, max_value=mx, sort=i)
-                for i, (mid, lab, u, col, st, mn, mx) in enumerate(METRIC_DEFS)
-            ])
+        # Insert any metric defs that don't already exist (by id) so existing DBs
+        # pick up newly-added metrics without clobbering admin edits to existing rows.
+        existing_metric_ids = {m.id for m in db.query(models.MetricDef.id).all()}
+        new_metrics = [
+            models.MetricDef(id=mid, label=lab, unit=u, color=col, step=st,
+                             min_value=mn, max_value=mx, sort=i)
+            for i, (mid, lab, u, col, st, mn, mx) in enumerate(METRIC_DEFS)
+            if mid not in existing_metric_ids
+        ]
+        if new_metrics:
+            db.add_all(new_metrics)
             db.commit()
 
         if db.query(models.WeekDay).count() == 0:
