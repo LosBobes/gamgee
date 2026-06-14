@@ -1762,6 +1762,220 @@ const SKI_DOWN: Pose = {
 };
 const SKI_FRAMES = loop(SKI_UP, SKI_DOWN);
 
+// ── Dedicated motions (replacing ill-fitting reuses) ─────────────────────────
+// Each exercise below previously borrowed a neighbour's skeleton that
+// misrepresented its mechanics — the hip abductor/adductor machines reused the
+// leg-extension kick, the sumo / trap-bar / snatch pulls reused the
+// conventional deadlift, the sissy & zercher squats reused the front squat,
+// the drag & zottman curls reused the plain curl, and the archer / typewriter
+// pull-ups and archer / pseudo-planche / decline push-ups all reused their
+// vanilla cousins. They now each get a side-on skeleton that matches how the
+// movement actually looks.
+
+// Rig for seated single-joint leg machines: independent legs, no doubled arm.
+const RIG_LEGS_SPLIT: RigConfig = { feet: "oval", arm2: "none", leg2: "independent" };
+
+// Sumo deadlift — wide stance, near-vertical torso, hips sit low behind a bar
+// pulled straight up the shins.
+const SUMO_BOTTOM: Pose = {
+  head: [54, 48], neck: [52, 58], shoulder: [50, 68],
+  elbow: [50, 92], hand: [50, 116],
+  hip: [44, 92], knee: [56, 114], ankle: [52, 140], toe: [66, 140],
+};
+const SUMO_TOP: Pose = { ...STAND, elbow: [52, 70], hand: [51, 90] };
+const SUMO_FRAMES = loop(SUMO_BOTTOM, SUMO_TOP, [50, 118], [51, 90]);
+
+// Trap-bar deadlift — neutral grip with the handles at the sides; more knee
+// bend and a taller torso than a conventional pull.
+const TRAP_BOTTOM: Pose = {
+  head: [52, 46], neck: [51, 56], shoulder: [50, 66],
+  elbow: [54, 90], hand: [57, 114],
+  hip: [44, 90], knee: [56, 112], ankle: [52, 138], toe: [64, 138],
+};
+const TRAP_TOP: Pose = { ...STAND, elbow: [54, 68], hand: [56, 90] };
+const TRAP_FRAMES = loop(TRAP_BOTTOM, TRAP_TOP);
+
+// Snatch-grip deadlift — the wide grip drops the shoulders and lifts the hips,
+// so the torso runs more horizontal at the floor than a conventional pull.
+const SNATCH_BOTTOM: Pose = {
+  head: [66, 52], neck: [60, 58], shoulder: [54, 66],
+  elbow: [52, 90], hand: [50, 116],
+  hip: [40, 84], knee: [50, 110], ankle: [50, 138], toe: [60, 138],
+};
+const SNATCH_TOP: Pose = { ...STAND, elbow: [52, 68], hand: [52, 88] };
+const SNATCH_FRAMES = loop(SNATCH_BOTTOM, SNATCH_TOP, [50, 118], [52, 88]);
+
+// Sissy squat — torso and thighs stay roughly in one line as the body leans
+// back, the knees travel well past the toes and the heels lift onto the balls.
+const SISSY_UP: Pose = { ...STAND, elbow: [58, 60], hand: [70, 58] };
+const SISSY_DOWN: Pose = {
+  head: [40, 40], neck: [43, 49], shoulder: [46, 58],
+  elbow: [58, 60], hand: [70, 58],
+  hip: [50, 86], knee: [74, 108], ankle: [60, 130], toe: [68, 140],
+};
+const SISSY_FRAMES = loop(SISSY_UP, SISSY_DOWN);
+
+// Zercher squat — the load rides in the crook of the elbows in front of the
+// chest, keeping the torso vertical through a deep squat.
+const ZERCHER_TOP: Pose = { ...STAND, elbow: [56, 58], hand: [48, 46] };
+const ZERCHER_BOTTOM: Pose = {
+  head: [50, 46], neck: [50, 55], shoulder: [50, 64],
+  elbow: [56, 86], hand: [48, 74],
+  hip: [42, 108], knee: [64, 116], ankle: [50, 140], toe: [60, 140],
+};
+const ZERCHER_FRAMES = loop(ZERCHER_TOP, ZERCHER_BOTTOM);
+
+// Goblet squat — a single weight cupped at the chest keeps the hands centred
+// and the torso vertical.
+const GOBLET_TOP: Pose = { ...STAND, elbow: [56, 58], hand: [50, 46] };
+const GOBLET_BOTTOM: Pose = {
+  head: [48, 46], neck: [49, 55], shoulder: [50, 64],
+  elbow: [56, 86], hand: [50, 74],
+  hip: [42, 108], knee: [64, 116], ankle: [50, 140], toe: [60, 140],
+};
+const GOBLET_FRAMES = loop(GOBLET_TOP, GOBLET_BOTTOM);
+
+// Hip abductor machine — seated, knees driven apart. Side-on we fan the two
+// legs in opposite directions so "open vs closed" reads clearly.
+const ABD_IN: Pose = {
+  head: [24, 48], neck: [26, 58], shoulder: [28, 66],
+  elbow: [28, 88], hand: [28, 106],
+  hip: [44, 90], knee: [64, 96], ankle: [84, 108], toe: [94, 112],
+  leg2: { hip: [44, 90], knee: [62, 98], ankle: [82, 112], toe: [92, 116] },
+};
+const ABD_OUT: Pose = {
+  ...ABD_IN,
+  knee: [70, 88], ankle: [96, 96], toe: [98, 104],
+  leg2: { hip: [44, 90], knee: [54, 104], ankle: [70, 120], toe: [80, 124] },
+};
+const ABDUCTOR_FRAMES = loop(ABD_IN, ABD_OUT);
+
+// Hip adductor machine — the mirror: legs start apart and squeeze together.
+const ADDUCTOR_FRAMES = loop(ABD_OUT, ABD_IN);
+
+// Drag curl — the bar drags straight up the torso as the elbows travel back
+// behind the body, so the load stays close instead of arcing out.
+const DRAG_DOWN: Pose = { ...STAND, elbow: [50, 60], hand: [52, 84] };
+const DRAG_UP: Pose = { ...STAND, shoulder: [50, 36], elbow: [42, 62], hand: [50, 52] };
+const DRAG_FRAMES = loop(DRAG_DOWN, DRAG_UP, [52, 84], [50, 52]);
+
+// Zottman curl — curl up supinated, then rotate and lower pronated along a
+// wider path on the way down.
+const ZOTT_DOWN: Pose = { ...STAND, elbow: [50, 60], hand: [53, 85] };
+const ZOTT_UP: Pose = { ...STAND, shoulder: [49, 36], elbow: [49, 60], hand: [61, 38] };
+const ZOTT_OUT: Pose = { ...STAND, elbow: [52, 60], hand: [74, 58] };
+const ZOTTMAN_FRAMES: Frame[] = [
+  { t: 0, pose: ZOTT_DOWN },
+  { t: 0.4, pose: ZOTT_UP },
+  { t: 0.7, pose: ZOTT_OUT },
+  { t: 1, pose: ZOTT_DOWN },
+];
+
+// Decline push-up — feet elevated above the shoulders; the body slopes down
+// toward the hands.
+const DPU_UP: Pose = {
+  head: [84, 104], neck: [76, 106], shoulder: [68, 108],
+  elbow: [70, 124], hand: [70, 140],
+  hip: [42, 92], knee: [22, 80], ankle: [2, 70], toe: [2, 62],
+};
+const DPU_DOWN: Pose = {
+  ...DPU_UP,
+  head: [86, 130], neck: [78, 130], shoulder: [68, 128], elbow: [54, 130],
+  hip: [42, 86], knee: [22, 76], ankle: [2, 66],
+};
+const DECLINE_PUSHUP_FRAMES = loop(DPU_UP, DPU_DOWN);
+
+// Pseudo-planche push-up — hands shifted back toward the hips with the
+// shoulders leaning forward past them, loading the front delts and chest.
+const PP_UP: Pose = {
+  head: [88, 98], neck: [80, 100], shoulder: [72, 102],
+  elbow: [66, 118], hand: [58, 138],
+  hip: [40, 106], knee: [20, 110], ankle: [0, 114], toe: [-2, 122],
+};
+const PP_DOWN: Pose = {
+  ...PP_UP,
+  head: [92, 126], neck: [84, 126], shoulder: [76, 124], elbow: [58, 122],
+  hip: [40, 112], knee: [20, 116], ankle: [0, 120],
+};
+const PSEUDO_PLANCHE_FRAMES = loop(PP_UP, PP_DOWN);
+
+// Archer push-up — weight shifts onto one bent arm while the other reaches out
+// wide and straight.
+const APU_UP: Pose = {
+  head: [82, 96], neck: [74, 99], shoulder: [68, 102],
+  elbow: [70, 119], hand: [70, 138],
+  arm2: { shoulder: [68, 102], elbow: [84, 116], hand: [98, 136] },
+  hip: [40, 104], knee: [18, 108], ankle: [-2, 112], toe: [-2, 120],
+};
+const APU_DOWN: Pose = {
+  ...APU_UP,
+  head: [80, 124], neck: [73, 126], shoulder: [66, 128],
+  elbow: [58, 132], hand: [70, 138],
+  arm2: { shoulder: [66, 128], elbow: [86, 132], hand: [100, 138] },
+  hip: [40, 126], knee: [18, 128], ankle: [-2, 130],
+};
+const ARCHER_PUSHUP_FRAMES = loop(APU_UP, APU_DOWN);
+
+// Archer pull-up — pull the body up toward one hand; that arm bends hard while
+// the other stays straight along the bar.
+const APULL_HANG: Pose = {
+  head: [50, 50], neck: [50, 60], shoulder: [50, 67],
+  elbow: [44, 47], hand: [40, 24],
+  arm2: { shoulder: [50, 67], elbow: [60, 47], hand: [66, 24] },
+  hip: [50, 115], knee: [55, 138], ankle: [55, 156], toe: [62, 156],
+};
+const APULL_TOP: Pose = {
+  head: [42, 34], neck: [42, 44], shoulder: [42, 52],
+  elbow: [36, 42], hand: [40, 24],
+  arm2: { shoulder: [42, 52], elbow: [56, 38], hand: [66, 24] },
+  hip: [42, 100], knee: [47, 124], ankle: [47, 144], toe: [54, 144],
+};
+const ARCHER_PULLUP_FRAMES = loop(APULL_HANG, APULL_TOP);
+
+// Typewriter pull-up — hold at the top and traverse from one hand to the other.
+const TW_LEFT: Pose = {
+  head: [40, 40], neck: [40, 48], shoulder: [40, 54],
+  elbow: [36, 42], hand: [38, 24],
+  arm2: { shoulder: [40, 54], elbow: [54, 36], hand: [62, 24] },
+  hip: [40, 98], knee: [45, 122], ankle: [45, 142], toe: [52, 142],
+};
+const TW_RIGHT: Pose = {
+  head: [60, 40], neck: [60, 48], shoulder: [60, 54],
+  elbow: [46, 38], hand: [38, 24],
+  arm2: { shoulder: [60, 54], elbow: [64, 42], hand: [62, 24] },
+  hip: [60, 98], knee: [65, 122], ankle: [65, 142], toe: [72, 142],
+};
+const TYPEWRITER_FRAMES = loop(TW_LEFT, TW_RIGHT);
+
+// Cuban press — high pull to the elbows, external rotation, then press overhead.
+const CUBAN_LOW: Pose = { ...STAND, elbow: [50, 60], hand: [52, 86] };
+const CUBAN_PULL: Pose = { ...STAND, shoulder: [50, 37], elbow: [60, 44], hand: [52, 52] };
+const CUBAN_ROT: Pose = { ...STAND, shoulder: [50, 36], elbow: [60, 46], hand: [58, 24] };
+const CUBAN_TOP: Pose = { ...STAND, shoulder: [50, 36], elbow: [50, 22], hand: [50, 6] };
+const CUBAN_FRAMES: Frame[] = [
+  { t: 0, pose: CUBAN_LOW },
+  { t: 0.3, pose: CUBAN_PULL },
+  { t: 0.55, pose: CUBAN_ROT },
+  { t: 0.78, pose: CUBAN_TOP },
+  { t: 1, pose: CUBAN_LOW },
+];
+
+// Incline treadmill walk — a tall, low-knee gait with a slight forward lean,
+// distinct from the bounding run cycle.
+const WALK_A: Pose = {
+  head: [52, 22], neck: [52, 32], shoulder: [52, 38],
+  elbow: [56, 56], hand: [60, 72],
+  hip: [50, 86], knee: [62, 108], ankle: [72, 128], toe: [82, 130],
+  leg2: { hip: [50, 86], knee: [42, 112], ankle: [34, 134], toe: [26, 136] },
+};
+const WALK_B: Pose = {
+  ...WALK_A,
+  elbow: [48, 56], hand: [44, 72],
+  knee: [44, 112], ankle: [36, 134], toe: [28, 136],
+  leg2: { hip: [50, 86], knee: [62, 108], ankle: [72, 128], toe: [82, 130] },
+};
+const WALK_FRAMES = loop(WALK_A, WALK_B);
+
 export const MOTIONS: Record<string, ExerciseMotion> = {
   // ── Push ────────────────────────────────────────────────────────────────
   bench:       { name: "Bench press",      frames: BENCH_FRAMES,        duration: 2200,                category: "Push",      rig: RIG_SYMMETRIC, equipment: [flatBench(), barbell("bar1", [68, 35], 30)] },
@@ -1860,9 +2074,9 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   larsen_press:   { name: "Larsen Press",        frames: BENCH_FRAMES,   duration: 2200,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench(), barbell("bar1", [68, 35], 30)] },
   db_pullover:    { name: "DB Pullover",         frames: PULLOVER_FRAMES, duration: 2400,             category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
   svend_press:    { name: "Svend Press",         frames: CABLE_FLY_FRAMES, duration: 2000, floor: true, category: "Push", rig: RIG_SYMMETRIC },
-  decline_pushup: { name: "Decline Push-up",     frames: PUSHUP_FRAMES,  duration: 1800, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  decline_pushup: { name: "Decline Push-up",     frames: DECLINE_PUSHUP_FRAMES, duration: 1800, floor: true, category: "Push", rig: RIG_SYMMETRIC },
   diamond_pushup: { name: "Diamond Push-up",     frames: PUSHUP_FRAMES,  duration: 1800, floor: true, category: "Push", rig: RIG_SYMMETRIC },
-  archer_pushup:  { name: "Archer Push-up",      frames: PUSHUP_FRAMES,  duration: 2000, floor: true, category: "Push", rig: RIG_SYMMETRIC },
+  archer_pushup:  { name: "Archer Push-up",      frames: ARCHER_PUSHUP_FRAMES,  duration: 2000, floor: true, category: "Push", rig: RIG_ASYM },
   tate_press:     { name: "Tate Press",          frames: SKULL_FRAMES,   duration: 2000,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
   jm_press:       { name: "JM Press",            frames: SKULL_FRAMES,   duration: 2000,              category: "Push", rig: RIG_SYMMETRIC, equipment: [flatBench()] },
   rope_pushdown:  { name: "Rope Pushdown",       frames: TRI_PUSH_FRAMES, duration: 1600, floor: true, category: "Push", rig: RIG_SYMMETRIC, equipment: [cableHigh("cable", [50, 6], [60, 50])] },
@@ -1887,8 +2101,8 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   cable_curl:       { name: "Cable Curl",            frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [cableLow("cable", [50, 154], [53, 85])] },
   spider_curl:      { name: "Spider Curl",           frames: PREACHER_FRAMES,     duration: 1800,              category: "Pull", rig: RIG_SYMMETRIC, equipment: [preacherBench()] },
   conc_curl:        { name: "Concentration Curl",    frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SINGLE },
-  drag_curl:        { name: "Drag Curl",             frames: CURL_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [53, 85], 24)] },
-  zottman:          { name: "Zottman Curl",          frames: CURL_FRAMES,         duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC },
+  drag_curl:        { name: "Drag Curl",             frames: DRAG_FRAMES,         duration: 1800, floor: true, category: "Pull", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [52, 84], 24)] },
+  zottman:          { name: "Zottman Curl",          frames: ZOTTMAN_FRAMES,      duration: 2000, floor: true, category: "Pull", rig: RIG_SYMMETRIC },
 
   // ── Shoulders (added) ─────────────────────────────────────────────────────
   mach_lat:       { name: "Machine Lateral Raise", frames: LAT_RAISE_FRAMES,   duration: 1800, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
@@ -1898,24 +2112,24 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   viking_press:   { name: "Viking Press",          frames: OHP_FRAMES,         duration: 2000, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
   landmine_press: { name: "Landmine Press",        frames: LANDMINE_FRAMES,    duration: 2000, floor: true, category: "Shoulders", rig: RIG_SINGLE },
   behind_neck:    { name: "Behind-the-Neck Press", frames: OHP_FRAMES,         duration: 2000, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 35], 30)] },
-  cuban_press:    { name: "Cuban Press",           frames: OHP_FRAMES,         duration: 2200, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
+  cuban_press:    { name: "Cuban Press",           frames: CUBAN_FRAMES,       duration: 2400, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC },
   rack_pull:      { name: "Rack Pull",             frames: RACK_FRAMES,        duration: 2400, floor: true, category: "Shoulders", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [52, 100], 30)] },
 
   // ── Legs (added) ──────────────────────────────────────────────────────────
-  goblet_sq:      { name: "Goblet Squat",        frames: FRONT_SQ_FRAMES, duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
-  zercher_sq:     { name: "Zercher Squat",       frames: FRONT_SQ_FRAMES, duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  goblet_sq:      { name: "Goblet Squat",        frames: GOBLET_FRAMES,   duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  zercher_sq:     { name: "Zercher Squat",       frames: ZERCHER_FRAMES,  duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
   box_sq:         { name: "Box Squat",           frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
   pause_sq:       { name: "Paused Squat",        frames: SQUAT_FRAMES,    duration: 3200, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
   safety_sq:      { name: "Safety-Bar Squat",    frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 30], 32)] },
   pendulum_sq:    { name: "Pendulum Squat",      frames: SQUAT_FRAMES,    duration: 3000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
-  sissy_sq:       { name: "Sissy Squat",         frames: FRONT_SQ_FRAMES, duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  sissy_sq:       { name: "Sissy Squat",         frames: SISSY_FRAMES,    duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
   walking_lunge:  { name: "Walking Lunge",       frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
   reverse_lunge:  { name: "Reverse Lunge",       frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
   curtsy_lunge:   { name: "Curtsy Lunge",        frames: LUNGE_FRAMES,    duration: 2400, floor: true, category: "Legs", rig: RIG_ASYM },
   single_rdl:     { name: "Single-Leg RDL",      frames: RDL_FRAMES,      duration: 2600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
-  sumo_dl:        { name: "Sumo Deadlift",       frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
-  trap_bar_dl:    { name: "Trap-Bar Deadlift",   frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
-  snatch_dl:      { name: "Snatch-Grip Deadlift", frames: DEAD_FRAMES,    duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
+  sumo_dl:        { name: "Sumo Deadlift",       frames: SUMO_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 118], 36)] },
+  trap_bar_dl:    { name: "Trap-Bar Deadlift",   frames: TRAP_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
+  snatch_dl:      { name: "Snatch-Grip Deadlift", frames: SNATCH_FRAMES,  duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 118], 38)] },
   deficit_dl:     { name: "Deficit Deadlift",    frames: DEAD_FRAMES,     duration: 2800, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [barbell("bar1", [50, 122], 30)] },
   glute_bridge:   { name: "Glute Bridge",        frames: GB_FRAMES,       duration: 2000, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
   frog_pump:      { name: "Frog Pump",           frames: GB_FRAMES,       duration: 1600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
@@ -1923,8 +2137,8 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   pull_through:   { name: "Cable Pull-Through",  frames: RDL_FRAMES,      duration: 2400, floor: true, category: "Legs", rig: RIG_SYMMETRIC, equipment: [cableLow("cable", [98, 150], [52, 116])] },
   kb_swing:       { name: "Kettlebell Swing",    frames: KB_SWING_FRAMES, duration: 1600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
   nordic_curl:    { name: "Nordic Hamstring Curl", frames: NORDIC_FRAMES, duration: 2600, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
-  abductor_m:     { name: "Hip Abductor Machine", frames: LEG_EXT_FRAMES, duration: 1800,             category: "Legs", rig: RIG_LEGS_ONLY },
-  adductor_m:     { name: "Hip Adductor Machine", frames: LEG_EXT_FRAMES, duration: 1800,             category: "Legs", rig: RIG_LEGS_ONLY },
+  abductor_m:     { name: "Hip Abductor Machine", frames: ABDUCTOR_FRAMES, duration: 1800,            category: "Legs", rig: RIG_LEGS_SPLIT },
+  adductor_m:     { name: "Hip Adductor Machine", frames: ADDUCTOR_FRAMES, duration: 1800,            category: "Legs", rig: RIG_LEGS_SPLIT },
   donkey_calf:    { name: "Donkey Calf Raise",   frames: CALF_FRAMES,     duration: 1400, floor: true, category: "Legs", rig: RIG_SYMMETRIC },
 
   // ── Core (added) ──────────────────────────────────────────────────────────
@@ -1945,7 +2159,7 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   pike_pushup:        { name: "Pike Push-up",           frames: PIKE_FRAMES,      duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
   wall_hspu:          { name: "Wall Handstand Push-up", frames: HSPU_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   hspu:               { name: "Handstand Push-up",      frames: HSPU_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
-  pseudo_planche_pu:  { name: "Pseudo-Planche Push-up", frames: PUSHUP_FRAMES,    duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
+  pseudo_planche_pu:  { name: "Pseudo-Planche Push-up", frames: PSEUDO_PLANCHE_FRAMES, duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
   ring_dips:          { name: "Ring Dips",              frames: DIPS_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   korean_dips:        { name: "Korean Dips",            frames: DIPS_FRAMES,      duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   wall_handstand:     { name: "Wall Handstand Hold",    frames: HANDSTAND_FRAMES, duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
@@ -1956,8 +2170,8 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   straddle_planche:   { name: "Straddle Planche",       frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   full_planche:       { name: "Full Planche",           frames: PLANCHE_FRAMES,   duration: 2600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   ring_row:           { name: "Ring Row",               frames: IROW_FRAMES,      duration: 2000, floor: true, category: "Calisthenics", rig: RIG_SYMMETRIC },
-  archer_pullup:      { name: "Archer Pull-up",         frames: PULLUP_FRAMES,    duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
-  typewriter_pullup:  { name: "Typewriter Pull-up",     frames: PULLUP_FRAMES,    duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
+  archer_pullup:      { name: "Archer Pull-up",         frames: ARCHER_PULLUP_FRAMES, duration: 2400,          category: "Calisthenics", rig: RIG_ASYM },
+  typewriter_pullup:  { name: "Typewriter Pull-up",     frames: TYPEWRITER_FRAMES, duration: 2600,             category: "Calisthenics", rig: RIG_ASYM },
   explosive_pullup:   { name: "Explosive Pull-up",      frames: PULLUP_FRAMES,    duration: 1600,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   muscle_up:          { name: "Muscle-up",              frames: MU_FRAMES,        duration: 2400,              category: "Calisthenics", rig: RIG_SYMMETRIC },
   bar_muscle_up:      { name: "Bar Muscle-up",          frames: MU_FRAMES,        duration: 2200,              category: "Calisthenics", rig: RIG_SYMMETRIC },
@@ -2001,7 +2215,7 @@ export const MOTIONS: Record<string, ExerciseMotion> = {
   neck_bridge:  { name: "Neck Bridge",           frames: NECK_BRIDGE_FRAMES, duration: 2400, floor: true, category: "Neck", rig: RIG_SYMMETRIC },
 
   // ── Cardio (added) ────────────────────────────────────────────────────────
-  incline_walk: { name: "Incline Treadmill Walk", frames: RUN_FRAMES,   duration: 1400, floor: true, category: "Cardio", rig: RIG_ASYM },
+  incline_walk: { name: "Incline Treadmill Walk", frames: WALK_FRAMES,  duration: 1400, floor: true, category: "Cardio", rig: RIG_ASYM },
   sprint:       { name: "Sprints",                frames: RUN_FRAMES,   duration: 650,  floor: true, category: "Cardio", rig: RIG_ASYM },
   hill_sprint:  { name: "Hill Sprints",           frames: RUN_FRAMES,   duration: 700,  floor: true, category: "Cardio", rig: RIG_ASYM },
   shuttle_run:  { name: "Shuttle Run",            frames: RUN_FRAMES,   duration: 800,  floor: true, category: "Cardio", rig: RIG_ASYM },
