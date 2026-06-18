@@ -55,6 +55,13 @@ if engine.dialect.name == "postgresql":
             "CREATE UNIQUE INDEX IF NOT EXISTS uq_push_user_endpoint "
             "ON push_subscriptions (user_id, endpoint)"
         ))
+        # device_tokens: native (FCM) push tokens for the mobile app. create_all
+        # builds the table on fresh DBs; this guards the unique constraint on
+        # DBs where the table was created before the constraint was added.
+        _conn.execute(text(
+            "CREATE UNIQUE INDEX IF NOT EXISTS uq_device_user_token "
+            "ON device_tokens (user_id, token)"
+        ))
         # Trainer profile columns
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_trainer BOOLEAN NOT NULL DEFAULT FALSE"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS trainer_bio TEXT"))

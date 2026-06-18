@@ -250,6 +250,30 @@ class PushSubscription(Base):
     created_at = Column(BigInteger, nullable=False, default=0)
 
 
+class DeviceToken(Base):
+    """Native push registration token (FCM) for the React Native mobile app.
+
+    One row per user/device. Android delivers via FCM directly; iOS delivers via
+    FCM-wrapped APNs. The token is minted on-device by ``@react-native-firebase/
+    messaging`` and re-registered whenever it rotates, so the unique
+    ``(user_id, token)`` constraint upserts rather than duplicating. Contrast
+    with :class:`PushSubscription`, which holds *browser* Web Push endpoints."""
+    __tablename__ = "device_tokens"
+    __table_args__ = (
+        UniqueConstraint("user_id", "token", name="uq_device_user_token"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    token = Column(Text, nullable=False)
+    # "android" | "ios" — informational; FCM handles transport per-platform.
+    platform = Column(String(20), nullable=True)
+    # Free-form device label (model / OS) for the user's session list.
+    device_info = Column(String(500), nullable=True)
+    created_at = Column(BigInteger, nullable=False, default=0)
+    last_seen_at = Column(BigInteger, nullable=True)
+
+
 # ── Feedback ──────────────────────────────────────────────────────────────────
 
 class Feedback(Base):
