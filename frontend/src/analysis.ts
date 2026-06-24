@@ -325,15 +325,24 @@ export function analyzeCardio(exId: string, history: WorkoutSession[]): CardioAn
 }
 
 
+/** Fixed load step between consecutive working sets, and the bump applied over
+ * last session's opening weight. Most lifters open a touch heavier than they
+ * did last time and ramp the load up set to set, so we seed the first working
+ * set a step above last session's *starting* weight and add another step for
+ * each set after it. */
+const SET_WEIGHT_STEP = 5;
+
 /**
  * Build a pre-populated set layout for an exercise from the user's saved
  * history, for seeding a freshly built workout.
  *
  * Strategy: find the most recent session that included this exercise and
- * reproduce its set *structure* (set count, warmup flags, per-set reps), then —
- * for strength lifts — overwrite the working sets with {@link analyzeEx}'s next
- * target so the user starts one progressive step ahead (ramped up). Warmups,
- * cardio, and assisted lifts carry their last logged numbers forward as-is.
+ * reproduce its set *structure* (set count, warmup flags, per-set reps). For
+ * strength lifts the working sets are seeded as a small ascending ramp — open a
+ * step above last session's *opening* working weight (people start a bit
+ * heavier than last time, not at last session's top/max set) and climb by a
+ * fixed {@link SET_WEIGHT_STEP}kg on every set after it. Warmups, cardio, and
+ * assisted lifts carry their last logged numbers forward as-is.
  *
  * Returns null when the exercise has no usable history — the caller should
  * leave it blank, exactly like a brand-new lift, so only exercises the user has
@@ -353,15 +362,39 @@ export function rampedSetsFromHistory(
   const lastEx = lastSession.exercises.find(e => e.id === exId);
   if (!lastEx || lastEx.sets.length === 0) return null;
 
-  // Only strength lifts get an analyzer-driven progression; cardio / assisted
-  // work just carries the last numbers forward.
-  const a = exType === "strength" && !isAssisted ? analyzeEx(exId, history, override) : null;
+  // Only strength lifts get a ramped progression; cardio / assisted work just
+  // carries the last numbers forward.
+  const isStrength = exType === "strength" && !isAssisted;
+
+  // Opening weight (and reps) for the first working set. A manual steer wins;
+  // otherwise we open a step above last session's *first* working set — not its
+  // heaviest — so the suggestion tracks where the user actually starts, plus a
+  // nudge. When we can't read a usable opening weight, the ramp is skipped and
+  // sets carry forward verbatim.
+  let openWeight: number | null = null;
+  let openReps: string | null = null;
+  if (isStrength) {
+    if (override && Number.isFinite(override.weight) && override.weight > 0) {
+      openWeight = override.weight;
+      openReps = String(Math.max(1, Math.round(override.reps)));
+    } else {
+      const firstWorking = lastEx.sets.find(s => !s.is_warmup && parseFloat(s.weight) > 0);
+      const w = firstWorking ? parseFloat(firstWorking.weight) : NaN;
+      if (Number.isFinite(w) && w > 0) openWeight = w + SET_WEIGHT_STEP;
+    }
+  }
+
+  // Index of the current working set, so each one ramps SET_WEIGHT_STEP kg over
+  // the last.
+  let workingIdx = 0;
 
   return lastEx.sets.map(s => {
-    if (a && !s.is_warmup) {
+    if (openWeight != null && !s.is_warmup) {
+      const weight = openWeight + SET_WEIGHT_STEP * workingIdx;
+      workingIdx += 1;
       return {
-        weight: String(a.nextWeight),
-        reps: String(a.nextReps),
+        weight: String(weight),
+        reps: openReps ?? s.reps,
         done: false,
         prefilled: true,
       };

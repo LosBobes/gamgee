@@ -412,7 +412,7 @@ describe("rampedSetsFromHistory", () => {
     expect(rampedSetsFromHistory("squat", "strength", false, [session("2026-05-01", "60", "8")])).toBeNull();
   });
 
-  it("reproduces the last set count and ramps the working weight up", () => {
+  it("opens a step above last time and auto-increments +5kg per working set", () => {
     const last: WorkoutSession = {
       id: "s1", date: "2026-05-01", duration: 0,
       exercises: [{
@@ -426,13 +426,33 @@ describe("rampedSetsFromHistory", () => {
     };
     const sets = rampedSetsFromHistory("bench", "strength", false, [last])!;
     expect(sets).toHaveLength(3);
-    // Baseline with 3 RIR adds a 2.5kg plate → every working set ramps to 62.5.
+    // Open a 5kg step above last session's opening weight (60 → 65), then add
+    // another 5kg on every set: 65 / 70 / 75. Reps carry forward.
+    expect(sets.map(s => s.weight)).toEqual(["65", "70", "75"]);
     sets.forEach(s => {
-      expect(s.weight).toBe("62.5");
       expect(s.reps).toBe("8");
       expect(s.prefilled).toBe(true);
       expect(s.done).toBe(false);
     });
+  });
+
+  it("seeds off last session's starting weight, not its heaviest (top) set", () => {
+    // Last session ramped 60 → 70 → 80. The suggestion should open off the 60
+    // (the starting weight), not the 80 (the max).
+    const last: WorkoutSession = {
+      id: "s1b", date: "2026-05-01", duration: 0,
+      exercises: [{
+        id: "bench", name: "Bench Press", type: "strength", uid: "bench_s1b",
+        sets: [
+          { weight: "60", reps: "8", done: true },
+          { weight: "70", reps: "8", done: true },
+          { weight: "80", reps: "6", done: true },
+        ],
+      }],
+    };
+    const sets = rampedSetsFromHistory("bench", "strength", false, [last])!;
+    // 60 + 5 = 65 opening, then +5 per set → 65 / 70 / 75.
+    expect(sets.map(s => s.weight)).toEqual(["65", "70", "75"]);
   });
 
   it("carries warmups forward verbatim and only ramps the working sets", () => {
@@ -443,15 +463,17 @@ describe("rampedSetsFromHistory", () => {
         sets: [
           { weight: "40", reps: "5", done: true, is_warmup: true },
           { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
+          { weight: "60", reps: "8", done: true, rpe: rirToRpe(3) },
         ],
       }],
     };
     const sets = rampedSetsFromHistory("bench", "strength", false, [last])!;
-    expect(sets).toHaveLength(2);
+    expect(sets).toHaveLength(3);
     // Warmup is untouched.
     expect(sets[0]).toMatchObject({ weight: "40", reps: "5", is_warmup: true });
-    // Working set ramped.
-    expect(sets[1]).toMatchObject({ weight: "62.5", reps: "8", prefilled: true });
+    // Working sets ramp from 65 by +5: the warmup does not count toward the ramp.
+    expect(sets[1]).toMatchObject({ weight: "65", reps: "8", prefilled: true });
+    expect(sets[2]).toMatchObject({ weight: "70", reps: "8", prefilled: true });
     expect(sets[1].is_warmup).toBeUndefined();
   });
 
