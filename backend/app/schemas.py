@@ -100,8 +100,38 @@ class UserOut(BaseModel):
     # base weight jump (1.0 = neutral, 0.0 = hold, >1 = bigger jump). Null
     # means the client falls back to its baked-in default table.
     rpe_multipliers: dict[str, float] | None = None
+    # Home-gym geofence + training-reminder preferences (location/time based
+    # workout suggestions). Coordinates are null until the user saves a gym.
+    gym_name: str | None = None
+    gym_latitude: float | None = None
+    gym_longitude: float | None = None
+    gym_radius_m: int | None = None
+    training_reminders_enabled: bool = True
 
     model_config = {"from_attributes": True}
+
+
+class GymPreferences(BaseModel):
+    """Payload for ``PATCH /auth/gym-preferences``.
+
+    Every field is optional so partial saves don't clobber the others. Pass
+    ``gym_latitude``/``gym_longitude`` as null to clear a saved gym location.
+    Coordinates are validated to the real lat/lng ranges; radius is bounded to
+    a sane geofence (10 m – 5 km).
+    """
+    gym_name: str | None = Field(default=None, max_length=120)
+    gym_latitude: float | None = Field(default=None, ge=-90, le=90)
+    gym_longitude: float | None = Field(default=None, ge=-180, le=180)
+    gym_radius_m: int | None = Field(default=None, ge=10, le=5000)
+    training_reminders_enabled: bool | None = None
+
+    @field_validator("gym_name")
+    @classmethod
+    def _clean_name(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        v = v.strip()
+        return v or None
 
 
 class TrainerCreate(BaseModel):

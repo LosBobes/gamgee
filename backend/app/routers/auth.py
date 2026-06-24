@@ -168,6 +168,29 @@ def update_notification_preferences(
     return current_user
 
 
+@router.patch("/gym-preferences", response_model=schemas.UserOut)
+def update_gym_preferences(
+    body: schemas.GymPreferences,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Save the user's home-gym geofence and training-reminder toggle.
+
+    Fields omitted from the payload are left untouched. Sending an explicit
+    null for the coordinates clears the saved gym (so the location-based
+    suggestion stops firing) — hence the `exclude_unset` check rather than a
+    plain `is not None`."""
+    data = body.model_dump(exclude_unset=True)
+    for key in ("gym_name", "gym_latitude", "gym_longitude", "gym_radius_m"):
+        if key in data:
+            setattr(current_user, key, data[key])
+    if data.get("training_reminders_enabled") is not None:
+        current_user.training_reminders_enabled = data["training_reminders_enabled"]
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
 @router.patch("/profile", response_model=schemas.UserOut)
 def update_profile(
     body: schemas.UserProfileUpdate,

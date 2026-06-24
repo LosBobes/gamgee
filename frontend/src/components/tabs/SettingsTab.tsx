@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, Timer } from "lucide-react";
+import { Bell, BellOff, Timer, MapPin } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
   pushSupported, fetchPushPublicKey, getExistingSubscription,
   subscribePush, unsubscribePush,
 } from "../../push";
-import type { RestPrefs, WizardTransitionStyle, ThemeMode } from "../../types";
-import { DEFAULT_REST_PREFS } from "../../types";
+import type { RestPrefs, WizardTransitionStyle, ThemeMode, GymPrefs } from "../../types";
+import { DEFAULT_REST_PREFS, DEFAULT_GYM_RADIUS_M } from "../../types";
 import { readCountsBar, writeCountsBar, type CountsBar } from "../../data/barbell";
 import { APP_VERSION } from "../../version";
 
@@ -35,6 +35,8 @@ interface Props {
   onToneChange:    (mode: ToneMode) => void;
   restPrefs:       RestPrefs;
   onRestPrefsChange: (next: Partial<RestPrefs>) => void;
+  gymPrefs:        GymPrefs;
+  onGymPrefsChange: (next: Partial<GymPrefs>) => void;
   wizardTransition:         WizardTransitionStyle;
   onWizardTransitionChange: (next: WizardTransitionStyle) => void;
   reducedMotion:            boolean;
@@ -918,9 +920,124 @@ function OnboardingCard() {
   );
 }
 
+function GymReminderCard({ prefs, onChange }: { prefs: GymPrefs; onChange: (next: Partial<GymPrefs>) => void }) {
+  const t = useTxt();
+  const [status, setStatus] = useState<"idle" | "locating" | "saved" | "error">("idle");
+  const [radiusVal, setRadiusVal] = useState(String(prefs.radiusM ?? DEFAULT_GYM_RADIUS_M));
+  const hasLocation = prefs.latitude != null && prefs.longitude != null;
+
+  useEffect(() => { setRadiusVal(String(prefs.radiusM ?? DEFAULT_GYM_RADIUS_M)); }, [prefs.radiusM]);
+
+  const captureLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setStatus("error"); return; }
+    setStatus("locating");
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        onChange({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        setStatus("saved");
+      },
+      () => setStatus("error"),
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  };
+
+  const commitRadius = () => {
+    const n = Math.round(Number(radiusVal));
+    if (Number.isFinite(n) && n >= 10 && n <= 5000) onChange({ radiusM: n });
+    else setRadiusVal(String(prefs.radiusM ?? DEFAULT_GYM_RADIUS_M));
+  };
+
+  return (
+    <div className="profile-card" style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10 }}>
+        <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+          <MapPin size={16} style={{ color: "var(--primary)", flexShrink: 0 }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {t("Gym reminders", "Gym reminders", "Gym reminders")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, lineHeight: 1.4 }}>
+              {t(
+                "Suggest a workout when you're at your gym or it's your usual training time.",
+                "Nudge you to lift when you're at the gym or it's your usual time.",
+                "Nudge you to lift when you're at the gym or it's your usual time, bestie.",
+              )}
+            </div>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={prefs.remindersEnabled}
+          onClick={() => onChange({ remindersEnabled: !prefs.remindersEnabled })}
+          className={prefs.remindersEnabled ? "btn-primary" : "auth-toggle"}
+          style={{ whiteSpace: "nowrap" }}
+        >
+          {prefs.remindersEnabled ? "On" : "Off"}
+        </button>
+      </div>
+
+      <input
+        className="field-input"
+        type="text"
+        placeholder={t("Gym name (optional)", "Gym name (optional)", "Gym name (optional)")}
+        value={prefs.name ?? ""}
+        onChange={e => onChange({ name: e.target.value || null })}
+        maxLength={120}
+        style={{ marginBottom: 8 }}
+      />
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+        <label style={{ fontSize: 12, color: "var(--muted)", whiteSpace: "nowrap" }}>
+          {t("Radius (m)", "Radius (m)", "Radius (m)")}
+        </label>
+        <input
+          className="field-input"
+          type="number" inputMode="numeric" min="10" max="5000" step="10"
+          value={radiusVal}
+          onChange={e => setRadiusVal(e.target.value)}
+          onBlur={commitRadius}
+          aria-label="Geofence radius in metres"
+          style={{ width: 100 }}
+        />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <button type="button" className="btn-primary" style={{ width: "auto" }} onClick={captureLocation}>
+          {hasLocation
+            ? t("Update gym location", "Update gym location", "Update gym location")
+            : t("Use current location", "Use current location", "Use current location")}
+        </button>
+        {hasLocation && (
+          <button
+            type="button"
+            className="auth-toggle"
+            style={{ width: "auto" }}
+            onClick={() => { onChange({ latitude: null, longitude: null }); setStatus("idle"); }}
+          >
+            {t("Clear", "Clear", "Clear")}
+          </button>
+        )}
+      </div>
+
+      <div style={{ fontSize: 11, color: status === "error" ? "var(--coral, #FF6B6B)" : "var(--muted)", marginTop: 8 }}>
+        {status === "locating" && t("Getting your location…", "Getting your location…", "Getting your location…")}
+        {status === "error"    && t("Couldn't read your location. Check browser permissions.", "Couldn't read your location. Check permissions.", "Couldn't read your location, bestie. Check permissions.")}
+        {status !== "locating" && status !== "error" && hasLocation && (
+          `${t("Saved", "Saved", "Saved")}: ${prefs.latitude!.toFixed(4)}, ${prefs.longitude!.toFixed(4)}`
+        )}
+        {status !== "locating" && status !== "error" && !hasLocation && (
+          t("No gym location saved yet.", "No gym location saved yet.", "No gym location saved yet.")
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsTab({
   name, email, gender, bodyweightKg, heightCm, token, primaryColor, onColorChange, onProfileUpdate,
   toneMode, onToneChange, restPrefs, onRestPrefsChange,
+  gymPrefs, onGymPrefsChange,
   wizardTransition, onWizardTransitionChange,
   reducedMotion, onReducedMotionChange,
   theme, onThemeChange,
@@ -951,6 +1068,7 @@ export default function SettingsTab({
       <div className="profile-section">{t("Workout", "Workout")}</div>
       <CountsBarCard />
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
+      <GymReminderCard prefs={gymPrefs} onChange={onGymPrefsChange} />
 
       <div className="profile-section">{t("Notifications", "Notifications")}</div>
       <PushToggleCard authFetch={authFetch} />
