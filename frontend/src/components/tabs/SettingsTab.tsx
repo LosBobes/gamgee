@@ -8,7 +8,6 @@ import {
 } from "../../push";
 import type { RestPrefs, WizardTransitionStyle, ThemeMode, GymPrefs } from "../../types";
 import { DEFAULT_REST_PREFS, DEFAULT_GYM_RADIUS_M } from "../../types";
-import { readCountsBar, writeCountsBar, type CountsBar } from "../../data/barbell";
 import { APP_VERSION } from "../../version";
 
 type Gender = "female" | "male" | "non_binary" | "other" | "prefer_not_to_say";
@@ -147,72 +146,6 @@ function WizardTransitionCard({
   );
 }
 
-function CountsBarCard() {
-  const t = useTxt();
-  const [value, setValue] = useState<CountsBar | null>(() => readCountsBar());
-
-  const update = (next: CountsBar) => {
-    writeCountsBar(next);
-    setValue(next);
-  };
-
-  const options: Array<{ id: CountsBar; label: string }> = [
-    { id: "yes", label: t("Bar counts",   "Bar counts",   "Bar counts")   },
-    { id: "no",  label: t("Just plates",  "Just plates",  "Just plates")  },
-    { id: "off", label: t("Off",          "Off",          "Off")          },
-  ];
-
-  return (
-    <div className="profile-card" style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10, letterSpacing: "0.04em", textTransform: "uppercase" }}>
-        {t("Bar weight (joke)", "Bar weight (joke)", "Bar weight (joke)")}
-      </div>
-      <div style={{ display: "flex", gap: 8 }}>
-        {options.map(({ id, label }) => {
-          const active = value === id;
-          return (
-            <button
-              key={id}
-              onClick={() => update(id)}
-              style={{
-                flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", whiteSpace: "nowrap",
-                background: active ? "var(--primary)" : "transparent",
-                color: active ? "#000" : "var(--muted)",
-                border: active ? "none" : "1px solid var(--border)",
-                cursor: "pointer", transition: "all 0.15s",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 10, lineHeight: 1.4 }}>
-        {value === "yes" && t(
-          "Bar is included in the weight you enter. We won't add anything.",
-          "Bar's in. We won't touch your numbers.",
-          "Bar's in, bestie. We won't touch your numbers.",
-        )}
-        {value === "no" && t(
-          "You enter plates only. Barbell exercise cards show a \"+20 kg bar\" hint.",
-          "Plates only, bro. We hint the +20 kg bar on barbell lifts.",
-          "Plates only, bestie. We hint the +20 kg bar on barbell lifts.",
-        )}
-        {value === "off" && t(
-          "Joke disabled. No hints anywhere.",
-          "Joke's off. No hints anywhere.",
-          "Joke's off, bestie. No hints anywhere.",
-        )}
-        {value === null && t(
-          "We haven't asked yet — pick a stance to mirror it on barbell cards, or turn the joke off.",
-          "Haven't asked yet — pick a side or turn it off.",
-          "Haven't asked yet, bestie — pick a side or turn it off.",
-        )}
-      </div>
-    </div>
-  );
-}
-
 function ThemeCard({
   value,
   onChange,
@@ -299,8 +232,7 @@ function ReducedMotionCard({
           role="switch"
           aria-checked={value}
           onClick={() => onChange(!value)}
-          className={value ? "btn-primary" : "auth-toggle"}
-          style={{ whiteSpace: "nowrap" }}
+          className={`switch-pill${value ? " on" : ""}`}
         >
           {value ? "On" : "Off"}
         </button>
@@ -970,8 +902,7 @@ function GymReminderCard({ prefs, onChange }: { prefs: GymPrefs; onChange: (next
           role="switch"
           aria-checked={prefs.remindersEnabled}
           onClick={() => onChange({ remindersEnabled: !prefs.remindersEnabled })}
-          className={prefs.remindersEnabled ? "btn-primary" : "auth-toggle"}
-          style={{ whiteSpace: "nowrap" }}
+          className={`switch-pill${prefs.remindersEnabled ? " on" : ""}`}
         >
           {prefs.remindersEnabled ? "On" : "Off"}
         </button>
@@ -1066,7 +997,6 @@ export default function SettingsTab({
       <ReducedMotionCard value={reducedMotion} onChange={onReducedMotionChange} />
 
       <div className="profile-section">{t("Workout", "Workout")}</div>
-      <CountsBarCard />
       <RestTimerCard prefs={restPrefs} onChange={onRestPrefsChange} />
       <GymReminderCard prefs={gymPrefs} onChange={onGymPrefsChange} />
 
