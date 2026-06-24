@@ -76,7 +76,7 @@ python -m app.gen_vapid               # generate a fresh VAPID keypair for Web P
 - `content_seed.py` — bulk seed of the editable content tables (quotes, tips, focuses, muscles, stretches, exercise info, body-map shapes, etc.). Idempotent: only inserts rows that don't already exist, so admin edits survive restarts.
 
 **Routers (mounted under `/api`)** — `backend/app/routers/`
-- `auth.py` (`/auth`) — `POST /register`, `POST /register-trainer`, `POST /login` (OAuth2 password flow; accepts username **or** email, case-insensitive), `GET /me`, `POST /change-password`, `PATCH /preferences` (`primary_color`, `progression_speed`), `PATCH /notification-preferences`, `PATCH /profile`; password-reset + email-verification flows: `POST /forgot-password`, `POST /reset-password`, `POST /verify-email`, `POST /resend-verification`, `POST /resend-verification-me`. Forgot/resend always return 202 to avoid email enumeration.
+- `auth.py` (`/auth`) — `POST /register`, `POST /register-trainer`, `POST /login` (OAuth2 password flow; accepts username **or** email, case-insensitive), `GET /me`, `POST /change-password`, `PATCH /preferences` (`primary_color`, `progression_speed`), `PATCH /notification-preferences`, `PATCH /gym-preferences` (home-gym geofence + `training_reminders_enabled`, powering the location/time workout suggestions), `PATCH /profile`; password-reset + email-verification flows: `POST /forgot-password`, `POST /reset-password`, `POST /verify-email`, `POST /resend-verification`, `POST /resend-verification-me`. Forgot/resend always return 202 to avoid email enumeration.
 - `workouts.py` (`/workouts`) — list (GET), create (POST), update (PUT `/{id}`), delete (DELETE `/{id}`). `id` is a client-generated UUID; duplicate POST returns 409.
 - `prs.py` (`/prs`) — list (GET), upsert (PUT `/{exercise_id}`), delete (DELETE `/{exercise_id}`).
 - `health.py` (`/health`) — body metric CRUD (`metric_type`, `value`, `unit`, `date`, `note`); GET supports `metric_type` / `from` / `to` filters.
@@ -94,7 +94,7 @@ python -m app.gen_vapid               # generate a fresh VAPID keypair for Web P
 - `chat.py` (`/chat`) — DMs + coaching-channel chat (REST for bootstrap, WebSocket `/chat/ws` for live delivery). Conversations are stored as ordered `(user_low, user_high, kind)` so each peer relationship is a single row.
 
 **Data model highlights** (`models.py`)
-- `User`: `is_admin`, `is_verified` (existing users grandfathered as verified on migration so they don't get locked out), `is_trainer` + trainer profile columns, `primary_color`, `progression_speed`, and four `notify_*` master switches that gate buddy-driven pings.
+- `User`: `is_admin`, `is_verified` (existing users grandfathered as verified on migration so they don't get locked out), `is_trainer` + trainer profile columns, `primary_color`, `progression_speed`, and four `notify_*` master switches that gate buddy-driven pings; plus a home-gym geofence (`gym_name`, `gym_latitude`, `gym_longitude`, `gym_radius_m`) and `training_reminders_enabled` that drive the client-side location/time "start your usual training" suggestion.
 - `WorkoutSession.id` is a client-generated UUID string; `exercises` is a **JSONB** array (no join table; full exercise+sets embedded); `duration` is **milliseconds**.
 - `PersonalRecord` has a unique `(user_id, exercise_id)` constraint — always upsert via `PUT /api/prs/{exercise_id}`; `is_cardio` boolean.
 - `Exercise.id` is the short key (`"bench"`, `"ohp"`, …) matching the frontend `EM` map.

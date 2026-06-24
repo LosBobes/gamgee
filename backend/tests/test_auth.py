@@ -199,3 +199,75 @@ def test_preferences_leaves_rpe_multipliers_untouched_when_omitted(client: TestC
     assert res.status_code == 200
     assert res.json()["rpe_multipliers"] == {"7": 1.0}
     assert res.json()["primary_color"] == "#abcdef"
+
+
+# ── Gym location / training reminders (PATCH /gym-preferences) ─────────────────
+
+
+def test_gym_preferences_defaults(client: TestClient, auth_headers):
+    me = client.get("/api/auth/me", headers=auth_headers).json()
+    assert me["gym_latitude"] is None
+    assert me["gym_longitude"] is None
+    assert me["gym_name"] is None
+    # Reminders default on so the feature works as soon as a gym is saved.
+    assert me["training_reminders_enabled"] is True
+
+
+def test_gym_preferences_round_trip(client: TestClient, auth_headers):
+    body = {
+        "gym_name": "Iron Temple",
+        "gym_latitude": 48.2082,
+        "gym_longitude": 16.3738,
+        "gym_radius_m": 150,
+    }
+    res = client.patch("/api/auth/gym-preferences", json=body, headers=auth_headers)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["gym_name"] == "Iron Temple"
+    assert data["gym_latitude"] == 48.2082
+    assert data["gym_longitude"] == 16.3738
+    assert data["gym_radius_m"] == 150
+
+    me = client.get("/api/auth/me", headers=auth_headers).json()
+    assert me["gym_name"] == "Iron Temple"
+    assert me["gym_latitude"] == 48.2082
+
+
+def test_gym_preferences_clear_location_with_null(client: TestClient, auth_headers):
+    client.patch(
+        "/api/auth/gym-preferences",
+        json={"gym_latitude": 1.0, "gym_longitude": 2.0},
+        headers=auth_headers,
+    )
+    res = client.patch(
+        "/api/auth/gym-preferences",
+        json={"gym_latitude": None, "gym_longitude": None},
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+    assert res.json()["gym_latitude"] is None
+    assert res.json()["gym_longitude"] is None
+
+
+def test_gym_preferences_toggle_reminders_leaves_location(client: TestClient, auth_headers):
+    client.patch(
+        "/api/auth/gym-preferences",
+        json={"gym_latitude": 10.0, "gym_longitude": 20.0},
+        headers=auth_headers,
+    )
+    res = client.patch(
+        "/api/auth/gym-preferences",
+        json={"training_reminders_enabled": False},
+        headers=auth_headers,
+    )
+    assert res.status_code == 200
+    assert res.json()["training_reminders_enabled"] is False
+    # Toggling the switch must not wipe the saved coordinates.
+    assert res.json()["gym_latitude"] == 10.0
+
+
+def test_gym_preferences_rejects_out_of_range(client: TestClient, auth_headers):
+    res = client.patch("/api/auth/gym-preferences", json={"gym_latitude": 999}, headers=auth_headers)
+    assert res.status_code == 422
+    res = client.patch("/api/auth/gym-preferences", json={"gym_radius_m": 1}, headers=auth_headers)
+    assert res.status_code == 422

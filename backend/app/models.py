@@ -46,6 +46,17 @@ class User(Base):
     # rpe_multipliers_by_exercise, keyed by Exercise.id (same keys per ex).
     rpe_multipliers = Column(JSONB, nullable=True)
     rpe_multipliers_by_exercise = Column(JSONB, nullable=True)
+    # Gym location + training-reminder preferences. When a home gym is saved
+    # (lat/lng), the client can detect when the user is physically there and
+    # surface a "start your usual training" prompt. `gym_radius_m` is the
+    # geofence radius in metres; null falls back to the client default.
+    # `training_reminders_enabled` is the master switch for the location/time
+    # workout suggestions (defaults TRUE so the feature is on once a gym is set).
+    gym_name = Column(String(120), nullable=True)
+    gym_latitude = Column(Float, nullable=True)
+    gym_longitude = Column(Float, nullable=True)
+    gym_radius_m = Column(Integer, nullable=True)
+    training_reminders_enabled = Column(Boolean, nullable=False, default=True)
 
 
 class PasswordResetToken(Base):

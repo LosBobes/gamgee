@@ -118,6 +118,40 @@ export type WeeklyPlan = Partial<Record<WeekPlanDay, DayPlan>> & {
 export interface RestPrefs { short: number; medium: number; long: number; }
 export const DEFAULT_REST_PREFS: RestPrefs = { short: 60, medium: 90, long: 180 };
 
+/** Home-gym geofence + training-reminder preferences. Coordinates are null
+ * until the user saves a gym from the Settings screen. `radiusM` is the
+ * geofence radius (metres); `remindersEnabled` is the master switch for the
+ * location/time-based "start your usual training" suggestion. */
+export interface GymPrefs {
+  name: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  radiusM: number | null;
+  remindersEnabled: boolean;
+}
+export const DEFAULT_GYM_RADIUS_M = 200;
+export const DEFAULT_GYM_PREFS: GymPrefs = {
+  name: null, latitude: null, longitude: null, radiusM: null, remindersEnabled: true,
+};
+
+/** A computed recommendation to start a specific training, surfaced on the
+ * idle workout screen. `reason` says which signal(s) fired:
+ *  - `location`: the user is physically at their saved gym.
+ *  - `time`:     it's a day/time of week they usually train.
+ *  - `both`:     both signals fired at once.
+ * `focus` is the recommended focus; `dayPlan` (when present) is handed to the
+ * wizard so the build step lands pre-populated with the day's exercises. */
+export interface TrainingSuggestion {
+  reason: "location" | "time" | "both";
+  focus: string;
+  dayPlan: DayPlan | null;
+  /** Headline + supporting line shown in the banner. */
+  title: string;
+  detail: string;
+  /** Distance to the gym in metres when `reason` includes location. */
+  distanceM?: number;
+}
+
 /** Visual effect played during workout-wizard step transitions so the
  * delay between tap and next step feels intentional. `none` skips the fx
  * entirely for users who want a quieter UI. */

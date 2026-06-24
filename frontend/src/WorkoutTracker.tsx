@@ -5,10 +5,10 @@ import type {
   PersonalRecordAPI, PRDict, WorkoutSet, BodyMetric, WeeklyPlan,
   Buddy, AppNotification, LiveSession,
   TrainerLink, RegimeAssignment, Conversation, ChatMessage, WorkoutTemplate,
-  ProgressionOverride, RestPrefs,
+  ProgressionOverride, RestPrefs, GymPrefs, TrainingSuggestion,
   WizardTransitionStyle, ThemeMode,
 } from "./types";
-import { DEFAULT_REST_PREFS, DEFAULT_WIZARD_TRANSITION, DEFAULT_THEME } from "./types";
+import { DEFAULT_REST_PREFS, DEFAULT_GYM_PREFS, DEFAULT_WIZARD_TRANSITION, DEFAULT_THEME } from "./types";
 import { clearWeeklyPlan, loadWeeklyPlan, saveWeeklyPlan } from "./data/weeklyPlan";
 import { listTemplates, createTemplate, updateTemplate, deleteTemplate } from "./data/templatesApi";
 import { getFocusDef } from "./data/focuses";
@@ -38,6 +38,7 @@ import { ALL_EX, subscribeCustomExercises } from "./data/exercises";
 import { analyzeEx, prescribeExercise, rampedSetsFromHistory } from "./analysis";
 import { loadPrescribeConfigs, mergePrescribeConfigs } from "./data/prescribeConfigs";
 import { useMobileBackGesture } from "./hooks/useMobileBackGesture";
+import { useTrainingSuggestion } from "./hooks/useTrainingSuggestion";
 import { useEventStream } from "./hooks/useEventStream";
 import { useChatSocket } from "./hooks/useChatSocket";
 import { ToneProvider, type ToneMode } from "./context/ToneContext";
@@ -180,6 +181,19 @@ export default function WorkoutTracker({
       };
     } catch {
       return DEFAULT_REST_PREFS;
+    }
+  });
+  // Home-gym geofence + training-reminder preferences. Seeded from a local
+  // cache so the location/time suggestion can fire before /auth/me resolves;
+  // the server copy (loaded below) is the source of truth across devices.
+  const [gymPrefs, setGymPrefs] = useState<GymPrefs>(() => {
+    try {
+      const raw = localStorage.getItem("gamgee_gym_prefs");
+      if (!raw) return DEFAULT_GYM_PREFS;
+      const parsed = JSON.parse(raw) as Partial<GymPrefs>;
+      return { ...DEFAULT_GYM_PREFS, ...parsed };
+    } catch {
+      return DEFAULT_GYM_PREFS;
     }
   });
   const [toneMode, setToneMode] = useState<ToneMode>(
@@ -391,6 +405,33 @@ export default function WorkoutTracker({
   }, [authFetch]);
 
   useEffect(() => {
+    localStorage.setItem("gamgee_gym_prefs", JSON.stringify(gymPrefs));
+  }, [gymPrefs]);
+
+  /** Merge a partial gym-prefs change, persist locally, and write through to
+   * the backend so the geofence + reminder toggle sync across devices. Mirrors
+   * updateRestPrefs: optimistic local update, best-effort PATCH. */
+  const updateGymPrefs = useCallback((next: Partial<GymPrefs>) => {
+    setGymPrefs(prev => {
+      const merged: GymPrefs = { ...prev, ...next };
+      const body: Record<string, unknown> = {};
+      if ("name" in next)             body.gym_name = merged.name;
+      if ("latitude" in next)         body.gym_latitude = merged.latitude;
+      if ("longitude" in next)        body.gym_longitude = merged.longitude;
+      if ("radiusM" in next)          body.gym_radius_m = merged.radiusM;
+      if ("remindersEnabled" in next) body.training_reminders_enabled = merged.remindersEnabled;
+      if (Object.keys(body).length) {
+        authFetch("/api/auth/gym-preferences", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }).catch(() => { /* best-effort; localStorage already updated */ });
+      }
+      return merged;
+    });
+  }, [authFetch]);
+
+  useEffect(() => {
     localStorage.setItem("gamgee_tone", toneMode);
   }, [toneMode]);
 
@@ -429,6 +470,8 @@ export default function WorkoutTracker({
     setTemplates([]);
     setProgressionOverrides({});
     setActiveConvId(null);
+    setGymPrefs(DEFAULT_GYM_PREFS);
+    localStorage.removeItem("gamgee_gym_prefs");
     clearWeeklyPlan();
     if (typeof caches !== "undefined") {
       caches.delete("api-cache").catch(() => { /* best-effort */ });
@@ -446,7 +489,7 @@ export default function WorkoutTracker({
         setPrs(dict);
       }).catch(() => {});
     authFetch("/api/auth/me")
-      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; bodyweight_kg?: number | null; height_cm?: number | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null }) => {
+      .then(r => r.json()).then((d: { id?: number; username: string; name?: string | null; email?: string | null; gender?: string | null; bodyweight_kg?: number | null; height_cm?: number | null; primary_color?: string | null; is_admin?: boolean; is_verified?: boolean; is_trainer?: boolean; rest_short_seconds?: number | null; rest_medium_seconds?: number | null; rest_long_seconds?: number | null; gym_name?: string | null; gym_latitude?: number | null; gym_longitude?: number | null; gym_radius_m?: number | null; training_reminders_enabled?: boolean }) => {
         setUsername(d.username);
         setName(d.name ?? null);
         setEmail(d.email ?? null);
@@ -467,6 +510,13 @@ export default function WorkoutTracker({
             long:   clamp(d.rest_long_seconds,   prev.long),
           }));
         }
+        setGymPrefs({
+          name:             d.gym_name ?? null,
+          latitude:         d.gym_latitude ?? null,
+          longitude:        d.gym_longitude ?? null,
+          radiusM:          d.gym_radius_m ?? null,
+          remindersEnabled: d.training_reminders_enabled !== false,
+        });
       }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -984,6 +1034,23 @@ export default function WorkoutTracker({
     });
   };
 
+  // Location/time based "start your usual training" suggestion. Only evaluated
+  // on the idle workout landing screen so we don't poll geolocation or nag
+  // mid-session.
+  const suggestionActive = tab === "workout" && !active && !completed && wStep === 0;
+  const { suggestion: trainingSuggestion, dismiss: dismissTrainingSuggestion } = useTrainingSuggestion({
+    history, weeklyPlan, gym: gymPrefs, active: suggestionActive,
+  });
+
+  /** Act on a training suggestion: load the recommended day plan (or a
+   * focus-only plan when there's no weekly-plan day) into the wizard build
+   * step, then clear the banner. */
+  const startSuggestedTraining = useCallback((s: TrainingSuggestion) => {
+    loadTodayPlan(s.dayPlan ?? { focus: s.focus, exerciseIds: [], enabled: true });
+    dismissTrainingSuggestion();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dismissTrainingSuggestion]);
+
   const finishWorkout = () => {
     if (!startTs) return;
     const dur  = Date.now() - startTs;
@@ -1220,6 +1287,9 @@ export default function WorkoutTracker({
             wizardTransition={wizardTransition}
             authFetch={authFetch}
             startFromWizard={startFromWizard}
+            suggestion={trainingSuggestion}
+            onStartSuggestion={startSuggestedTraining}
+            onDismissSuggestion={dismissTrainingSuggestion}
             prescribeInitialConfigs={{ ...savedPrescribeConfigs, ...plannedConfigs }}
             startFromPrescribe={startFromPrescribe}
             addExercise={addExercise} removeExercise={removeExercise}
@@ -1306,7 +1376,7 @@ export default function WorkoutTracker({
         {!completed && tab === "coach"     && <CoachTab history={history} overrides={progressionOverrides} onSetOverride={setProgressionOverride} onUpdateSession={updateWorkout} />}
         {!completed && tab === "exercises" && <ExercisesTab />}
         {!completed && tab === "profile"   && <ProfileTab username={username} name={name} history={history} isAdmin={isAdmin} onOpenSettings={() => setTab("settings")} />}
-        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} theme={theme} onThemeChange={updateTheme} authFetch={authFetch} />}
+        {!completed && tab === "settings"  && <SettingsTab name={name} email={email} gender={gender} bodyweightKg={bodyweightKg} heightCm={heightCm} token={token} primaryColor={primaryColor} onColorChange={setPrimaryColor} onProfileUpdate={(n, e, g, bw, ht) => { setName(n); setEmail(e); setGender(g); setBodyweightKg(bw); setHeightCm(ht); }} toneMode={toneMode} onToneChange={setToneMode} restPrefs={restPrefs} onRestPrefsChange={updateRestPrefs} gymPrefs={gymPrefs} onGymPrefsChange={updateGymPrefs} wizardTransition={wizardTransition} onWizardTransitionChange={updateWizardTransition} reducedMotion={reducedMotion} onReducedMotionChange={updateReducedMotion} theme={theme} onThemeChange={updateTheme} authFetch={authFetch} />}
       </div>
       {feedbackOpen && <FeedbackModal authFetch={authFetch} onClose={() => setFeedbackOpen(false)} />}
       {viewedLiveSession && (

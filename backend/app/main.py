@@ -80,6 +80,15 @@ if engine.dialect.name == "postgresql":
         # exercises (offset logged relative to it), height is informational.
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS bodyweight_kg DOUBLE PRECISION"))
         _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS height_cm DOUBLE PRECISION"))
+        # Gym location + training-reminder preferences. Power the location/time
+        # based "start your usual training" suggestions. All nullable except the
+        # master switch, which defaults TRUE so the feature works as soon as a
+        # gym location is saved.
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_name VARCHAR(120)"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_latitude DOUBLE PRECISION"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_longitude DOUBLE PRECISION"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS gym_radius_m INTEGER"))
+        _conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS training_reminders_enabled BOOLEAN NOT NULL DEFAULT TRUE"))
         # Post-session RPE on workout records (used to scale next session's jump).
         _conn.execute(text("ALTER TABLE workout_sessions ADD COLUMN IF NOT EXISTS rpe INTEGER"))
         # Live session rich-broadcast columns

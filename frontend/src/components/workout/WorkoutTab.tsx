@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle, WorkoutTemplate, WorkoutTemplateDraft, ProgressionOverride } from "../../types";
+import type { CardioPlan, DayPlan, ExerciseConfig, ExerciseDef, WorkoutExercise, WorkoutSet, PRDict, WorkoutSession, WeeklyPlan, RestPrefs, WizardTransitionStyle, WorkoutTemplate, WorkoutTemplateDraft, ProgressionOverride, TrainingSuggestion } from "../../types";
 import WizardStart from "./WizardStart";
+import TrainingSuggestionBanner from "./TrainingSuggestionBanner";
 import WizardMode from "./WizardMode";
 import WizardFocus from "./WizardFocus";
 import WizardCardio from "./WizardCardio";
@@ -39,6 +40,10 @@ interface Props {
   authFetch:       (url: string, opts?: RequestInit) => Promise<Response>;
   onLoadToday:     (plan: DayPlan) => void;
   startFromWizard: (autoFill: boolean) => void;
+  /** Location/time based recommendation shown on the landing screen (or null). */
+  suggestion:          TrainingSuggestion | null;
+  onStartSuggestion:   (s: TrainingSuggestion) => void;
+  onDismissSuggestion: () => void;
   /** Pre-existing per-exercise prescribe configs (from a regime day or the
    * user's last-used RPE setup); seeded into the prescribe step when the
    * user picks RPE-driven mode. */
@@ -62,7 +67,7 @@ export default function WorkoutTab({
   active, wStep, setWStep, focus, setFocus, cardio, setCardio,
   planned, setPlanned, exercises, prs, history, doneSets,
   weeklyPlan, setWeeklyPlan, templates, onSaveTemplate, onUpdateTemplate, onDeleteTemplate, onLoadTemplate, progressionOverrides, restPrefs, bodyweight, wizardTransition, authFetch, onLoadToday,
-  startFromWizard, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
+  startFromWizard, suggestion, onStartSuggestion, onDismissSuggestion, prescribeInitialConfigs, startFromPrescribe, addExercise, removeExercise,
   updateSet, setSetRpe, toggleSet, addSet, removeSet, toggleExerciseLock, isNewPr, finishWorkout, cancelWorkout, applyProgressionAll,
 }: Props) {
   const prevStepRef = useRef(wStep);
@@ -134,6 +139,13 @@ export default function WorkoutTab({
       {/* Step 0 — landing */}
       {!active && wStep === 0 && (
         <div key="wstep-0" className={stepAnim}>
+          {suggestion && (
+            <TrainingSuggestionBanner
+              suggestion={suggestion}
+              onStart={onStartSuggestion}
+              onDismiss={onDismissSuggestion}
+            />
+          )}
           <WizardStart lastSession={history[0] ?? null} onStart={() => setWStepQuake(1)} />
         </div>
       )}
