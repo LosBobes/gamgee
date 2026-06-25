@@ -1500,13 +1500,6 @@ html, body { background: var(--bg); }
 .set-table { padding: 10px 12px; }
 .set-col-hdr { display: grid; grid-template-columns: 18px 1fr 1fr 54px 28px; gap: 6px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
 .col-lbl { font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); text-align: center; }
-.bar-hint {
-  display: inline-block; margin-left: 6px; padding: 1px 5px;
-  font-size: 8px; letter-spacing: 0.5px; text-transform: uppercase;
-  color: var(--accent); background: var(--ad);
-  border: 1px solid var(--border); border-radius: 999px;
-  vertical-align: 1px;
-}
 .set-row-wrap { margin-bottom: 16px; }
 .set-row-wrap > .set-row { margin-bottom: 0; }
 .assist-hint {
@@ -2167,6 +2160,21 @@ html, body { background: var(--bg); }
 .auth-submit:hover { opacity: 0.88; transform: translateY(-1px); }
 .auth-submit:active { transform: translateY(0); }
 .auth-toggle { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.875rem; text-align: center; padding: 0; transition: color 0.15s; }
+
+/* Labelled on/off pill toggle. Keeps a consistent control shape in both
+   states (filled when on, outlined when off) so it never collapses into
+   plain text the way a bare button would. */
+.switch-pill {
+  flex-shrink: 0; min-width: 60px; padding: 7px 14px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.04em; line-height: 1;
+  white-space: nowrap; cursor: pointer; font-family: inherit;
+  background: transparent; color: var(--muted); border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.switch-pill:hover:not(:disabled) { border-color: var(--accent); color: var(--text); }
+.switch-pill.on { background: var(--primary); color: #000; border-color: var(--primary); }
+.switch-pill.on:hover:not(:disabled) { opacity: 0.9; color: #000; }
+.switch-pill:disabled { opacity: 0.5; cursor: not-allowed; }
 .auth-toggle:hover { color: var(--text); }
 .auth-err { color: var(--red); font-size: 0.875rem; margin: 0; }
 .auth-submit:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
