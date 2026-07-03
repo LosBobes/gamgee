@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import StickFigure, { splinePose, splineOptPt, splineFrameEquip } from "./StickFigure";
+import StickFigure, { splinePose, splineOptPt, splineFrameEquip, lockPoseBones } from "./StickFigure";
 import type { Pose, Point, RigConfig, Equipment, FrameEquipState } from "./StickFigure";
 
 export interface Frame {
@@ -56,8 +56,13 @@ function sample(frames: Frame[], t: number): {
   const p0 = frames[Math.max(0, i - 1)];
   const p3 = frames[Math.min(N - 1, i + 2)];
 
+  // Bone-length lock: the spline threads each joint independently, so between
+  // keyframes the limb segments drift off their authored lengths. Re-solve the
+  // interior joints (elbow/knee) against the keyframe-interpolated lengths —
+  // contacts (hands, feet) stay exactly on their splined paths.
+  const splined = splinePose(p0.pose, a.pose, b.pose, p3.pose, local);
   return {
-    pose: splinePose(p0.pose, a.pose, b.pose, p3.pose, local),
+    pose: lockPoseBones(splined, a.pose, b.pose, local),
     bar: splineOptPt(p0.bar, a.bar, b.bar, p3.bar, local),
     equipment: splineFrameEquip(p0.equipment, a.equipment, b.equipment, p3.equipment, local),
   };

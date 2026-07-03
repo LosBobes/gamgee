@@ -617,6 +617,99 @@ export function splinePose(p0: Pose, p1: Pose, p2: Pose, p3: Pose, t: number): P
   return out;
 }
 
+// ── Bone-length lock ────────────────────────────────────────────────────────
+//
+// The spline above threads each *joint* independently, so between keyframes the
+// distance elbow↔shoulder (etc.) drifts off the authored bone length — limbs
+// visibly telescope mid-rep. The lock below re-solves the interior joint of
+// each two-bone chain (elbow, knee) with a standard two-bone IK step: the chain
+// endpoints (shoulder/hand, hip/ankle) stay exactly on their splined paths —
+// they're the contact points (grips, planted feet) — while the interior joint
+// is placed to honour the bone lengths interpolated from the two surrounding
+// keyframes, bending toward whichever side the splined joint already favoured.
+// At the keyframes themselves the interpolated lengths *are* the authored
+// lengths, so the solve reproduces the authored pose exactly and only the
+// in-between frames change.
+
+const segLen = (a: Point, b: Point) => Math.hypot(b[0] - a[0], b[1] - a[1]);
+
+/** Two-bone IK: place the mid joint of root→mid→end so |root,mid| = l1 and
+ * |mid,end| = l2, bending toward `hint`. Endpoints too far apart degrade to a
+ * proportionally-stretched straight chain; endpoints closer than |l1−l2|
+ * (limbs folding back on themselves) put the mid joint at full bone length
+ * past the endpoints so the limb visibly folds instead of collapsing. */
+export function solveMidJoint(
+  root: Point, end: Point, l1: number, l2: number, hint: Point,
+): Point {
+  const dx = end[0] - root[0], dy = end[1] - root[1];
+  const d = Math.hypot(dx, dy);
+  const total = l1 + l2;
+  if (d < 1e-6) return hint;
+  const ux = dx / d, uy = dy / d;
+  if (d >= total) {
+    const f = total > 0 ? l1 / total : 0.5;
+    return [root[0] + dx * f, root[1] + dy * f];
+  }
+  if (d <= Math.abs(l1 - l2)) {
+    return [root[0] + ux * l1, root[1] + uy * l1];
+  }
+  const a = (l1 * l1 - l2 * l2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
+  const bx = root[0] + ux * a, by = root[1] + uy * a;
+  // Perpendicular pointing toward the splined (hinted) joint.
+  const side = (hint[0] - bx) * -uy + (hint[1] - by) * ux >= 0 ? 1 : -1;
+  return [bx + -uy * h * side, by + ux * h * side];
+}
+
+const mix = (a: number, b: number, t: number) => a + (b - a) * t;
+
+/** Re-fix the splined pose's bone lengths against the two inner keyframes.
+ * `a`/`b` are the live segment's keyframe poses and `t` the local time. */
+export function lockPoseBones(pose: Pose, a: Pose, b: Pose, t: number): Pose {
+  const out: Pose = { ...pose };
+  out.elbow = solveMidJoint(
+    pose.shoulder, pose.hand,
+    mix(segLen(a.shoulder, a.elbow), segLen(b.shoulder, b.elbow), t),
+    mix(segLen(a.elbow, a.hand),     segLen(b.elbow, b.hand),     t),
+    pose.elbow,
+  );
+  out.knee = solveMidJoint(
+    pose.hip, pose.ankle,
+    mix(segLen(a.hip, a.knee),   segLen(b.hip, b.knee),   t),
+    mix(segLen(a.knee, a.ankle), segLen(b.knee, b.ankle), t),
+    pose.knee,
+  );
+  const a2 = pose.arm2, aa2 = a.arm2, ba2 = b.arm2;
+  if (a2?.shoulder && a2.elbow && a2.hand &&
+      aa2?.shoulder && aa2.elbow && aa2.hand &&
+      ba2?.shoulder && ba2.elbow && ba2.hand) {
+    out.arm2 = {
+      ...a2,
+      elbow: solveMidJoint(
+        a2.shoulder, a2.hand,
+        mix(segLen(aa2.shoulder, aa2.elbow), segLen(ba2.shoulder, ba2.elbow), t),
+        mix(segLen(aa2.elbow, aa2.hand),     segLen(ba2.elbow, ba2.hand),     t),
+        a2.elbow,
+      ),
+    };
+  }
+  const l2 = pose.leg2, al2 = a.leg2, bl2 = b.leg2;
+  if (l2?.hip && l2.knee && l2.ankle &&
+      al2?.hip && al2.knee && al2.ankle &&
+      bl2?.hip && bl2.knee && bl2.ankle) {
+    out.leg2 = {
+      ...l2,
+      knee: solveMidJoint(
+        l2.hip, l2.ankle,
+        mix(segLen(al2.hip, al2.knee),   segLen(bl2.hip, bl2.knee),   t),
+        mix(segLen(al2.knee, al2.ankle), segLen(bl2.knee, bl2.ankle), t),
+        l2.knee,
+      ),
+    };
+  }
+  return out;
+}
+
 // Interpolate two per-frame equipment maps. Properties that only exist in one
 // frame are passed through unchanged so a barbell that "appears" mid-motion
 // doesn't silently snap from undefined.
