@@ -38,9 +38,12 @@ export default function ExerciseGraphicsDemo() {
       if (!groups.has(cat)) groups.set(cat, []);
       groups.get(cat)!.push([id, m]);
     }
-    const order = ["Push", "Pull", "Shoulders", "Legs", "Core", "Cardio", "Other"];
-    return order
-      .filter(cat => groups.has(cat))
+    const order = ["Push", "Pull", "Shoulders", "Legs", "Core", "Calisthenics", "Grip", "Neck", "Cardio", "Other"];
+    // Categories not in the fixed order (new ones added later) still render,
+    // appended after the known sections instead of being silently dropped.
+    const known = order.filter(cat => groups.has(cat));
+    const extra = [...groups.keys()].filter(cat => !order.includes(cat)).sort();
+    return [...known, ...extra]
       .map(cat => [cat, groups.get(cat)!.sort((a, b) => a[1].name.localeCompare(b[1].name))] as const);
   }, [motions]);
 
@@ -186,6 +189,7 @@ function DemoCard({ id, motion, edited }: { id: string; motion: ExerciseMotion; 
           bench={motion.bench}
           floor={motion.floor}
           rig={motion.rig}
+          equipment={motion.equipment}
           paused={paused}
           width={180}
           height={220}

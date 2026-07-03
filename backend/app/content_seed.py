@@ -8,6 +8,9 @@ Run manually with: `python -m app.content_seed`
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from .database import SessionLocal
 from . import models
 from .seed import EXERCISES as _EXERCISES
@@ -609,173 +612,24 @@ BODYMAP_SHAPES = [
 
 
 # ── Exercise motions ─────────────────────────────────────────────────────────
-# Each motion is a Python dict that JSON-serialises directly into the
-# ExerciseMotion.frames JSONB column. The renderer ignores any unknown keys,
-# so the new `rig` config + per-frame `parts` extension are forward-compatible.
+# The canonical motion set is authored in the frontend
+# (frontend/src/data/exerciseMotions.ts) and exported to
+# app/data/exercise_motions_seed.json with
+# `node frontend/scripts/export-motion-seed.mjs`. Rows are stored in the same
+# shape the admin editor saves: stage equipment rides inside the `rig` JSONB
+# blob and per-frame equipment overrides stay on the frames, so the renderer
+# and editor treat seeded and hand-edited rows identically.
 
-STAND = {
-    "head":     [50, 20], "neck":     [50, 30], "shoulder": [50, 35],
-    "elbow":    [50, 60], "hand":     [50, 85],
-    "hip":      [50, 85], "knee":     [50, 115], "ankle":    [50, 140], "toe": [60, 140],
-}
-
-
-def _pose(**over) -> dict:
-    p = dict(STAND); p.update(over); return p
+_MOTIONS_SEED_PATH = Path(__file__).resolve().parent / "data" / "exercise_motions_seed.json"
 
 
-# Each motion: (exercise_id, name, category, duration, bench, floor, rig, frames)
-# `rig` controls the new rig features. Defaults:
-#   {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}  for symmetric stances
-#   {"feet": "oval", "arm2": "none",   "leg2": "none"}    for single-side / lying
-MOTIONS = [
-    ("squat", "Back squat", "Legs", 3000, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0,  "pose": _pose(elbow=[56, 50], hand=[54, 35]), "bar": [50, 30]},
-        {"t": 0.25, "pose": {"head":[46,32],"neck":[47,41],"shoulder":[48,49],"elbow":[55,64],"hand":[52,50],"hip":[44,98],"knee":[56,116],"ankle":[50,140],"toe":[60,140]}, "bar": [48, 44]},
-        {"t": 0.5,  "pose": {"head":[40,48],"neck":[43,56],"shoulder":[46,64],"elbow":[54,78],"hand":[50,65],"hip":[34,112],"knee":[60,117],"ankle":[50,140],"toe":[60,140]}, "bar": [47, 59]},
-        {"t": 0.75, "pose": {"head":[46,32],"neck":[47,41],"shoulder":[48,49],"elbow":[55,64],"hand":[52,50],"hip":[44,98],"knee":[56,116],"ankle":[50,140],"toe":[60,140]}, "bar": [48, 44]},
-        {"t": 1.0,  "pose": _pose(elbow=[56, 50], hand=[54, 35]), "bar": [50, 30]},
-     ]),
-    ("bb_curl", "Barbell curl", "Pull", 1800, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[50,60], hand=[53,85]), "bar": [53, 85]},
-        {"t": 0.5, "pose": _pose(shoulder=[49,36], elbow=[49,60], hand=[61,38]), "bar": [61, 38]},
-        {"t": 1.0, "pose": _pose(elbow=[50,60], hand=[53,85]), "bar": [53, 85]},
-     ]),
-    ("bench", "Bench press", "Push", 2200, True, False,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[80,78],"neck":[73,81],"shoulder":[68,83],"elbow":[68,59],"hand":[68,35],"hip":[42,86],"knee":[27,104],"ankle":[27,138],"toe":[16,138]}, "bar": [68, 35]},
-        {"t": 0.5, "pose": {"head":[80,80],"neck":[73,81],"shoulder":[68,83],"elbow":[50,62],"hand":[62,78],"hip":[42,86],"knee":[27,104],"ankle":[27,138],"toe":[16,138]}, "bar": [62, 78]},
-        {"t": 1.0, "pose": {"head":[80,78],"neck":[73,81],"shoulder":[68,83],"elbow":[68,59],"hand":[68,35],"hip":[42,86],"knee":[27,104],"ankle":[27,138],"toe":[16,138]}, "bar": [68, 35]},
-     ]),
-    ("ohp", "Overhead press", "Push", 2000, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[44,46], hand=[50,35]), "bar": [50, 35]},
-        {"t": 0.5, "pose": _pose(shoulder=[50,36], elbow=[50,22], hand=[50,6]), "bar": [50, 6]},
-        {"t": 1.0, "pose": _pose(elbow=[44,46], hand=[50,35]), "bar": [50, 35]},
-     ]),
-    ("push_up", "Push-up", "Push", 1800, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[82,96],"neck":[74,99],"shoulder":[68,102],"elbow":[70,119],"hand":[70,138],"hip":[40,104],"knee":[18,108],"ankle":[-2,112],"toe":[-2,120]}},
-        {"t": 0.5, "pose": {"head":[82,128],"neck":[74,129],"shoulder":[68,130],"elbow":[56,132],"hand":[70,138],"hip":[40,130],"knee":[18,132],"ankle":[-2,134],"toe":[-2,120]}},
-        {"t": 1.0, "pose": {"head":[82,96],"neck":[74,99],"shoulder":[68,102],"elbow":[70,119],"hand":[70,138],"hip":[40,104],"knee":[18,108],"ankle":[-2,112],"toe":[-2,120]}},
-     ]),
-    ("dips", "Dips", "Push", 2200, False, False,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[55,35],"neck":[54,45],"shoulder":[53,53],"elbow":[62,65],"hand":[60,90],"hip":[46,95],"knee":[50,120],"ankle":[42,138],"toe":[52,138]}},
-        {"t": 0.5, "pose": {"head":[55,60],"neck":[54,70],"shoulder":[53,78],"elbow":[42,88],"hand":[60,90],"hip":[46,116],"knee":[50,140],"ankle":[42,156],"toe":[52,156]}},
-        {"t": 1.0, "pose": {"head":[55,35],"neck":[54,45],"shoulder":[53,53],"elbow":[62,65],"hand":[60,90],"hip":[46,95],"knee":[50,120],"ankle":[42,138],"toe":[52,138]}},
-     ]),
-    ("tri_push", "Tricep pushdown", "Push", 1600, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[50,60], hand=[60,50])},
-        {"t": 0.5, "pose": _pose(elbow=[50,60], hand=[54,85])},
-        {"t": 1.0, "pose": _pose(elbow=[50,60], hand=[60,50])},
-     ]),
-    ("pullups", "Pull-up", "Pull", 2400, False, False,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[50,50],"neck":[50,60],"shoulder":[50,67],"elbow":[54,47],"hand":[56,24],"hip":[50,115],"knee":[55,138],"ankle":[55,156],"toe":[62,156]}},
-        {"t": 0.5, "pose": {"head":[50,30],"neck":[50,40],"shoulder":[50,48],"elbow":[40,36],"hand":[56,24],"hip":[50,96],"knee":[55,120],"ankle":[55,140],"toe":[62,140]}},
-        {"t": 1.0, "pose": {"head":[50,50],"neck":[50,60],"shoulder":[50,67],"elbow":[54,47],"hand":[56,24],"hip":[50,115],"knee":[55,138],"ankle":[55,156],"toe":[62,156]}},
-     ]),
-    ("bb_row", "Bent-over row", "Pull", 2000, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[70,60],"neck":[64,65],"shoulder":[58,70],"elbow":[56,95],"hand":[58,118],"hip":[38,80],"knee":[46,110],"ankle":[50,140],"toe":[60,140]}, "bar": [58, 118]},
-        {"t": 0.5, "pose": {"head":[70,60],"neck":[64,65],"shoulder":[58,70],"elbow":[44,80],"hand":[56,92],"hip":[38,80],"knee":[46,110],"ankle":[50,140],"toe":[60,140]}, "bar": [56, 92]},
-        {"t": 1.0, "pose": {"head":[70,60],"neck":[64,65],"shoulder":[58,70],"elbow":[56,95],"hand":[58,118],"hip":[38,80],"knee":[46,110],"ankle":[50,140],"toe":[60,140]}, "bar": [58, 118]},
-     ]),
-    ("lat_pd", "Lat pulldown", "Pull", 2000, False, False,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[50,50],"neck":[50,60],"shoulder":[50,67],"elbow":[56,46],"hand":[58,22],"hip":[50,117],"knee":[62,130],"ankle":[72,144],"toe":[82,144]}, "bar": [58, 22]},
-        {"t": 0.5, "pose": {"head":[50,50],"neck":[50,60],"shoulder":[50,65],"elbow":[40,76],"hand":[54,60],"hip":[50,117],"knee":[62,130],"ankle":[72,144],"toe":[82,144]}, "bar": [54, 60]},
-        {"t": 1.0, "pose": {"head":[50,50],"neck":[50,60],"shoulder":[50,67],"elbow":[56,46],"hand":[58,22],"hip":[50,117],"knee":[62,130],"ankle":[72,144],"toe":[82,144]}, "bar": [58, 22]},
-     ]),
-    ("shrug", "Shrug", "Pull", 1600, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(shoulder=[50,38], elbow=[50,63], hand=[52,88]), "bar": [52, 88]},
-        {"t": 0.5, "pose": _pose(neck=[50,26], shoulder=[50,30], elbow=[50,55], hand=[52,80]), "bar": [52, 80]},
-        {"t": 1.0, "pose": _pose(shoulder=[50,38], elbow=[50,63], hand=[52,88]), "bar": [52, 88]},
-     ]),
-    ("lat_raise", "Lateral raise", "Shoulders", 1800, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[50,60], hand=[50,85])},
-        {"t": 0.5, "pose": _pose(elbow=[50,36], hand=[50,12])},
-        {"t": 1.0, "pose": _pose(elbow=[50,60], hand=[50,85])},
-     ]),
-    ("front_raise", "Front raise", "Shoulders", 1800, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[54,60], hand=[58,85])},
-        {"t": 0.5, "pose": _pose(shoulder=[50,36], elbow=[65,40], hand=[82,36])},
-        {"t": 1.0, "pose": _pose(elbow=[54,60], hand=[58,85])},
-     ]),
-    ("dead", "Deadlift", "Legs", 2800, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[62,55],"neck":[58,62],"shoulder":[54,70],"elbow":[52,95],"hand":[50,120],"hip":[40,90],"knee":[48,112],"ankle":[50,140],"toe":[60,140]}, "bar": [50, 122]},
-        {"t": 0.5, "pose": _pose(elbow=[52,70], hand=[52,90]), "bar": [52, 90]},
-        {"t": 1.0, "pose": {"head":[62,55],"neck":[58,62],"shoulder":[54,70],"elbow":[52,95],"hand":[50,120],"hip":[40,90],"knee":[48,112],"ankle":[50,140],"toe":[60,140]}, "bar": [50, 122]},
-     ]),
-    ("rdl", "Romanian deadlift", "Legs", 2600, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(elbow=[52,70], hand=[52,90]), "bar": [52, 90]},
-        {"t": 0.5, "pose": {"head":[70,58],"neck":[64,64],"shoulder":[58,70],"elbow":[54,92],"hand":[52,116],"hip":[38,84],"knee":[46,112],"ankle":[50,140],"toe":[60,140]}, "bar": [52, 116]},
-        {"t": 1.0, "pose": _pose(elbow=[52,70], hand=[52,90]), "bar": [52, 90]},
-     ]),
-    ("lunges", "Lunge", "Legs", 2400, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "independent"}, [
-        {"t": 0.0, "pose": {"head":[50,22],"neck":[50,32],"shoulder":[50,37],"elbow":[50,62],"hand":[50,87],"hip":[50,87],"knee":[60,116],"ankle":[68,140],"toe":[78,140]}},
-        {"t": 0.5, "pose": {"head":[50,38],"neck":[50,48],"shoulder":[50,53],"elbow":[50,78],"hand":[50,103],"hip":[50,103],"knee":[76,122],"ankle":[78,140],"toe":[88,140]}},
-        {"t": 1.0, "pose": {"head":[50,22],"neck":[50,32],"shoulder":[50,37],"elbow":[50,62],"hand":[50,87],"hip":[50,87],"knee":[60,116],"ankle":[68,140],"toe":[78,140]}},
-     ]),
-    ("calf_raise", "Calf raise", "Legs", 1400, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose()},
-        {"t": 0.5, "pose": {"head":[50,14],"neck":[50,24],"shoulder":[50,29],"elbow":[50,54],"hand":[50,79],"hip":[50,79],"knee":[50,109],"ankle":[50,130],"toe":[60,140]}},
-        {"t": 1.0, "pose": _pose()},
-     ]),
-    ("leg_curl", "Lying leg curl", "Legs", 1800, False, False,
-     {"feet": "oval", "arm2": "none", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[12,92],"neck":[20,90],"shoulder":[28,88],"elbow":[22,96],"hand":[16,102],"hip":[60,88],"knee":[78,88],"ankle":[96,88],"toe":[96,96]}},
-        {"t": 0.5, "pose": {"head":[12,92],"neck":[20,90],"shoulder":[28,88],"elbow":[22,96],"hand":[16,102],"hip":[60,88],"knee":[78,88],"ankle":[76,64],"toe":[82,56]}},
-        {"t": 1.0, "pose": {"head":[12,92],"neck":[20,90],"shoulder":[28,88],"elbow":[22,96],"hand":[16,102],"hip":[60,88],"knee":[78,88],"ankle":[96,88],"toe":[96,96]}},
-     ]),
-    ("leg_ext", "Leg extension", "Legs", 1800, False, False,
-     {"feet": "oval", "arm2": "none", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[22,50],"neck":[22,60],"shoulder":[22,65],"elbow":[22,88],"hand":[22,110],"hip":[40,88],"knee":[60,88],"ankle":[60,116],"toe":[68,120]}},
-        {"t": 0.5, "pose": {"head":[22,50],"neck":[22,60],"shoulder":[22,65],"elbow":[22,88],"hand":[22,110],"hip":[40,88],"knee":[60,88],"ankle":[92,88],"toe":[96,96]}},
-        {"t": 1.0, "pose": {"head":[22,50],"neck":[22,60],"shoulder":[22,65],"elbow":[22,88],"hand":[22,110],"hip":[40,88],"knee":[60,88],"ankle":[60,116],"toe":[68,120]}},
-     ]),
-    ("hip_thrust", "Hip thrust", "Legs", 2200, False, False,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[22,80],"neck":[30,82],"shoulder":[38,84],"elbow":[42,100],"hand":[44,118],"hip":[62,120],"knee":[80,114],"ankle":[88,138],"toe":[96,138]}},
-        {"t": 0.5, "pose": {"head":[22,80],"neck":[30,82],"shoulder":[38,84],"elbow":[42,100],"hand":[44,118],"hip":[60,86],"knee":[80,90],"ankle":[88,138],"toe":[96,138]}},
-        {"t": 1.0, "pose": {"head":[22,80],"neck":[30,82],"shoulder":[38,84],"elbow":[42,100],"hand":[44,118],"hip":[62,120],"knee":[80,114],"ankle":[88,138],"toe":[96,138]}},
-     ]),
-    ("w_situp", "Sit-up", "Core", 2000, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[22,116],"neck":[28,118],"shoulder":[34,120],"elbow":[34,124],"hand":[34,130],"hip":[60,122],"knee":[78,100],"ankle":[92,134],"toe":[98,138]}},
-        {"t": 0.5, "pose": {"head":[54,76],"neck":[56,86],"shoulder":[58,92],"elbow":[58,110],"hand":[58,122],"hip":[60,122],"knee":[78,100],"ankle":[92,134],"toe":[98,138]}},
-        {"t": 1.0, "pose": {"head":[22,116],"neck":[28,118],"shoulder":[34,120],"elbow":[34,124],"hand":[34,130],"hip":[60,122],"knee":[78,100],"ankle":[92,134],"toe":[98,138]}},
-     ]),
-    ("plank", "Plank", "Core", 2400, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": {"head":[82,100],"neck":[74,102],"shoulder":[66,104],"elbow":[66,122],"hand":[60,138],"hip":[38,106],"knee":[18,110],"ankle":[0,114],"toe":[-2,122]}},
-        {"t": 0.5, "pose": {"head":[82,100],"neck":[74,102],"shoulder":[66,106],"elbow":[66,122],"hand":[60,138],"hip":[38,108],"knee":[18,110],"ankle":[0,114],"toe":[-2,122]}},
-        {"t": 1.0, "pose": {"head":[82,100],"neck":[74,102],"shoulder":[66,104],"elbow":[66,122],"hand":[60,138],"hip":[38,106],"knee":[18,110],"ankle":[0,114],"toe":[-2,122]}},
-     ]),
-    ("run", "Running", "Cardio", 600, False, True,
-     {"feet": "oval", "arm2": "independent", "leg2": "independent"}, [
-        {"t": 0.0, "pose": {"head":[50,22],"neck":[50,32],"shoulder":[50,38],"elbow":[62,50],"hand":[70,64],"hip":[50,86],"knee":[68,100],"ankle":[80,120],"toe":[90,122]}},
-        {"t": 0.5, "pose": {"head":[50,22],"neck":[50,32],"shoulder":[50,38],"elbow":[38,50],"hand":[30,64],"hip":[50,86],"knee":[38,116],"ankle":[26,138],"toe":[16,138]}},
-        {"t": 1.0, "pose": {"head":[50,22],"neck":[50,32],"shoulder":[50,38],"elbow":[62,50],"hand":[70,64],"hip":[50,86],"knee":[68,100],"ankle":[80,120],"toe":[90,122]}},
-     ]),
-    ("jump_rope", "Jump rope", "Cardio", 600, False, True,
-     {"feet": "oval", "arm2": "mirror", "leg2": "mirror"}, [
-        {"t": 0.0, "pose": _pose(knee=[50,118], ankle=[50,142], toe=[60,142])},
-        {"t": 0.5, "pose": {"head":[50,14],"neck":[50,24],"shoulder":[50,29],"elbow":[50,54],"hand":[50,79],"hip":[50,79],"knee":[50,108],"ankle":[50,130],"toe":[60,132]}},
-        {"t": 1.0, "pose": _pose(knee=[50,118], ankle=[50,142], toe=[60,142])},
-     ]),
-]
+def _load_motion_seed() -> list[dict]:
+    try:
+        with open(_MOTIONS_SEED_PATH, encoding="utf-8") as fh:
+            rows = json.load(fh)
+        return rows if isinstance(rows, list) else []
+    except (OSError, json.JSONDecodeError):
+        return []
 
 
 # ── Seed driver ──────────────────────────────────────────────────────────────
@@ -874,17 +728,18 @@ def seed_if_empty():
             db.commit()
 
         # Motions are upserted by id (insert only when missing) rather than a
-        # whole-table seed. That way new entries added to MOTIONS show up on
+        # whole-table seed. That way new entries added to the JSON seed show up on
         # the next restart while admin edits to existing rows are preserved.
         existing_motion_ids = {row[0] for row in db.query(models.ExerciseMotion.exercise_id).all()}
         new_motions = [
             models.ExerciseMotion(
-                exercise_id=ex_id, name=name, category=category,
-                duration=duration, bench=bench, floor=floor,
-                rig=rig, frames=frames,
+                exercise_id=row["exercise_id"], name=row["name"],
+                category=row.get("category"), duration=row.get("duration"),
+                bench=bool(row.get("bench")), floor=bool(row.get("floor")),
+                rig=row.get("rig") or {}, frames=row.get("frames") or [],
             )
-            for ex_id, name, category, duration, bench, floor, rig, frames in MOTIONS
-            if ex_id not in existing_motion_ids
+            for row in _load_motion_seed()
+            if row.get("exercise_id") and row["exercise_id"] not in existing_motion_ids
         ]
         if new_motions:
             db.add_all(new_motions)
