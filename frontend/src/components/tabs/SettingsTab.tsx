@@ -3,8 +3,9 @@ import { Bell, BellOff, Timer, MapPin } from "lucide-react";
 import { useTxt, type ToneMode } from "../../context/ToneContext";
 import { useOnboarding } from "../../context/OnboardingContext";
 import {
-  pushSupported, fetchPushPublicKey, getExistingSubscription,
-  subscribePush, unsubscribePush,
+  pushSupported, fetchPushPublicKey,
+  subscribePush, unsubscribePush, refreshPushSubscription,
+  iosNeedsInstall,
 } from "../../push";
 import type { RestPrefs, WizardTransitionStyle, ThemeMode, GymPrefs } from "../../types";
 import { DEFAULT_REST_PREFS, DEFAULT_GYM_RADIUS_M } from "../../types";
@@ -535,10 +536,11 @@ function ChangePasswordCard({ token }: { token: string | null }) {
 function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
   const t = useTxt();
   // null = still probing; otherwise concrete state.
-  const [enabled,   setEnabled]   = useState<boolean | null>(null);
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [busy,      setBusy]      = useState(false);
-  const [err,       setErr]       = useState<string | null>(null);
+  const [enabled,    setEnabled]    = useState<boolean | null>(null);
+  const [available,  setAvailable]  = useState<boolean | null>(null);
+  const [needsIOSInstall, setNeedsIOSInstall] = useState(false);
+  const [busy,       setBusy]       = useState(false);
+  const [err,        setErr]        = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -547,13 +549,29 @@ function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
         if (!cancelled) { setAvailable(false); setEnabled(false); }
         return;
       }
-      const [{ enabled: serverOn }, sub] = await Promise.all([
-        fetchPushPublicKey(authFetch),
-        getExistingSubscription(),
-      ]);
+      if (iosNeedsInstall()) {
+        if (!cancelled) {
+          setNeedsIOSInstall(true);
+          setAvailable(true);
+          setEnabled(false);
+        }
+        return;
+      }
+      const { enabled: serverOn } = await fetchPushPublicKey(authFetch);
       if (cancelled) return;
       setAvailable(serverOn);
-      setEnabled(!!sub && serverOn);
+      if (!serverOn) {
+        setEnabled(false);
+        return;
+      }
+      // Sync the browser sub against the current VAPID key + server DB. This
+      // self-heals two common dead states the user can't see: keys rotated
+      // (browser sub still looks valid but pushes 401) and server row pruned
+      // (browser thinks it's subscribed but server has no record). Either way
+      // we end up with an accurate enabled/disabled flag.
+      const ok = await refreshPushSubscription(authFetch);
+      if (cancelled) return;
+      setEnabled(ok);
     })().catch(() => {
       if (!cancelled) { setAvailable(false); setEnabled(false); }
     });
@@ -591,6 +609,26 @@ function PushToggleCard({ authFetch }: { authFetch: Props["authFetch"] }) {
               {pushSupported()
                 ? "Not enabled on this server"
                 : "Your browser doesn't support push"}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (needsIOSInstall) {
+    return (
+      <div className="profile-card">
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <BellOff size={16} style={{ color: "var(--muted)" }} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>
+              {t("Push notifications", "Push notifications", "Push notifications")}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.4 }}>
+              On iPhone/iPad, push works only after you add Gamgee to your Home
+              Screen. Tap <strong>Share</strong> in Safari → <strong>Add to
+              Home Screen</strong>, then open the app from the icon.
             </div>
           </div>
         </div>
